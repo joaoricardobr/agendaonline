@@ -20,7 +20,6 @@ const db = getFirestore(app);
 // DOM Elements
 const form = document.getElementById('appointmentForm');
 const appointmentsBody = document.getElementById('appointmentsBody');
-const gridView = document.getElementById('gridView');
 const pipelineView = document.getElementById('pipelineView');
 const tableView = document.getElementById('appointmentsTable');
 const viewModes = document.querySelectorAll('.view-mode');
@@ -28,6 +27,8 @@ const selectAllCheckbox = document.getElementById('selectAll');
 const exportExcelBtn = document.getElementById('exportExcel');
 const exportPDFBtn = document.getElementById('exportPDF');
 const mobileViewToggle = document.getElementById('mobileViewToggle');
+const statusFilter = document.getElementById('statusFilter');
+const statusGroup = document.getElementById('statusGroup');
 
 let appointments = [];
 let editId = null;
@@ -58,8 +59,8 @@ form.addEventListener('submit', async (e) => {
         procedimentos: document.getElementById('procedimentos').value,
         descricao: document.getElementById('descricao').value,
         agendamentoFeitoPor: document.getElementById('agendamentoFeitoPor').value,
-        status: 'Aguardando Atendimento',
-        createdAt: new Date().toISOString()
+        status: editId ? document.getElementById('status').value : 'Aguardando Atendimento',
+        createdAt: editId ? appointments.find(a => a.id === editId).createdAt : new Date().toISOString()
     };
 
     try {
@@ -67,6 +68,7 @@ form.addEventListener('submit', async (e) => {
             const docRef = doc(db, 'agendaunica', editId);
             await updateDoc(docRef, appointmentData);
             editId = null;
+            statusGroup.style.display = 'none';
         } else {
             await addDoc(collection(db, 'agendaunica'), appointmentData);
         }
@@ -97,9 +99,14 @@ async function loadAppointments() {
 
 // Render appointments
 function renderAppointments() {
+    // Filter appointments based on status
+    const filteredAppointments = statusFilter.value === 'all' 
+        ? appointments 
+        : appointments.filter(app => app.status === statusFilter.value);
+
     // Table view
     appointmentsBody.innerHTML = '';
-    appointments.forEach(app => {
+    filteredAppointments.forEach(app => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><input type="checkbox" class="select-row" data-id="${app.id}"></td>
@@ -117,27 +124,6 @@ function renderAppointments() {
             </td>
         `;
         appointmentsBody.appendChild(row);
-    });
-
-    // Grid view
-    gridView.innerHTML = '';
-    appointments.forEach(app => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <h4><span class="material-icons">person</span>${app.nomePaciente || 'Sem Nome'}</h4>
-            <p><span class="material-icons">phone</span>${app.telefone || '-'}</p>
-            <p><span class="material-icons">medical_services</span>${app.nomeMedico || '-'}</p>
-            <p><span class="material-icons">event</span>${app.dataConsulta || '-'}</p>
-            <p><span class="material-icons">schedule</span>${app.horaConsulta || '-'}</p>
-            <p><span class="material-icons">assignment</span>${app.status || '-'}</p>
-            <div class="card-actions">
-                <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
-                <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
-                <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
-            </div>
-        `;
-        gridView.appendChild(card);
     });
 
     // Pipeline view
@@ -223,7 +209,8 @@ window.editAppointment = async (id) => {
         document.getElementById('procedimentos').value = app.procedimentos || '';
         document.getElementById('descricao').value = app.descricao || '';
         document.getElementById('agendamentoFeitoPor').value = app.agendamentoFeitoPor || '';
-        
+        document.getElementById('status').value = app.status || 'Aguardando Atendimento';
+        statusGroup.style.display = 'block'; // Mostra o campo de status ao editar
         editId = id;
     }
 };
@@ -281,7 +268,6 @@ viewModes.forEach(mode => {
         currentView = mode.dataset.view;
         
         tableView.style.display = currentView === 'list' ? 'block' : 'none';
-        gridView.style.display = currentView === 'grid' ? 'grid' : 'none';
         pipelineView.style.display = currentView === 'pipeline' ? 'grid' : 'none';
     });
 });
@@ -289,22 +275,14 @@ viewModes.forEach(mode => {
 // Mobile view toggle
 mobileViewToggle.addEventListener('click', () => {
     if (currentView === 'list') {
-        currentView = 'grid';
+        currentView = 'pipeline';
         mobileViewToggle.textContent = 'list';
         tableView.style.display = 'none';
-        gridView.style.display = 'grid';
-        pipelineView.style.display = 'none';
-    } else if (currentView === 'grid') {
-        currentView = 'pipeline';
-        mobileViewToggle.textContent = 'view_kanban';
-        tableView.style.display = 'none';
-        gridView.style.display = 'none';
         pipelineView.style.display = 'grid';
     } else {
         currentView = 'list';
-        mobileViewToggle.textContent = 'grid_view';
+        mobileViewToggle.textContent = 'view_kanban';
         tableView.style.display = 'block';
-        gridView.style.display = 'none';
         pipelineView.style.display = 'none';
     }
 });
@@ -314,6 +292,9 @@ selectAllCheckbox.addEventListener('change', () => {
     const checkboxes = document.querySelectorAll('.select-row');
     checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
 });
+
+// Status filter
+statusFilter.addEventListener('change', renderAppointments);
 
 // Export to Excel
 exportExcelBtn.addEventListener('click', () => {
@@ -340,9 +321,10 @@ exportExcelBtn.addEventListener('click', () => {
         }));
 
         const ws = XLSX.utils.json_to_sheet(formattedData);
+        ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 20 }];
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
-        XLSX.writeFile(wb, 'agendamentos.xlsx');
+        XLSX.writeFile(wb, 'agendamentos.xlsx', { bookType: 'xlsx', type: 'binary', cellStyles: true });
     } catch (error) {
         console.error('Error exporting to Excel:', error);
         alert('Erro ao exportar para Excel: ' + error.message);
@@ -352,13 +334,13 @@ exportExcelBtn.addEventListener('click', () => {
 // Export to PDF
 exportPDFBtn.addEventListener('click', () => {
     try {
-        const element = currentView === 'list' ? tableView : currentView === 'grid' ? gridView : pipelineView;
+        const element = currentView === 'list' ? tableView : pipelineView;
         const opt = {
-            margin: 1,
+            margin: 0.2, // Margem mínima
             filename: 'agendamentos.pdf',
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' } // Modo paisagem
         };
 
         html2pdf().from(element).set(opt).save();
