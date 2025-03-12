@@ -31,16 +31,14 @@ const mobileViewToggle = document.getElementById('mobileViewToggle');
 
 let appointments = [];
 let editId = null;
-let currentView = 'list'; // Track current view (list, grid, or pipeline)
+let currentView = 'list';
 
 // Persist form data in localStorage
 const formFields = ['nomePaciente', 'telefone', 'nomeMedico', 'dataConsulta', 'horaConsulta', 'tipoCirurgia', 'procedimentos', 'agendamentoFeitoPor', 'descricao'];
 formFields.forEach(field => {
     const element = document.getElementById(field);
-    // Load saved data
     const savedValue = localStorage.getItem(field);
     if (savedValue) element.value = savedValue;
-    // Save on input
     element.addEventListener('input', () => {
         localStorage.setItem(field, element.value);
     });
@@ -73,7 +71,7 @@ form.addEventListener('submit', async (e) => {
             await addDoc(collection(db, 'agendaunica'), appointmentData);
         }
         form.reset();
-        formFields.forEach(field => localStorage.removeItem(field)); // Clear localStorage after save
+        formFields.forEach(field => localStorage.removeItem(field));
         loadAppointments();
     } catch (error) {
         console.error('Error saving appointment:', error);
@@ -127,11 +125,12 @@ function renderAppointments() {
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
-            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-            <p>Médico: ${app.nomeMedico || '-'}</p>
-            <p>Data: ${app.dataConsulta || '-'}</p>
-            <p>Hora: ${app.horaConsulta || '-'}</p>
-            <p>Status: ${app.status || '-'}</p>
+            <h4><span class="material-icons">person</span>${app.nomePaciente || 'Sem Nome'}</h4>
+            <p><span class="material-icons">phone</span>${app.telefone || '-'}</p>
+            <p><span class="material-icons">medical_services</span>${app.nomeMedico || '-'}</p>
+            <p><span class="material-icons">event</span>${app.dataConsulta || '-'}</p>
+            <p><span class="material-icons">schedule</span>${app.horaConsulta || '-'}</p>
+            <p><span class="material-icons">assignment</span>${app.status || '-'}</p>
             <div class="card-actions">
                 <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
                 <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
@@ -141,7 +140,7 @@ function renderAppointments() {
         gridView.appendChild(card);
     });
 
-    // Pipeline view (cards in columns)
+    // Pipeline view
     const columns = document.querySelectorAll('.pipeline-column');
     columns.forEach(column => {
         const status = column.dataset.status;
@@ -155,10 +154,11 @@ function renderAppointments() {
             card.draggable = true;
             card.dataset.id = app.id;
             card.innerHTML = `
-                <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-                <p>Médico: ${app.nomeMedico || '-'}</p>
-                <p>Data: ${app.dataConsulta || '-'}</p>
-                <p>Hora: ${app.horaConsulta || '-'}</p>
+                <h4><span class="material-icons">person</span>${app.nomePaciente || 'Sem Nome'}</h4>
+                <p><span class="material-icons">phone</span>${app.telefone || '-'}</p>
+                <p><span class="material-icons">medical_services</span>${app.nomeMedico || '-'}</p>
+                <p><span class="material-icons">event</span>${app.dataConsulta || '-'}</p>
+                <p><span class="material-icons">schedule</span>${app.horaConsulta || '-'}</p>
                 <div class="card-actions">
                     <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
                     <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
@@ -167,12 +167,10 @@ function renderAppointments() {
             `;
             columnContent.appendChild(card);
 
-            // Drag-and-drop events
             card.addEventListener('dragstart', handleDragStart);
             card.addEventListener('dragend', handleDragEnd);
         });
 
-        // Allow dropping into columns
         column.addEventListener('dragover', handleDragOver);
         column.addEventListener('drop', handleDrop);
     });
