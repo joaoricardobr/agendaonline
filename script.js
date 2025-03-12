@@ -20,6 +20,7 @@ const db = getFirestore(app);
 // DOM Elements
 const form = document.getElementById('appointmentForm');
 const appointmentsBody = document.getElementById('appointmentsBody');
+const gridView = document.getElementById('gridView');
 const pipelineView = document.getElementById('pipelineView');
 const tableView = document.getElementById('appointmentsTable');
 const viewModes = document.querySelectorAll('.view-mode');
@@ -30,7 +31,20 @@ const mobileViewToggle = document.getElementById('mobileViewToggle');
 
 let appointments = [];
 let editId = null;
-let currentView = 'list'; // Track current view (list or pipeline)
+let currentView = 'list'; // Track current view (list, grid, or pipeline)
+
+// Persist form data in localStorage
+const formFields = ['nomePaciente', 'telefone', 'nomeMedico', 'dataConsulta', 'horaConsulta', 'tipoCirurgia', 'procedimentos', 'agendamentoFeitoPor', 'descricao'];
+formFields.forEach(field => {
+    const element = document.getElementById(field);
+    // Load saved data
+    const savedValue = localStorage.getItem(field);
+    if (savedValue) element.value = savedValue;
+    // Save on input
+    element.addEventListener('input', () => {
+        localStorage.setItem(field, element.value);
+    });
+});
 
 // Form submission
 form.addEventListener('submit', async (e) => {
@@ -59,6 +73,7 @@ form.addEventListener('submit', async (e) => {
             await addDoc(collection(db, 'agendaunica'), appointmentData);
         }
         form.reset();
+        formFields.forEach(field => localStorage.removeItem(field)); // Clear localStorage after save
         loadAppointments();
     } catch (error) {
         console.error('Error saving appointment:', error);
@@ -104,6 +119,26 @@ function renderAppointments() {
             </td>
         `;
         appointmentsBody.appendChild(row);
+    });
+
+    // Grid view
+    gridView.innerHTML = '';
+    appointments.forEach(app => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+            <p>Médico: ${app.nomeMedico || '-'}</p>
+            <p>Data: ${app.dataConsulta || '-'}</p>
+            <p>Hora: ${app.horaConsulta || '-'}</p>
+            <p>Status: ${app.status || '-'}</p>
+            <div class="card-actions">
+                <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
+                <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
+                <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
+            </div>
+        `;
+        gridView.appendChild(card);
     });
 
     // Pipeline view (cards in columns)
@@ -247,27 +282,31 @@ viewModes.forEach(mode => {
         mode.classList.add('active');
         currentView = mode.dataset.view;
         
-        if (currentView === 'pipeline') {
-            tableView.style.display = 'none';
-            pipelineView.style.display = 'grid';
-        } else {
-            tableView.style.display = 'block';
-            pipelineView.style.display = 'none';
-        }
+        tableView.style.display = currentView === 'list' ? 'block' : 'none';
+        gridView.style.display = currentView === 'grid' ? 'grid' : 'none';
+        pipelineView.style.display = currentView === 'pipeline' ? 'grid' : 'none';
     });
 });
 
 // Mobile view toggle
 mobileViewToggle.addEventListener('click', () => {
     if (currentView === 'list') {
-        currentView = 'pipeline';
+        currentView = 'grid';
         mobileViewToggle.textContent = 'list';
         tableView.style.display = 'none';
+        gridView.style.display = 'grid';
+        pipelineView.style.display = 'none';
+    } else if (currentView === 'grid') {
+        currentView = 'pipeline';
+        mobileViewToggle.textContent = 'view_kanban';
+        tableView.style.display = 'none';
+        gridView.style.display = 'none';
         pipelineView.style.display = 'grid';
     } else {
         currentView = 'list';
-        mobileViewToggle.textContent = 'view_kanban';
+        mobileViewToggle.textContent = 'grid_view';
         tableView.style.display = 'block';
+        gridView.style.display = 'none';
         pipelineView.style.display = 'none';
     }
 });
@@ -288,7 +327,6 @@ exportExcelBtn.addEventListener('click', () => {
 
         const dataToExport = selectedAppointments.length > 0 ? selectedAppointments : appointments;
         
-        // Ensure all fields are present, even if empty
         const formattedData = dataToExport.map(app => ({
             Paciente: app.nomePaciente || '-',
             Telefone: app.telefone || '-',
@@ -316,7 +354,7 @@ exportExcelBtn.addEventListener('click', () => {
 // Export to PDF
 exportPDFBtn.addEventListener('click', () => {
     try {
-        const element = currentView === 'list' ? tableView : pipelineView;
+        const element = currentView === 'list' ? tableView : currentView === 'grid' ? gridView : pipelineView;
         const opt = {
             margin: 1,
             filename: 'agendamentos.pdf',
