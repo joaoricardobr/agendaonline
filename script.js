@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyBxPLohS2xOErPb8FH0cFRnNzxy699KHUM",
@@ -30,7 +30,14 @@ const mobileViewToggle = document.getElementById('mobileViewToggle');
 const statusFilter = document.getElementById('statusFilter');
 const statusGroup = document.getElementById('statusGroup');
 const themeToggle = document.getElementById('themeToggle');
+const settingsToggle = document.getElementById('settingsToggle');
 const notification = document.getElementById('notification');
+const settingsMenu = document.getElementById('settingsMenu');
+const saveThemeBtn = document.getElementById('saveTheme');
+const resetThemeBtn = document.getElementById('resetTheme');
+const backupDataBtn = document.getElementById('backupData');
+const restoreBackupBtn = document.getElementById('restoreBackup');
+const searchInput = document.getElementById('searchInput');
 
 let appointments = [];
 let editId = null;
@@ -104,8 +111,23 @@ async function loadAppointments() {
     }
 }
 
-function renderAppointments() {
-    const filteredAppointments = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
+function filterAppointments(searchTerm) {
+    const term = searchTerm.toLowerCase();
+    return appointments.filter(app => {
+        return (
+            (app.nomePaciente && app.nomePaciente.toLowerCase().includes(term)) ||
+            (app.telefone && app.telefone.toLowerCase().includes(term)) ||
+            (app.nomeMedico && app.nomeMedico.toLowerCase().includes(term)) ||
+            (app.dataConsulta && app.dataConsulta.toLowerCase().includes(term))
+        );
+    });
+}
+
+function renderAppointments(searchTerm = '') {
+    let filteredAppointments = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
+    if (searchTerm) {
+        filteredAppointments = filterAppointments(searchTerm);
+    }
 
     appointmentsBody.innerHTML = '';
     filteredAppointments.forEach(app => {
@@ -174,8 +196,8 @@ function renderAppointments() {
         const columnContent = column.querySelector('.column-content');
         columnContent.innerHTML = '';
 
-        const filteredAppointments = appointments.filter(app => app.status === status);
-        filteredAppointments.forEach(app => {
+        const statusFiltered = filteredAppointments.filter(app => app.status === status);
+        statusFiltered.forEach(app => {
             const card = document.createElement('div');
             card.className = 'card';
             card.draggable = true;
@@ -392,7 +414,7 @@ viewModes.forEach(mode => {
         viewModes.forEach(m => m.classList.remove('active'));
         mode.classList.add('active');
         currentView = mode.dataset.view;
-        renderAppointments();
+        renderAppointments(searchInput.value);
     });
 });
 
@@ -404,7 +426,7 @@ mobileViewToggle.addEventListener('click', () => {
         currentView = 'list';
         mobileViewToggle.textContent = 'view_kanban';
     }
-    renderAppointments();
+    renderAppointments(searchInput.value);
 });
 
 selectAllCheckbox.addEventListener('change', () => {
@@ -412,7 +434,7 @@ selectAllCheckbox.addEventListener('change', () => {
     checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
 });
 
-statusFilter.addEventListener('change', renderAppointments);
+statusFilter.addEventListener('change', () => renderAppointments(searchInput.value));
 
 printBtn.addEventListener('click', () => {
     window.print();
@@ -420,6 +442,7 @@ printBtn.addEventListener('click', () => {
 
 resetBtn.addEventListener('click', () => {
     statusFilter.value = 'all';
+    searchInput.value = '';
     showNotification('Tabela restaurada!');
     renderAppointments();
 });
@@ -458,14 +481,25 @@ exportExcelBtn.addEventListener('click', () => {
 
 exportPDFBtn.addEventListener('click', () => {
     try {
-        const element = currentView === 'list' ? (window.innerWidth > 768 ? tableView.querySelector('table') : cardView) : 
-                       currentView === 'grid' ? gridView : pipelineView;
+        let element;
+        let orientation = 'landscape';
+        if (currentView === 'list' && window.innerWidth > 768) {
+            element = tableView.querySelector('table');
+        } else if (currentView === 'list' && window.innerWidth <= 768) {
+            element = cardView;
+            orientation = 'portrait';
+        } else if (currentView === 'grid') {
+            element = gridView;
+            orientation = 'portrait';
+        } else if (currentView === 'pipeline') {
+            element = pipelineView;
+        }
         const opt = {
             margin: 0.2,
             filename: 'agendamentos.pdf',
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
+            jsPDF: { unit: 'in', format: 'a4', orientation: orientation }
         };
         html2pdf().set(opt).from(element).save();
         showNotification('Exportado para PDF com sucesso!');
@@ -480,9 +514,111 @@ themeToggle.addEventListener('click', () => {
     localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
 });
 
+settingsToggle.addEventListener('click', () => {
+    settingsMenu.style.display = settingsMenu.style.display === 'block' ? 'none' : 'block';
+});
+
+document.addEventListener('click', (e) => {
+    if (!settingsMenu.contains(e.target) && !settingsToggle.contains(e.target)) {
+        settingsMenu.style.display = 'none';
+    }
+});
+
+saveThemeBtn.addEventListener('click', () => {
+    const customTheme = {
+        bodyBgColor: document.getElementById('bodyBgColor').value,
+        cardBgColor: document.getElementById('cardBgColor').value,
+        formBgColor: document.getElementById('formBgColor').value,
+        textColor: document.getElementById('textColor').value,
+        borderColor: document.getElementById('borderColor').value
+    };
+    localStorage.setItem('customTheme', JSON.stringify(customTheme));
+    applyCustomTheme();
+    showNotification('Tema salvo com sucesso!');
+});
+
+resetThemeBtn.addEventListener('click', () => {
+    localStorage.removeItem('customTheme');
+    document.getElementById('bodyBgColor').value = '#f4f7fa';
+    document.getElementById('cardBgColor').value = '#ffffff';
+    document.getElementById('formBgColor').value = '#ffffff';
+    document.getElementById('textColor').value = '#2d3748';
+    document.getElementById('borderColor').value = '#e2e8f0';
+    applyCustomTheme();
+    showNotification('Tema restaurado para padrão!');
+});
+
+backupDataBtn.addEventListener('click', () => {
+    try {
+        const data = JSON.stringify(appointments, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'backup_agendamentos.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('Backup em JSON gerado com sucesso!');
+    } catch (error) {
+        console.error('Error generating backup:', error);
+        showNotification('Erro ao gerar backup: ' + error.message, true);
+    }
+});
+
+restoreBackupBtn.addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            const text = await file.text();
+            const backupData = JSON.parse(text);
+            for (const app of backupData) {
+                if (app.id) {
+                    const docRef = doc(db, 'agendaunica', app.id);
+                    await setDoc(docRef, app, { merge: true });
+                } else {
+                    await addDoc(collection(db, 'agendaunica'), app);
+                }
+            }
+            showNotification('Backup restaurado com sucesso!');
+            loadAppointments();
+        } catch (error) {
+            console.error('Error restoring backup:', error);
+            showNotification('Erro ao restaurar backup: ' + error.message, true);
+        }
+    };
+    input.click();
+});
+
+searchInput.addEventListener('input', () => {
+    renderAppointments(searchInput.value);
+});
+
+searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        searchInput.value = '';
+        renderAppointments();
+    }
+});
+
+function applyCustomTheme() {
+    const customTheme = JSON.parse(localStorage.getItem('customTheme')) || {};
+    document.body.style.backgroundColor = customTheme.bodyBgColor || '#f4f7fa';
+    document.querySelectorAll('.card').forEach(card => card.style.backgroundColor = customTheme.cardBgColor || '#ffffff');
+    document.querySelector('.form-section').style.backgroundColor = customTheme.formBgColor || '#ffffff';
+    document.body.style.color = customTheme.textColor || '#2d3748';
+    document.querySelectorAll('.form-group input, .form-group textarea, .form-group select, .card, .form-section, .appointments-section, .action-box, .settings-menu, button, .filters select, .top-bar, .search-bar input').forEach(el => {
+        el.style.borderColor = customTheme.borderColor || '#e2e8f0';
+    });
+}
+
 if (localStorage.getItem('theme') === 'dark') {
     document.body.classList.add('dark-mode');
 }
 
+applyCustomTheme();
 loadAppointments();
-window.addEventListener('resize', renderAppointments);
+window.addEventListener('resize', () => renderAppointments(searchInput.value));
