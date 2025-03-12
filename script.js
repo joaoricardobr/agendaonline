@@ -20,19 +20,17 @@ const db = getFirestore(app);
 // DOM Elements
 const form = document.getElementById('appointmentForm');
 const appointmentsBody = document.getElementById('appointmentsBody');
-const appointmentsGrid = document.getElementById('appointmentsGrid');
+const pipelineView = document.getElementById('pipelineView');
 const tableView = document.getElementById('appointmentsTable');
-const gridView = document.getElementById('appointmentsGrid');
 const viewModes = document.querySelectorAll('.view-mode');
-const pipelineToggle = document.querySelector('.pipeline-toggle');
-const pipelineOptions = document.querySelector('.pipeline-options');
-const statusFilter = document.getElementById('statusFilter');
 const selectAllCheckbox = document.getElementById('selectAll');
 const exportExcelBtn = document.getElementById('exportExcel');
 const exportPDFBtn = document.getElementById('exportPDF');
+const mobileViewToggle = document.getElementById('mobileViewToggle');
 
 let appointments = [];
 let editId = null;
+let currentView = 'list'; // Track current view (list or pipeline)
 
 // Form submission
 form.addEventListener('submit', async (e) => {
@@ -86,13 +84,9 @@ async function loadAppointments() {
 
 // Render appointments
 function renderAppointments() {
-    const filteredAppointments = statusFilter.value === 'all' 
-        ? appointments 
-        : appointments.filter(app => app.status === statusFilter.value);
-
     // Table view
     appointmentsBody.innerHTML = '';
-    filteredAppointments.forEach(app => {
+    appointments.forEach(app => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><input type="checkbox" class="select-row" data-id="${app.id}"></td>
@@ -112,25 +106,75 @@ function renderAppointments() {
         appointmentsBody.appendChild(row);
     });
 
-    // Grid view
-    appointmentsGrid.innerHTML = '';
-    filteredAppointments.forEach(app => {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <h3>${app.nomePaciente || 'Sem Nome'}</h3>
-            <p>Médico: ${app.nomeMedico || '-'}</p>
-            <p>Data: ${app.dataConsulta || '-'}</p>
-            <p>Hora: ${app.horaConsulta || '-'}</p>
-            <p>Status: ${app.status || '-'}</p>
-            <div class="card-actions">
-                <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
-                <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
-                <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
-            </div>
-        `;
-        appointmentsGrid.appendChild(card);
+    // Pipeline view (cards in columns)
+    const columns = document.querySelectorAll('.pipeline-column');
+    columns.forEach(column => {
+        const status = column.dataset.status;
+        const columnContent = column.querySelector('.column-content');
+        columnContent.innerHTML = '';
+
+        const filteredAppointments = appointments.filter(app => app.status === status);
+        filteredAppointments.forEach(app => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.draggable = true;
+            card.dataset.id = app.id;
+            card.innerHTML = `
+                <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                <p>Médico: ${app.nomeMedico || '-'}</p>
+                <p>Data: ${app.dataConsulta || '-'}</p>
+                <p>Hora: ${app.horaConsulta || '-'}</p>
+                <div class="card-actions">
+                    <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
+                    <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
+                    <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
+                </div>
+            `;
+            columnContent.appendChild(card);
+
+            // Drag-and-drop events
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+        });
+
+        // Allow dropping into columns
+        column.addEventListener('dragover', handleDragOver);
+        column.addEventListener('drop', handleDrop);
     });
+}
+
+// Drag-and-drop handlers
+let draggedCard = null;
+
+function handleDragStart(e) {
+    draggedCard = e.target;
+    e.target.classList.add('dragging');
+}
+
+function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+    draggedCard = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+}
+
+async function handleDrop(e) {
+    e.preventDefault();
+    if (draggedCard) {
+        const newStatus = e.currentTarget.dataset.status;
+        const appointmentId = draggedCard.dataset.id;
+
+        try {
+            const docRef = doc(db, 'agendaunica', appointmentId);
+            await updateDoc(docRef, { status: newStatus });
+            loadAppointments();
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Erro ao atualizar status: ' + error.message);
+        }
+    }
 }
 
 // Edit appointment
@@ -196,29 +240,37 @@ window.viewAppointment = (id) => {
     `);
 };
 
-// View toggle
+// View toggle for desktop
 viewModes.forEach(mode => {
     mode.addEventListener('click', () => {
         viewModes.forEach(m => m.classList.remove('active'));
         mode.classList.add('active');
+        currentView = mode.dataset.view;
         
-        if (mode.dataset.view === 'grid') {
+        if (currentView === 'pipeline') {
             tableView.style.display = 'none';
-            gridView.style.display = 'grid';
+            pipelineView.style.display = 'grid';
         } else {
             tableView.style.display = 'block';
-            gridView.style.display = 'none';
+            pipelineView.style.display = 'none';
         }
     });
 });
 
-// Pipeline toggle
-pipelineToggle.addEventListener('click', () => {
-    pipelineOptions.style.display = pipelineOptions.style.display === 'block' ? 'none' : 'block';
+// Mobile view toggle
+mobileViewToggle.addEventListener('click', () => {
+    if (currentView === 'list') {
+        currentView = 'pipeline';
+        mobileViewToggle.textContent = 'list';
+        tableView.style.display = 'none';
+        pipelineView.style.display = 'grid';
+    } else {
+        currentView = 'list';
+        mobileViewToggle.textContent = 'view_kanban';
+        tableView.style.display = 'block';
+        pipelineView.style.display = 'none';
+    }
 });
-
-// Status filter
-statusFilter.addEventListener('change', renderAppointments);
 
 // Select all checkbox
 selectAllCheckbox.addEventListener('change', () => {
@@ -228,33 +280,56 @@ selectAllCheckbox.addEventListener('change', () => {
 
 // Export to Excel
 exportExcelBtn.addEventListener('click', () => {
-    const selectedAppointments = appointments.filter(app => {
-        const checkbox = document.querySelector(`.select-row[data-id="${app.id}"]`);
-        return checkbox && checkbox.checked;
-    });
+    try {
+        const selectedAppointments = appointments.filter(app => {
+            const checkbox = document.querySelector(`.select-row[data-id="${app.id}"]`);
+            return checkbox && checkbox.checked;
+        });
 
-    const data = selectedAppointments.length > 0 ? selectedAppointments : appointments;
-    
-    const ws = XLSX.utils.json_to_sheet(data.map(app => ({
-        Paciente: app.nomePaciente,
-        Telefone: app.telefone,
-        Medico: app.nomeMedico,
-        Data: app.dataConsulta,
-        Hora: app.horaConsulta,
-        Status: app.status
-    })));
-    
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
-    XLSX.writeFile(wb, 'agendamentos.xlsx');
+        const dataToExport = selectedAppointments.length > 0 ? selectedAppointments : appointments;
+        
+        // Ensure all fields are present, even if empty
+        const formattedData = dataToExport.map(app => ({
+            Paciente: app.nomePaciente || '-',
+            Telefone: app.telefone || '-',
+            Medico: app.nomeMedico || '-',
+            Data: app.dataConsulta || '-',
+            Hora: app.horaConsulta || '-',
+            Tipo_Cirurgia: app.tipoCirurgia || '-',
+            Procedimentos: app.procedimentos || '-',
+            Descricao: app.descricao || '-',
+            Agendamento_Feito_Por: app.agendamentoFeitoPor || '-',
+            Status: app.status || '-',
+            Criado_Em: new Date(app.createdAt).toLocaleString() || '-'
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(formattedData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
+        XLSX.writeFile(wb, 'agendamentos.xlsx');
+    } catch (error) {
+        console.error('Error exporting to Excel:', error);
+        alert('Erro ao exportar para Excel: ' + error.message);
+    }
 });
 
 // Export to PDF
 exportPDFBtn.addEventListener('click', () => {
-    const element = document.querySelector('.appointments-section');
-    html2pdf()
-        .from(element)
-        .save('agendamentos.pdf');
+    try {
+        const element = currentView === 'list' ? tableView : pipelineView;
+        const opt = {
+            margin: 1,
+            filename: 'agendamentos.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().from(element).set(opt).save();
+    } catch (error) {
+        console.error('Error exporting to PDF:', error);
+        alert('Erro ao exportar para PDF: ' + error.message);
+    }
 });
 
 // Initial load
