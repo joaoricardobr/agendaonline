@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agenda Clinica Soraya Alaby</title>
+    <title>Agendamento Clínico</title>
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <style>
         * {
@@ -103,7 +103,7 @@
 
         .view-toggle {
             display: flex;
-            gap: 15px; /* Espaçamento entre os ícones */
+            gap: 15px;
         }
 
         .view-toggle .material-icons {
@@ -122,6 +122,19 @@
             color: white;
         }
 
+        .filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .filters select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
         .table-view table {
             width: 100%;
             border-collapse: collapse;
@@ -132,20 +145,13 @@
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #eee;
-            word-wrap: break-word; /* Garante que o texto não vaze */
-            max-width: 150px; /* Limita a largura das células */
-        }
-
-        .grid-view {
-            display: none;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px; /* Espaçamento entre os cards */
-            margin-top: 20px;
+            word-wrap: break-word;
+            max-width: 150px;
         }
 
         .pipeline-view {
             display: none;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(4, 1fr); /* 4 colunas fixas no desktop */
             gap: 20px;
             margin-top: 20px;
         }
@@ -154,14 +160,15 @@
             background-color: #f9f9f9;
             border: 1px solid #ddd;
             border-radius: 8px;
-            padding: 15px;
-            min-height: 200px;
+            padding: 10px;
+            min-height: 300px;
+            width: 100%; /* Garante que as colunas ocupem o espaço disponível */
         }
 
         .pipeline-column h3 {
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             color: #2c3e50;
-            font-size: 18px;
+            font-size: 16px;
             text-align: center;
         }
 
@@ -169,14 +176,16 @@
             background-color: #fff;
             border: 1px solid #eee;
             border-radius: 8px;
-            padding: 15px;
+            padding: 10px;
             margin-bottom: 10px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            cursor: move; /* Apenas no pipeline */
+            cursor: move;
             display: flex;
             flex-direction: column;
-            gap: 8px; /* Espaçamento interno entre os itens do card */
-            overflow: hidden; /* Evita vazamento de conteúdo */
+            gap: 6px;
+            font-size: 12px; /* Tamanho menor para o card */
+            max-width: 100%;
+            overflow: hidden;
         }
 
         .card.dragging {
@@ -184,38 +193,37 @@
         }
 
         .card h4 {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: #2c3e50;
-            font-size: 16px;
+            font-size: 14px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .card p {
             margin: 0;
             color: #666;
-            font-size: 14px;
             display: flex;
             align-items: center;
-            gap: 8px;
-            word-wrap: break-word; /* Garante que o texto não vaze */
-            max-width: 100%; /* Limita a largura do texto */
+            gap: 6px;
+            word-wrap: break-word;
+            max-width: 100%;
         }
 
         .card-actions {
-            margin-top: 10px;
+            margin-top: 8px;
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap; /* Permite que os botões se ajustem em telas pequenas */
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .action-btn {
-            padding: 5px 10px;
-            border: COLLATE utf8mb4_0900_ai_ci none;
+            padding: 4px 8px;
+            border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 10px;
             transition: background-color 0.3s;
         }
 
@@ -267,37 +275,38 @@
                 display: none;
             }
 
-            .pipeline-view,
-            .grid-view {
+            .pipeline-view {
                 grid-template-columns: 1fr; /* Uma coluna em mobile */
             }
 
-            .pipeline-column {
-                min-height: 150px;
-            }
-
             .card {
-                padding: 10px;
+                padding: 8px;
+                font-size: 10px;
             }
 
             .card h4 {
-                font-size: 14px;
-            }
-
-            .card p {
                 font-size: 12px;
             }
 
+            .card-actions {
+                gap: 6px;
+            }
+
             .action-btn {
-                padding: 4px 8px;
-                font-size: 10px;
+                padding: 3px 6px;
+                font-size: 8px;
             }
 
             .table-view th,
             .table-view td {
                 padding: 8px;
                 font-size: 12px;
-                max-width: 100px; /* Ajusta a largura em mobile */
+                max-width: 100px;
+            }
+
+            .filters {
+                flex-direction: column;
+                gap: 8px;
             }
         }
     </style>
@@ -305,7 +314,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Agenda Clinica Soraya Alaby</h1>
+            <h1>Agendamento de Consultas</h1>
         </header>
 
         <div class="form-section">
@@ -343,6 +352,15 @@
                         <label for="agendamentoFeitoPor">Agendamento Feito Por:</label>
                         <input type="text" id="agendamentoFeitoPor" name="agendamentoFeitoPor">
                     </div>
+                    <div class="form-group" id="statusGroup" style="display: none;">
+                        <label for="status">Status de Atendimento:</label>
+                        <select id="status" name="status">
+                            <option value="Aguardando Atendimento">Aguardando Atendimento</option>
+                            <option value="Atendido">Atendido</option>
+                            <option value="Reagendado">Reagendado</option>
+                            <option value="Cancelado">Cancelado</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group full-width">
                     <label for="descricao">Descrição:</label>
@@ -356,13 +374,22 @@
             <div class="table-controls">
                 <div class="view-toggle">
                     <span class="material-icons view-mode active" data-view="list">list</span>
-                    <span class="material-icons view-mode" data-view="grid">grid_view</span>
                     <span class="material-icons view-mode" data-view="pipeline">view_kanban</span>
                 </div>
                 <div class="export-buttons">
                     <button id="exportExcel">Exportar Excel</button>
                     <button id="exportPDF">Exportar PDF</button>
                 </div>
+            </div>
+
+            <div class="filters">
+                <select id="statusFilter">
+                    <option value="all">Todos os Status</option>
+                    <option value="Aguardando Atendimento">Aguardando Atendimento</option>
+                    <option value="Atendido">Atendido</option>
+                    <option value="Reagendado">Reagendado</option>
+                    <option value="Cancelado">Cancelado</option>
+                </select>
             </div>
 
             <div id="appointmentsTable" class="table-view">
@@ -381,10 +408,6 @@
                     </thead>
                     <tbody id="appointmentsBody"></tbody>
                 </table>
-            </div>
-
-            <div id="gridView" class="grid-view">
-                <!-- Cards serão gerados dinamicamente -->
             </div>
 
             <div id="pipelineView" class="pipeline-view" style="display: none;">
@@ -409,7 +432,7 @@
     </div>
 
     <!-- Ícone flutuante para mobile -->
-    <span class="material-icons mobile-view-toggle" id="mobileViewToggle">grid_view</span>
+    <span class="material-icons mobile-view-toggle" id="mobileViewToggle">view_kanban</span>
 
     <!-- Dependências -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
