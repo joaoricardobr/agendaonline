@@ -258,4 +258,39 @@
                     <option value="all">Todos</option>
                     <option value="Aguardando Atendimento">Aguardando Atendimento</option>
                     <option value="Cancelado">Cancelado</option>
-                   
+                    <option value="Atendido">Atendido</option>
+                    <option value="Reagendado">Reagendado</option>
+                </select>
+            </div>
+
+            <div id="appointmentsTable" class="table-view">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
+                            <th>Paciente</th>
+                            <th>Telefone</th>
+                            <th>Médico</th>
+                            <th>Data</th>
+                            <th>Hora</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appointmentsBody"></tbody>
+                </table>
+            </div>
+
+            <div id="appointmentsGrid" class="grid-view" style="display: none;">
+                <!-- Cards serão gerados dinamicamente -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Dependências -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Carregar o script.js como módulo -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
