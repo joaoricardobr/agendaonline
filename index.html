@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agendamento Clínico</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -19,7 +20,7 @@
 
         .search-card {
             background-color: #ffffff;
-            padding: 25px;
+            padding: 15px;
             border-radius: 16px;
             border: 1px solid #dbeafe;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
@@ -28,43 +29,29 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 20px;
-        }
-
-        .search-bar {
-            position: relative;
-            flex-grow: 1;
-        }
-
-        .search-bar input {
-            padding: 12px;
-            border: 1px solid #dbeafe;
-            border-radius: 10px;
-            font-size: 15px;
-                width: 100%;
-            background-color: #ffffff;
-            color: #1f2937;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .header-controls {
             display: flex;
-            gap: 20px;
+            gap: 10px;
             align-items: center;
+            flex-wrap: wrap;
         }
 
-        .view-mode {
+        .control-btn, .view-mode {
             background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 20px;
-            color: #1f2937;
             border: 1px solid #dbeafe;
             border-radius: 8px;
             padding: 8px 12px;
-            transition: background-color 0.3s, color 0.3s;
+            cursor: pointer;
+            font-size: 16px;
+            color: #1f2937;
+            transition: background-color 0.3s;
         }
 
-        .view-mode:hover {
+        .control-btn:hover, .view-mode:hover {
             background-color: #dbeafe;
         }
 
@@ -134,8 +121,8 @@
             color: #ffffff;
             border: none;
             border-radius: 6px;
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 4px 8px;
+            font-size: 10px;
             cursor: pointer;
             transition: background-color 0.3s;
         }
@@ -184,35 +171,6 @@
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
         }
 
-        .tabs {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .tab {
-            padding: 10px 20px;
-            background-color: #f0f4f8;
-            border: 1px solid #dbeafe;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 15px;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .tab.active {
-            background-color: #3b82f6;
-            color: #ffffff;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
         .table-controls {
             display: flex;
             justify-content: flex-start;
@@ -220,21 +178,6 @@
             margin-bottom: 25px;
             gap: 20px;
             flex-wrap: wrap;
-        }
-
-        .control-btn {
-            background: none;
-            border: 1px solid #dbeafe;
-            border-radius: 8px;
-            padding: 8px 12px;
-            cursor: pointer;
-            font-size: 15px;
-            color: #1f2937;
-            transition: background-color 0.3s;
-        }
-
-        .control-btn:hover {
-            background-color: #dbeafe;
         }
 
         .filters {
@@ -255,7 +198,6 @@
         .table-view table {
             width: 100%;
             border-collapse: collapse;
-            display: none;
             border: 1px solid #dbeafe;
         }
 
@@ -352,20 +294,6 @@
         .delete-btn { background-color: #ef4444; }
         .delete-all-btn { background-color: #dc2626; }
 
-        .mobile-view-toggle {
-            display: none;
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            background-color: #3b82f6;
-            color: #ffffff;
-            border-radius: 50%;
-            padding: 12px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            cursor: pointer;
-            z-index: 1000;
-        }
-
         .notification {
             position: fixed;
             top: 25px;
@@ -414,13 +342,6 @@
             margin: 15px 0;
         }
 
-        .report-form {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
         footer {
             text-align: center;
             padding: 20px;
@@ -439,7 +360,7 @@
         }
 
         @media print {
-            .search-card, .table-controls, .form-section, header, .mobile-view-toggle, .notification, .action-box, footer, .tabs {
+            .search-card, .table-controls, .form-section, header, .notification, .action-box, footer {
                 display: none !important;
             }
             .appointments-section {
@@ -465,7 +386,7 @@
             .card-view, .grid-view, .pipeline-view {
                 display: none !important;
             }
-            .card-view.print, .grid-view.print, .pipeline-view.print {
+            .card-view.print {
                 display: grid !important;
                 grid-template-columns: repeat(2, 1fr) !important;
                 gap: 15px !important;
@@ -483,9 +404,6 @@
             .card-actions {
                 display: none !important;
             }
-            .card h4, .card p {
-                color: #000 !important;
-            }
             body {
                 color: #000 !important;
             }
@@ -494,15 +412,14 @@
         @media (max-width: 768px) {
             .search-card {
                 flex-direction: column;
-                gap: 20px;
-                padding: 20px;
+                gap: 15px;
+                padding: 15px;
             }
             .header-controls {
                 justify-content: center;
                 width: 100%;
                 flex-wrap: wrap;
             }
-            .mobile-view-toggle { display: block; }
             .table-view table { display: none; }
             .card-view { display: grid; }
             .pipeline-view { grid-template-columns: 1fr; }
@@ -512,14 +429,14 @@
             .action-btn { padding: 6px 12px; font-size: 11px; }
             .table-controls { flex-direction: column; align-items: flex-start; gap: 15px; }
             .filters { flex-direction: column; gap: 10px; }
-            .form-grid, .report-form { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Agendamento de Consultas</h1>
+            <h1>Agendamento de Consultas- Dra.Soraya Alaby</h1>
         </header>
 
         <div class="form-section">
@@ -537,9 +454,13 @@
                         <label for="nomeMedico">Nome do Médico</label>
                         <div style="position: relative;">
                             <input type="text" id="nomeMedico" name="nomeMedico" list="medicosList">
-                            <button type="button" class="add-medico-btn" onclick="openMedicoModal()">+ Médico</button>
+                            <button type="button" class="add-medico-btn" onclick="openMedicoModal()">+</button>
                             <datalist id="medicosList"></datalist>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="localCRM">Local do CRM</label>
+                        <input type="text" id="localCRM" name="localCRM">
                     </div>
                     <div class="form-group">
                         <label for="dataConsulta">Data da Consulta</label>
@@ -582,25 +503,24 @@
         </div>
 
         <div class="search-card">
-            <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Pesquisar por nome, telefone, médico ou data...">
-            </div>
             <div class="header-controls">
-                <button class="view-mode active" data-view="list">Lista</button>
-                <button class="view-mode" data-view="grid">Grid</button>
-                <button class="view-mode" data-view="pipeline">Pipeline</button>
+                <button class="control-btn" id="allBtn"><i class="fas fa-list-ul"></i></button>
+                <button class="control-btn" id="reportsBtn"><i class="fas fa-chart-bar"></i></button>
+                <button class="control-btn" id="printBtn"><i class="fas fa-print"></i></button>
+                <button class="control-btn" id="statusFilterBtn"><i class="fas fa-filter"></i></button>
+                <button class="control-btn" id="resetBtn"><i class="fas fa-sync-alt"></i></button>
+                <button class="control-btn delete-all-btn" id="deleteAllBtn"><i class="fas fa-trash-alt"></i></button>
+                <button class="control-btn" id="sortFilterBtn"><i class="fas fa-sliders-h"></i></button>
+                <button class="view-mode active" data-view="list"><i class="fas fa-list"></i></button>
+                <button class="view-mode" data-view="grid"><i class="fas fa-th"></i></button>
+                <button class="view-mode" data-view="pipeline"><i class="fas fa-stream"></i></button>
+                <button class="control-btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
             </div>
         </div>
 
         <div class="appointments-section">
-            <div class="tabs">
-                <div class="tab active" data-tab="all">Todos</div>
-                <div class="tab" data-tab="reports">Relatórios</div>
-            </div>
-
             <div id="allTab" class="tab-content active">
                 <div class="table-controls">
-                    <button id="printBtn" class="control-btn">Imprimir</button>
                     <div class="filters">
                         <select id="statusFilter">
                             <option value="all">Todos os Status</option>
@@ -610,9 +530,6 @@
                             <option value="Cancelado">Cancelado</option>
                         </select>
                     </div>
-                    <button id="resetBtn" class="control-btn">Restaurar</button>
-                    <button id="deleteAllBtn" class="control-btn delete-all-btn">Excluir Todos</button>
-                    <button id="sortFilterBtn" class="control-btn">Filtros Avançados</button>
                 </div>
 
                 <div id="appointmentsTable" class="table-view">
@@ -620,12 +537,17 @@
                         <thead>
                             <tr>
                                 <th><input type="checkbox" id="selectAll"></th>
-                                <th>Paciente</th>
-                                <th>Telefone</th>
-                                <th>Médico</th>
-                                <th>Data</th>
-                                <th>Hora</th>
-                                <th>Status</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="nomePaciente" checked>Paciente</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="telefone" checked>Telefone</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="nomeMedico" checked>Médico</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="localCRM" checked>Local CRM</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="dataConsulta" checked>Data</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="horaConsulta" checked>Hora</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="tipoCirurgia" checked>Tipo Cirurgia</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="procedimentos" checked>Procedimentos</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="agendamentoFeitoPor" checked>Feito Por</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="descricao" checked>Descrição</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="status" checked>Status</th>
                                 <th class="no-print">Ações</th>
                             </tr>
                         </thead>
@@ -656,8 +578,8 @@
                 </div>
             </div>
 
-            <div id="reportsTab" class="tab-content">
-                <div class="report-form">
+            <div id="reportsTab" class="tab-content" style="display: none;">
+                <div class="form-grid">
                     <div class="form-group">
                         <label for="reportType">Tipo de Relatório</label>
                         <select id="reportType">
@@ -695,8 +617,13 @@
                                 <th>Paciente</th>
                                 <th>Telefone</th>
                                 <th>Médico</th>
+                                <th>Local CRM</th>
                                 <th>Data</th>
                                 <th>Hora</th>
+                                <th>Tipo Cirurgia</th>
+                                <th>Procedimentos</th>
+                                <th>Feito Por</th>
+                                <th>Descrição</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
@@ -707,7 +634,6 @@
         </div>
     </div>
 
-    <span class="mobile-view-toggle" id="mobileViewToggle">Pipeline</span>
     <div class="notification" id="notification"></div>
     <div class="action-box" id="actionBox">
         <h4>Mover Card Para:</h4>
@@ -730,12 +656,12 @@
         <button onclick="closeMedicoModal()">Cancelar</button>
     </div>
     <div class="action-box" id="deleteAllModal" style="display: none;">
-        <h4>Digite a senha para excluir todos os agendamentos</h4>
+        <h4>Digite a senha para excluir todos</h4>
         <div class="form-group">
             <label for="deletePassword">Senha</label>
             <input type="password" id="deletePassword">
         </div>
-        <button onclick="confirmDeleteAll()">Confirmar Exclusão</button>
+        <button onclick="confirmDeleteAll()">Confirmar</button>
         <button onclick="closeDeleteAllModal()">Cancelar</button>
     </div>
     <div class="action-box" id="sortFilterModal" style="display: none;">
@@ -753,16 +679,12 @@
                 <option value="year">Ano</option>
             </select>
         </div>
-        <button onclick="applySortFilter()">Aplicar Filtro</button>
+        <button onclick="applySortFilter()">Aplicar</button>
         <button onclick="closeSortFilterModal()">Cancelar</button>
     </div>
 
     <footer>
         🌟 Este site foi desenvolvido por João Ricardo | Engenheiro da Computação | 
         📸 Instagram: <a href="https://instagram.com/joaoricardo.pe" target="_blank">@joaoricardo.pe</a> | 
-        💬 <a href="https://wa.me/5581999999999" target="_blank">WhatsApp</a>
+        💬 <a href="https://wa.me/5587988063327" target="_blank">WhatsApp</a>
     </footer>
-
-    <script src="script.js" type="module"></script>
-</body>
-</html>
