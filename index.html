@@ -6,6 +6,7 @@
     <title>Agendamento Clínico</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
+        /* Reset e Configurações Globais */
         * {
             margin: 0;
             padding: 0;
@@ -18,11 +19,24 @@
             color: #1f2937;
         }
 
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #1f2937;
+        }
+
+        /* Seção de Busca */
         .search-card {
             background-color: #ffffff;
             padding: 15px;
             border-radius: 16px;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
             margin: 25px auto;
             max-width: 1200px;
@@ -40,14 +54,19 @@
             flex-wrap: wrap;
         }
 
+        /* Botões de Controle e Modo de Visualização */
         .control-btn, .view-mode {
             background: none;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             border-radius: 8px;
             padding: 8px 12px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 12px;
             color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            position: relative;
             transition: background-color 0.3s;
         }
 
@@ -55,28 +74,32 @@
             background-color: #dbeafe;
         }
 
+        .control-btn:hover::after, .view-mode:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #1f2937;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
         .view-mode.active {
             background-color: #3b82f6;
             color: #ffffff;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 25px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-            color: #1f2937;
-        }
-
+        /* Seção do Formulário */
         .form-section {
             background-color: #ffffff;
             padding: 30px;
             border-radius: 16px;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
             margin-bottom: 25px;
         }
@@ -105,7 +128,7 @@
         .form-group textarea,
         .form-group select {
             padding: 12px;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             border-radius: 10px;
             font-size: 15px;
             background-color: #ffffff;
@@ -163,11 +186,12 @@
             transform: scale(1.03);
         }
 
+        /* Seção de Agendamentos */
         .appointments-section {
             background-color: #ffffff;
             padding: 30px;
             border-radius: 16px;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
         }
 
@@ -188,28 +212,35 @@
 
         .filters select {
             padding: 12px;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             border-radius: 10px;
             font-size: 15px;
             background-color: #ffffff;
             color: #1f2937;
         }
 
+        /* Visualização em Tabela */
+        .table-view {
+            width: 100%;
+            overflow-x: auto; /* Adicionado para responsividade em telas menores */
+        }
+
         .table-view table {
             width: 100%;
             border-collapse: collapse;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
         }
 
         .table-view th,
         .table-view td {
             padding: 15px;
             text-align: left;
-            border-bottom: 1px solid #dbeafe;
+            border-bottom: 1px solid #1e40af;
             word-wrap: break-word;
             max-width: 160px;
         }
 
+        /* Visualização em Grid e Card */
         .grid-view,
         .card-view,
         .pipeline-view {
@@ -219,30 +250,10 @@
             margin-top: 25px;
         }
 
-        .pipeline-view {
-            grid-template-columns: repeat(4, 1fr);
-        }
-
-        .pipeline-column {
-            background-color: #f0f4f8;
-            border: 1px solid #dbeafe;
-            border-radius: 16px;
-            padding: 20px;
-            min-height: 350px;
-            width: 100%;
-        }
-
-        .pipeline-column h3 {
-            margin-bottom: 15px;
-            color: #1f2937;
-            font-size: 17px;
-            text-align: center;
-            font-weight: 600;
-        }
-
+        /* Estilos para Cards */
         .card {
             background-color: #ffffff;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             border-radius: 16px;
             padding: 20px;
             margin-bottom: 15px;
@@ -251,6 +262,8 @@
             flex-direction: column;
             gap: 10px;
             font-size: 15px;
+            word-wrap: break-word;
+            max-width: 100%;
         }
 
         .card h4 {
@@ -294,6 +307,88 @@
         .delete-btn { background-color: #ef4444; }
         .delete-all-btn { background-color: #dc2626; }
 
+        /* Visualização em Pipeline */
+        .pipeline-view {
+            grid-template-columns: repeat(4, 1fr);
+        }
+
+        .pipeline-column {
+            background-color: #f0f4f8;
+            border: 1px solid #1e40af;
+            border-radius: 16px;
+            padding: 20px;
+            min-height: 350px;
+            width: 100%;
+        }
+
+        .pipeline-column h3 {
+            margin-bottom: 15px;
+            color: #1f2937;
+            font-size: 17px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .mini-card {
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .mini-card .card-details {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+         .mini-card .card-details p {
+            margin: 5px 0;
+        }
+
+        .mini-card h4 {
+            font-size: 15px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .mini-card p {
+            font-size: 12px;
+            color: #777;
+            margin: 3px 0;
+        }
+
+        .mini-card .data {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .mini-card .medico {
+            font-style: italic;
+        }
+
+        .mini-card[data-status="Aguardando Atendimento"] {
+            background-color: #fef9c3;
+            border-color: #facc15;
+        }
+
+        .mini-card[data-status="Atendido"] {
+            background-color: #dcfce7;
+            border-color: #22c55e;
+        }
+
+        .mini-card[data-status="Reagendado"] {
+            background-color: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .mini-card[data-status="Cancelado"] {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+        }
+
+        /* Notificações e Action Boxes */
         .notification {
             position: fixed;
             top: 25px;
@@ -319,7 +414,7 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background-color: #ffffff;
-            border: 1px solid #dbeafe;
+            border: 1px solid #1e40af;
             border-radius: 16px;
             padding: 30px;
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
@@ -342,6 +437,12 @@
             margin: 15px 0;
         }
 
+        /* Configurações e Rodapé */
+        .settings-content label {
+            display: block;
+            margin: 10px 0;
+        }
+
         footer {
             text-align: center;
             padding: 20px;
@@ -359,23 +460,33 @@
             text-decoration: underline;
         }
 
+        /* Estilos de Impressão */
         @media print {
             .search-card, .table-controls, .form-section, header, .notification, .action-box, footer {
                 display: none !important;
             }
+
             .appointments-section {
                 box-shadow: none;
                 padding: 0;
                 border: none;
             }
+
             .no-print {
                 display: none;
             }
+
+            /* Estilos para impressão da tabela */
+            .table-view {
+                overflow: visible !important; /* Garante que a tabela não seja cortada */
+            }
+
             .table-view table {
                 display: table !important;
                 border-collapse: collapse;
                 width: 100%;
             }
+
             .table-view th,
             .table-view td {
                 border: 1px solid #000;
@@ -383,15 +494,24 @@
                 text-align: left;
                 color: #000 !important;
             }
+
+            /* Remover botões de ação na impressão */
+            .table-view td:last-child {
+                display: none !important;
+            }
+
+            /* Estilos para impressão dos cards */
             .card-view, .grid-view, .pipeline-view {
                 display: none !important;
             }
+
             .card-view.print {
                 display: grid !important;
                 grid-template-columns: repeat(2, 1fr) !important;
                 gap: 15px !important;
                 page-break-inside: avoid;
             }
+
             .card {
                 break-inside: avoid;
                 width: 100% !important;
@@ -401,27 +521,39 @@
                 font-size: 13px !important;
                 color: #000 !important;
             }
+
             .card-actions {
                 display: none !important;
             }
+
             body {
                 color: #000 !important;
             }
         }
 
+        /* Responsividade */
         @media (max-width: 768px) {
+             .table-view table {
+                display: none !important; /* Oculta a tabela */
+            }
+
+            .card-view {
+                display: grid; /* Mostra a visualização em card */
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Layout em grid para os cards */
+                gap: 15px;
+            }
             .search-card {
                 flex-direction: column;
                 gap: 15px;
                 padding: 15px;
             }
+
             .header-controls {
                 justify-content: center;
                 width: 100%;
                 flex-wrap: wrap;
             }
-            .table-view table { display: none; }
-            .card-view { display: grid; }
+
             .pipeline-view { grid-template-columns: 1fr; }
             .card { padding: 15px; font-size: 13px; }
             .card h4 { font-size: 15px; }
@@ -436,7 +568,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Agendamento de Consultas- Dra.Soraya Alaby</h1>
+            <h1>Agendamento de Consultas</h1>
         </header>
 
         <div class="form-section">
@@ -449,6 +581,10 @@
                     <div class="form-group">
                         <label for="telefone">Telefone</label>
                         <input type="text" id="telefone" name="telefone">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email">
                     </div>
                     <div class="form-group">
                         <label for="nomeMedico">Nome do Médico</label>
@@ -472,11 +608,41 @@
                     </div>
                     <div class="form-group">
                         <label for="tipoCirurgia">Tipo de Cirurgia</label>
-                        <input type="text" id="tipoCirurgia" name="tipoCirurgia">
+                        <input type="text" id="tipoCirurgia" name="tipoCirurgia" list="cirurgiasList">
+                        <datalist id="cirurgiasList">
+                            <option value="Prótese de Mamas">
+                            <option value="Abdominoplastia">
+                            <option value="Lipoaspiração">
+                            <option value="Blefaroplastia">
+                            <option value="Rinoplastia">
+                            <option value="Prótese de Glúteos">
+                            <option value="Lifting Facial">
+                            <option value="Redução de Mamas">
+                        </datalist>
                     </div>
                     <div class="form-group">
                         <label for="procedimentos">Procedimentos</label>
-                        <input type="text" id="procedimentos" name="procedimentos">
+                        <input type="text" id="procedimentos" name="procedimentos" list="procedimentosList">
+                        <datalist id="procedimentosList">
+                            <option value="Toxina Botulínica">
+                            <option value="Ácido Hialurônico">
+                            <option value="Peelings Químicos">
+                            <option value="Fios Silhouette">
+                            <option value="Laser CO2 Fracionado">
+                            <option value="Mesoterapia">
+                            <option value="Bioplastia">
+                            <option value="VIP Lifting">
+                            <option value="Carboxiterapia">
+                            <option value="Drenagem Linfática">
+                            <option value="Massagem Modeladora">
+                            <option value="Hidrolipoclasia">
+                            <option value="Lipo Enzimática">
+                            <option value="Fórmulas Manipuladas">
+                            <option value="Microagulhamento">
+                            <option value="Medicações">
+                            <option value="Limpeza de Pele">
+                            <option value="Remodelação Nasal Não Cirúrgica">
+                        </datalist>
                     </div>
                     <div class="form-group">
                         <label for="agendamentoFeitoPor">Agendamento Feito Por</label>
@@ -502,23 +668,24 @@
             </form>
         </div>
 
+        <!-- Seção de Controles e Filtros -->
         <div class="search-card">
             <div class="header-controls">
-                <button class="control-btn" id="allBtn"><i class="fas fa-list-ul"></i></button>
-                <button class="control-btn" id="reportsBtn"><i class="fas fa-chart-bar"></i></button>
-                <button class="control-btn" id="printBtn"><i class="fas fa-print"></i></button>
-                <button class="control-btn" id="statusFilterBtn"><i class="fas fa-filter"></i></button>
-                <button class="control-btn" id="resetBtn"><i class="fas fa-sync-alt"></i></button>
-                <button class="control-btn delete-all-btn" id="deleteAllBtn"><i class="fas fa-trash-alt"></i></button>
-                <button class="control-btn" id="sortFilterBtn"><i class="fas fa-sliders-h"></i></button>
-                <button class="view-mode active" data-view="list"><i class="fas fa-list"></i></button>
-                <button class="view-mode" data-view="grid"><i class="fas fa-th"></i></button>
-                <button class="view-mode" data-view="pipeline"><i class="fas fa-stream"></i></button>
-                <button class="control-btn" id="settingsBtn"><i class="fas fa-cog"></i></button>
+                <button class="control-btn" id="allBtn" data-tooltip="Todos"><i class="fas fa-list-ul"></i> Todos</button>
+                <button class="control-btn" id="reportsBtn" data-tooltip="Relatórios"><i class="fas fa-chart-bar"></i> Relatórios</button>
+                <button class="control-btn" id="printBtn" data-tooltip="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
+                <button class="control-btn" id="statusFilterBtn" data-tooltip="Status"><i class="fas fa-filter"></i> Status</button>
+                <button class="control-btn" id="resetBtn" data-tooltip="Restaurar"><i class="fas fa-sync-alt"></i> Restaurar</button>
+                <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir</button>
+                <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
+                <button class="control-btn" id="clearFiltersBtn" data-tooltip="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
+                 <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Config</button>
             </div>
         </div>
 
+        <!-- Seção de Agendamentos -->
         <div class="appointments-section">
+            <!-- Aba "Todos" -->
             <div id="allTab" class="tab-content active">
                 <div class="table-controls">
                     <div class="filters">
@@ -530,8 +697,14 @@
                             <option value="Cancelado">Cancelado</option>
                         </select>
                     </div>
+                    <button class="control-btn" id="exportExcelBtn" data-tooltip="Exportar Excel"><i class="fas fa-file-excel"></i> Excel</button>
+                <button class="view-mode active" data-view="list" data-tooltip="Lista"><i class="fas fa-list"></i> Lista</button>
+                <button class="view-mode" data-view="grid" data-tooltip="Grid"><i class="fas fa-th"></i> Grid</button>
+                <button class="view-mode" data-view="pipeline" data-tooltip="Pipeline"><i class="fas fa-stream"></i> Pipeline</button>
+               
                 </div>
 
+                <!-- Visualização em Tabela -->
                 <div id="appointmentsTable" class="table-view">
                     <table>
                         <thead>
@@ -539,6 +712,7 @@
                                 <th><input type="checkbox" id="selectAll"></th>
                                 <th><input type="checkbox" class="column-toggle" data-column="nomePaciente" checked>Paciente</th>
                                 <th><input type="checkbox" class="column-toggle" data-column="telefone" checked>Telefone</th>
+                                <th><input type="checkbox" class="column-toggle" data-column="email" checked>Email</th>
                                 <th><input type="checkbox" class="column-toggle" data-column="nomeMedico" checked>Médico</th>
                                 <th><input type="checkbox" class="column-toggle" data-column="localCRM" checked>Local CRM</th>
                                 <th><input type="checkbox" class="column-toggle" data-column="dataConsulta" checked>Data</th>
@@ -553,11 +727,14 @@
                         </thead>
                         <tbody id="appointmentsBody"></tbody>
                     </table>
+                    <!-- Visualização em Card -->
                     <div id="cardView" class="card-view"></div>
                 </div>
 
+                <!-- Visualização em Grid -->
                 <div id="gridView" class="grid-view"></div>
 
+                <!-- Visualização em Pipeline -->
                 <div id="pipelineView" class="pipeline-view" style="display: none;">
                     <div class="pipeline-column" data-status="Aguardando Atendimento">
                         <h3>Aguardando Atendimento</h3>
@@ -578,6 +755,7 @@
                 </div>
             </div>
 
+            <!-- Aba "Relatórios" -->
             <div id="reportsTab" class="tab-content" style="display: none;">
                 <div class="form-grid">
                     <div class="form-group">
@@ -610,12 +788,14 @@
                 <div class="form-actions">
                     <button onclick="generateReport()">Gerar Relatório</button>
                 </div>
+                <!-- Visualização em Tabela para o Relatório -->
                 <div id="reportResult" class="table-view" style="margin-top: 20px;">
                     <table>
                         <thead>
                             <tr>
                                 <th>Paciente</th>
                                 <th>Telefone</th>
+                                <th>Email</th>
                                 <th>Médico</th>
                                 <th>Local CRM</th>
                                 <th>Data</th>
@@ -630,17 +810,25 @@
                         <tbody id="reportBody"></tbody>
                     </table>
                 </div>
+                <!-- Visualização em Grid para o Relatório -->
+                <div id="reportGrid" class="grid-view" style="display: none;"></div>
             </div>
         </div>
     </div>
 
+    <!-- Modais e Notificações -->
     <div class="notification" id="notification"></div>
-    <div class="action-box" id="actionBox">
+    <div class="action-box" id="actionBox" style="display: none;">
         <h4>Mover Card Para:</h4>
         <button data-status="Aguardando Atendimento">Aguardando Atendimento</button>
         <button data-status="Atendido">Atendido</button>
         <button data-status="Reagendado">Reagendado</button>
         <button data-status="Cancelado">Cancelado</button>
+    </div>
+    <div class="action-box" id="printModal" style="display: none;">
+        <h4>Escolha o Formato de Impressão</h4>
+        <button id="printTableBtn">Imprimir Tabela</button>
+        <button id="printCardsBtn">Imprimir Cards</button>
     </div>
     <div class="action-box" id="medicoModal" style="display: none;">
         <h4>Cadastrar Novo Médico</h4>
@@ -682,9 +870,29 @@
         <button onclick="applySortFilter()">Aplicar</button>
         <button onclick="closeSortFilterModal()">Cancelar</button>
     </div>
+    <div class="action-box" id="settingsModal" style="display: none;">
+        <h4>Configurações</h4>
+        <div class="settings-content">
+            <label>Fundo do Site: <input type="color" id="bodyBgColor" value="#f0f4f8"></label>
+            <label>Fundo dos Cards: <input type="color" id="cardBgColor" value="#ffffff"></label>
+            <label>Fundo do Formulário: <input type="color" id="formBgColor" value="#ffffff"></label>
+            <label>Texto: <input type="color" id="textColor" value="#1f2937"></label>
+            <label>Bordas: <input type="color" id="borderColor" value="#1e40af"></label>
+            <label>Senha para Excluir Todos: <input type="password" id="deleteAllPassword" placeholder="Definir senha"></label>
+            <button id="saveTheme">Salvar Tema</button>
+            <button id="resetTheme">Restaurar Tema</button>
+            <button id="backupData">Backup em JSON</button>
+            <button id="restoreBackup">Restaurar Backup</button>
+        </div>
+    </div>
 
     <footer>
-        🌟 Este site foi desenvolvido por João Ricardo | Engenheiro da Computação | 
-        📸 Instagram: <a href="https://instagram.com/joaoricardo.pe" target="_blank">@joaoricardo.pe</a> | 
+        🌟 Este site foi desenvolvido por João Ricardo | Engenheiro da Computação |
+        📸 Instagram: <a href="https://instagram.com/joaoricardo.pe" target="_blank">@joaoricardo.pe</a> |
         💬 <a href="https://wa.me/5587988063327" target="_blank">WhatsApp</a>
     </footer>
+
+    <script type="module" src="script.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body>
+</html>
