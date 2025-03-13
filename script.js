@@ -22,26 +22,23 @@ const pipelineView = document.getElementById('pipelineView');
 const tableView = document.getElementById('appointmentsTable');
 const viewModes = document.querySelectorAll('.view-mode');
 const selectAllCheckbox = document.getElementById('selectAll');
-const exportExcelBtn = document.getElementById('exportExcel');
-const exportPDFBtn = document.getElementById('exportPDF');
 const printBtn = document.getElementById('printBtn');
 const resetBtn = document.getElementById('resetBtn');
+const deleteAllBtn = document.getElementById('deleteAllBtn');
+const sortFilterBtn = document.getElementById('sortFilterBtn');
 const mobileViewToggle = document.getElementById('mobileViewToggle');
 const statusFilter = document.getElementById('statusFilter');
 const statusGroup = document.getElementById('statusGroup');
-const themeToggle = document.getElementById('themeToggle');
-const settingsToggle = document.getElementById('settingsToggle');
 const notification = document.getElementById('notification');
-const settingsMenu = document.getElementById('settingsMenu');
-const saveThemeBtn = document.getElementById('saveTheme');
-const resetThemeBtn = document.getElementById('resetTheme');
-const backupDataBtn = document.getElementById('backupData');
-const restoreBackupBtn = document.getElementById('restoreBackup');
+const tabs = document.querySelectorAll('.tab');
 const searchInput = document.getElementById('searchInput');
+const reportBody = document.getElementById('reportBody');
 
 let appointments = [];
 let editId = null;
 let currentView = 'list';
+let medicos = JSON.parse(localStorage.getItem('medicos')) || [];
+let deleteAllPassword = localStorage.getItem('deleteAllPassword') || '1234'; // Senha padrão
 
 const formFields = ['nomePaciente', 'telefone', 'nomeMedico', 'dataConsulta', 'horaConsulta', 'tipoCirurgia', 'procedimentos', 'agendamentoFeitoPor', 'descricao'];
 formFields.forEach(field => {
@@ -64,11 +61,17 @@ function showNotification(message, isError = false) {
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const dataConsulta = document.getElementById('dataConsulta').value;
+    if (!dataConsulta) {
+        showNotification('Por favor, insira a data da consulta', true);
+        return;
+    }
+
     const appointmentData = {
         nomePaciente: document.getElementById('nomePaciente').value,
         telefone: document.getElementById('telefone').value,
         nomeMedico: document.getElementById('nomeMedico').value,
-        dataConsulta: document.getElementById('dataConsulta').value,
+        dataConsulta: dataConsulta,
         horaConsulta: document.getElementById('horaConsulta').value,
         tipoCirurgia: document.getElementById('tipoCirurgia').value,
         procedimentos: document.getElementById('procedimentos').value,
@@ -140,7 +143,7 @@ function renderAppointments(searchTerm = '') {
             <td>${app.dataConsulta || '-'}</td>
             <td>${app.horaConsulta || '-'}</td>
             <td>${app.status || '-'}</td>
-            <td>
+            <td class="no-print">
                 <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
                 <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
                 <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
@@ -155,12 +158,12 @@ function renderAppointments(searchTerm = '') {
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
-            <h4><span class="material-icons">person</span>${app.nomePaciente || 'Sem Nome'}</h4>
-            <p><span class="material-icons">phone</span>${app.telefone || '-'}</p>
-            <p><span class="material-icons">medical_services</span>${app.nomeMedico || '-'}</p>
-            <p><span class="material-icons">event</span>${app.dataConsulta || '-'}</p>
-            <p><span class="material-icons">schedule</span>${app.horaConsulta || '-'}</p>
-            <p><span class="material-icons">assignment</span>${app.status || '-'}</p>
+            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+            <p>Telefone: ${app.telefone || '-'}</p>
+            <p>Médico: ${app.nomeMedico || '-'}</p>
+            <p>Data: ${app.dataConsulta || '-'}</p>
+            <p>Hora: ${app.horaConsulta || '-'}</p>
+            <p>Status: ${app.status || '-'}</p>
             <div class="card-actions">
                 <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
                 <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
@@ -175,12 +178,12 @@ function renderAppointments(searchTerm = '') {
         const item = document.createElement('div');
         item.className = 'card';
         item.innerHTML = `
-            <h4><span class="material-icons">person</span>${app.nomePaciente || 'Sem Nome'}</h4>
-            <p><span class="material-icons">phone</span>${app.telefone || '-'}</p>
-            <p><span class="material-icons">medical_services</span>${app.nomeMedico || '-'}</p>
-            <p><span class="material-icons">event</span>${app.dataConsulta || '-'}</p>
-            <p><span class="material-icons">schedule</span>${app.horaConsulta || '-'}</p>
-            <p><span class="material-icons">assignment</span>${app.status || '-'}</p>
+            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+            <p>Telefone: ${app.telefone || '-'}</p>
+            <p>Médico: ${app.nomeMedico || '-'}</p>
+            <p>Data: ${app.dataConsulta || '-'}</p>
+            <p>Hora: ${app.horaConsulta || '-'}</p>
+            <p>Status: ${app.status || '-'}</p>
             <div class="card-actions">
                 <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
                 <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
@@ -203,11 +206,11 @@ function renderAppointments(searchTerm = '') {
             card.draggable = true;
             card.dataset.id = app.id;
             card.innerHTML = `
-                <h4><span class="material-icons">person</span>${app.nomePaciente || 'Sem Nome'}</h4>
-                <p><span class="material-icons">phone</span>${app.telefone || '-'}</p>
-                <p><span class="material-icons">medical_services</span>${app.nomeMedico || '-'}</p>
-                <p><span class="material-icons">event</span>${app.dataConsulta || '-'}</p>
-                <p><span class="material-icons">schedule</span>${app.horaConsulta || '-'}</p>
+                <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                <p>Telefone: ${app.telefone || '-'}</p>
+                <p>Médico: ${app.nomeMedico || '-'}</p>
+                <p>Data: ${app.dataConsulta || '-'}</p>
+                <p>Hora: ${app.horaConsulta || '-'}</p>
                 <div class="card-actions">
                     <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
                     <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
@@ -409,6 +412,192 @@ window.viewAppointment = (id) => {
     `);
 };
 
+// Funções para médicos
+window.openMedicoModal = () => {
+    document.getElementById('medicoModal').style.display = 'block';
+};
+
+window.closeMedicoModal = () => {
+    document.getElementById('medicoModal').style.display = 'none';
+};
+
+window.saveMedico = () => {
+    const nome = document.getElementById('novoMedicoNome').value;
+    const crm = document.getElementById('novoMedicoCRM').value;
+    
+    if (nome && crm) {
+        medicos.push({ nome, crm });
+        localStorage.setItem('medicos', JSON.stringify(medicos));
+        updateMedicosList();
+        showNotification('Médico cadastrado com sucesso!');
+        closeMedicoModal();
+        document.getElementById('novoMedicoNome').value = '';
+        document.getElementById('novoMedicoCRM').value = '';
+    } else {
+        showNotification('Por favor, preencha todos os campos', true);
+    }
+};
+
+function updateMedicosList() {
+    const datalist = document.getElementById('medicosList');
+    datalist.innerHTML = '';
+    medicos.forEach(medico => {
+        const option = document.createElement('option');
+        option.value = medico.nome;
+        option.textContent = `${medico.nome} - CRM: ${medico.crm}`;
+        datalist.appendChild(option);
+    });
+}
+
+// Funções para exclusão de todos
+window.openDeleteAllModal = () => {
+    if (!deleteAllPassword) {
+        showNotification('Defina uma senha padrão primeiro', true);
+        return;
+    }
+    document.getElementById('deleteAllModal').style.display = 'block';
+};
+
+window.closeDeleteAllModal = () => {
+    document.getElementById('deleteAllModal').style.display = 'none';
+};
+
+window.confirmDeleteAll = async () => {
+    const enteredPassword = document.getElementById('deletePassword').value;
+    if (enteredPassword === deleteAllPassword) {
+        try {
+            const querySnapshot = await getDocs(collection(db, 'agendaunica'));
+            for (const docSnap of querySnapshot.docs) {
+                await deleteDoc(doc(db, 'agendaunica', docSnap.id));
+            }
+            showNotification('Todos os agendamentos excluídos com sucesso!');
+            closeDeleteAllModal();
+            loadAppointments();
+        } catch (error) {
+            console.error('Error deleting all appointments:', error);
+            showNotification('Erro ao excluir todos os agendamentos: ' + error.message, true);
+        }
+    } else {
+        showNotification('Senha incorreta', true);
+    }
+};
+
+// Funções para filtros avançados
+window.openSortFilterModal = () => {
+    document.getElementById('sortFilterModal').style.display = 'block';
+};
+
+window.closeSortFilterModal = () => {
+    document.getElementById('sortFilterModal').style.display = 'none';
+};
+
+window.applySortFilter = () => {
+    const sortType = document.getElementById('sortType').value;
+    let sortedAppointments = [...appointments];
+
+    switch (sortType) {
+        case 'nameAZ':
+            sortedAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || ''));
+            break;
+        case 'recent':
+            sortedAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            break;
+        case 'oldest':
+            sortedAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            break;
+        case 'phone':
+            sortedAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || ''));
+            break;
+        case 'date':
+            sortedAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || ''));
+            break;
+        case 'doctor':
+            sortedAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || ''));
+            break;
+        case 'month':
+            sortedAppointments.sort((a, b) => {
+                const dateA = new Date(a.dataConsulta || '9999-12-31');
+                const dateB = new Date(b.dataConsulta || '9999-12-31');
+                return dateA.getMonth() - dateB.getMonth() || dateA.getFullYear() - dateB.getFullYear();
+            });
+            break;
+        case 'year':
+            sortedAppointments.sort((a, b) => new Date(a.dataConsulta || '9999-12-31').getFullYear() - new Date(b.dataConsulta || '9999-12-31').getFullYear());
+            break;
+    }
+
+    appointments = sortedAppointments;
+    renderAppointments(searchInput.value);
+    closeSortFilterModal();
+    showNotification('Filtro aplicado com sucesso!');
+};
+
+// Funções para relatórios
+window.generateReport = () => {
+    const reportType = document.getElementById('reportType').value;
+    const reportMonth = document.getElementById('reportMonth').value;
+    const reportYear = document.getElementById('reportYear').value;
+    const reportDoctor = document.getElementById('reportDoctor').value;
+    let filteredAppointments = [...appointments];
+
+    switch (reportType) {
+        case 'all':
+            break;
+        case 'byName':
+            filteredAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || ''));
+            break;
+        case 'byRecent':
+            filteredAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            break;
+        case 'byOldest':
+            filteredAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+            break;
+        case 'byPhone':
+            filteredAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || ''));
+            break;
+        case 'byDate':
+            filteredAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || ''));
+            break;
+        case 'byDoctor':
+            if (reportDoctor) {
+                filteredAppointments = filteredAppointments.filter(app => app.nomeMedico === reportDoctor);
+            }
+            filteredAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || ''));
+            break;
+        case 'byMonth':
+            if (reportMonth) {
+                const [year, month] = reportMonth.split('-');
+                filteredAppointments = filteredAppointments.filter(app => {
+                    const date = new Date(app.dataConsulta);
+                    return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1;
+                });
+            }
+            break;
+        case 'byYear':
+            if (reportYear) {
+                filteredAppointments = filteredAppointments.filter(app => new Date(app.dataConsulta).getFullYear() === parseInt(reportYear));
+            }
+            break;
+    }
+
+    reportBody.innerHTML = '';
+    filteredAppointments.forEach(app => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${app.nomePaciente || '-'}</td>
+            <td>${app.telefone || '-'}</td>
+            <td>${app.nomeMedico || '-'}</td>
+            <td>${app.dataConsulta || '-'}</td>
+            <td>${app.horaConsulta || '-'}</td>
+            <td>${app.status || '-'}</td>
+        `;
+        reportBody.appendChild(row);
+    });
+
+    document.getElementById('reportResult').querySelector('table').style.display = 'table';
+    showNotification('Relatório gerado com sucesso!');
+};
+
 viewModes.forEach(mode => {
     mode.addEventListener('click', () => {
         viewModes.forEach(m => m.classList.remove('active'));
@@ -421,10 +610,10 @@ viewModes.forEach(mode => {
 mobileViewToggle.addEventListener('click', () => {
     if (currentView === 'list') {
         currentView = 'pipeline';
-        mobileViewToggle.textContent = 'list';
+        mobileViewToggle.textContent = 'Lista';
     } else {
         currentView = 'list';
-        mobileViewToggle.textContent = 'view_kanban';
+        mobileViewToggle.textContent = 'Pipeline';
     }
     renderAppointments(searchInput.value);
 });
@@ -437,160 +626,55 @@ selectAllCheckbox.addEventListener('change', () => {
 statusFilter.addEventListener('change', () => renderAppointments(searchInput.value));
 
 printBtn.addEventListener('click', () => {
+    if (currentView === 'list' && window.innerWidth > 768) {
+        tableView.querySelector('table').style.display = 'table';
+        cardView.style.display = 'none';
+        gridView.style.display = 'none';
+        pipelineView.style.display = 'none';
+    } else if (currentView === 'grid') {
+        tableView.querySelector('table').style.display = 'none';
+        cardView.style.display = 'none';
+        gridView.classList.add('print');
+        gridView.style.display = 'grid';
+        pipelineView.style.display = 'none';
+    } else if (currentView === 'pipeline') {
+        tableView.querySelector('table').style.display = 'none';
+        cardView.style.display = 'none';
+        gridView.style.display = 'none';
+        pipelineView.classList.add('print');
+        pipelineView.style.display = 'grid';
+    } else {
+        tableView.querySelector('table').style.display = 'none';
+        cardView.classList.add('print');
+        cardView.style.display = 'grid';
+        gridView.style.display = 'none';
+        pipelineView.style.display = 'none';
+    }
     window.print();
+    gridView.classList.remove('print');
+    cardView.classList.remove('print');
+    pipelineView.classList.remove('print');
 });
 
 resetBtn.addEventListener('click', () => {
     statusFilter.value = 'all';
     searchInput.value = '';
+    appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     showNotification('Tabela restaurada!');
     renderAppointments();
 });
 
-exportExcelBtn.addEventListener('click', () => {
-    try {
-        const selectedAppointments = appointments.filter(app => {
-            const checkbox = document.querySelector(`.select-row[data-id="${app.id}"]`);
-            return checkbox && checkbox.checked;
-        });
-        const dataToExport = selectedAppointments.length > 0 ? selectedAppointments : appointments;
-        const formattedData = dataToExport.map(app => ({
-            Paciente: app.nomePaciente || '-',
-            Telefone: app.telefone || '-',
-            Medico: app.nomeMedico || '-',
-            Data: app.dataConsulta || '-',
-            Hora: app.horaConsulta || '-',
-            Tipo_Cirurgia: app.tipoCirurgia || '-',
-            Procedimentos: app.procedimentos || '-',
-            Descricao: app.descricao || '-',
-            Agendamento_Feito_Por: app.agendamentoFeitoPor || '-',
-            Status: app.status || '-',
-            Criado_Em: new Date(app.createdAt).toLocaleString() || '-'
-        }));
-        const ws = XLSX.utils.json_to_sheet(formattedData);
-        ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 20 }];
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
-        XLSX.writeFile(wb, 'agendamentos.xlsx');
-        showNotification('Exportado para Excel com sucesso!');
-    } catch (error) {
-        console.error('Error exporting to Excel:', error);
-        showNotification('Erro ao exportar para Excel: ' + error.message, true);
-    }
-});
+deleteAllBtn.addEventListener('click', openDeleteAllModal);
 
-exportPDFBtn.addEventListener('click', () => {
-    try {
-        let element;
-        let orientation = 'landscape';
-        if (currentView === 'list' && window.innerWidth > 768) {
-            element = tableView.querySelector('table');
-        } else if (currentView === 'list' && window.innerWidth <= 768) {
-            element = cardView;
-            orientation = 'portrait';
-        } else if (currentView === 'grid') {
-            element = gridView;
-            orientation = 'portrait';
-        } else if (currentView === 'pipeline') {
-            element = pipelineView;
-        }
-        const opt = {
-            margin: 0.2,
-            filename: 'agendamentos.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'a4', orientation: orientation }
-        };
-        html2pdf().set(opt).from(element).save();
-        showNotification('Exportado para PDF com sucesso!');
-    } catch (error) {
-        console.error('Error exporting to PDF:', error);
-        showNotification('Erro ao exportar para PDF: ' + error.message, true);
-    }
-});
+sortFilterBtn.addEventListener('click', openSortFilterModal);
 
-themeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('dark-mode');
-    localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-});
-
-settingsToggle.addEventListener('click', () => {
-    settingsMenu.style.display = settingsMenu.style.display === 'block' ? 'none' : 'block';
-});
-
-document.addEventListener('click', (e) => {
-    if (!settingsMenu.contains(e.target) && !settingsToggle.contains(e.target)) {
-        settingsMenu.style.display = 'none';
-    }
-});
-
-saveThemeBtn.addEventListener('click', () => {
-    const customTheme = {
-        bodyBgColor: document.getElementById('bodyBgColor').value,
-        cardBgColor: document.getElementById('cardBgColor').value,
-        formBgColor: document.getElementById('formBgColor').value,
-        textColor: document.getElementById('textColor').value,
-        borderColor: document.getElementById('borderColor').value
-    };
-    localStorage.setItem('customTheme', JSON.stringify(customTheme));
-    applyCustomTheme();
-    showNotification('Tema salvo com sucesso!');
-});
-
-resetThemeBtn.addEventListener('click', () => {
-    localStorage.removeItem('customTheme');
-    document.getElementById('bodyBgColor').value = '#f4f7fa';
-    document.getElementById('cardBgColor').value = '#ffffff';
-    document.getElementById('formBgColor').value = '#ffffff';
-    document.getElementById('textColor').value = '#2d3748';
-    document.getElementById('borderColor').value = '#e2e8f0';
-    applyCustomTheme();
-    showNotification('Tema restaurado para padrão!');
-});
-
-backupDataBtn.addEventListener('click', () => {
-    try {
-        const data = JSON.stringify(appointments, null, 2);
-        const blob = new Blob([data], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'backup_agendamentos.json';
-        a.click();
-        URL.revokeObjectURL(url);
-        showNotification('Backup em JSON gerado com sucesso!');
-    } catch (error) {
-        console.error('Error generating backup:', error);
-        showNotification('Erro ao gerar backup: ' + error.message, true);
-    }
-});
-
-restoreBackupBtn.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-            const text = await file.text();
-            const backupData = JSON.parse(text);
-            for (const app of backupData) {
-                if (app.id) {
-                    const docRef = doc(db, 'agendaunica', app.id);
-                    await setDoc(docRef, app, { merge: true });
-                } else {
-                    await addDoc(collection(db, 'agendaunica'), app);
-                }
-            }
-            showNotification('Backup restaurado com sucesso!');
-            loadAppointments();
-        } catch (error) {
-            console.error('Error restoring backup:', error);
-            showNotification('Erro ao restaurar backup: ' + error.message, true);
-        }
-    };
-    input.click();
+tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.getElementById(`${tab.dataset.tab}Tab`).classList.add('active');
+    });
 });
 
 searchInput.addEventListener('input', () => {
@@ -604,21 +688,6 @@ searchInput.addEventListener('keypress', (e) => {
     }
 });
 
-function applyCustomTheme() {
-    const customTheme = JSON.parse(localStorage.getItem('customTheme')) || {};
-    document.body.style.backgroundColor = customTheme.bodyBgColor || '#f4f7fa';
-    document.querySelectorAll('.card').forEach(card => card.style.backgroundColor = customTheme.cardBgColor || '#ffffff');
-    document.querySelector('.form-section').style.backgroundColor = customTheme.formBgColor || '#ffffff';
-    document.body.style.color = customTheme.textColor || '#2d3748';
-    document.querySelectorAll('.form-group input, .form-group textarea, .form-group select, .card, .form-section, .appointments-section, .action-box, .settings-menu, button, .filters select, .top-bar, .search-bar input').forEach(el => {
-        el.style.borderColor = customTheme.borderColor || '#e2e8f0';
-    });
-}
-
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark-mode');
-}
-
-applyCustomTheme();
+updateMedicosList();
 loadAppointments();
 window.addEventListener('resize', () => renderAppointments(searchInput.value));
