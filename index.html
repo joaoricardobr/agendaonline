@@ -870,6 +870,11 @@
                 <div class="form-actions">
                     <button onclick="generateReport()">Gerar Relatório</button>
                 </div>
+                <!-- Botões de visualização para relatórios -->
+                <div class="table-controls" style="margin-top: 20px;">
+                    <button class="view-mode active" data-view="list" data-tooltip="Lista" onclick="toggleReportView('list')"><i class="fas fa-list"></i> Lista</button>
+                    <button class="view-mode" data-view="grid" data-tooltip="Grid" onclick="toggleReportView('grid')"><i class="fas fa-th"></i> Grid</button>
+                </div>
                 <!-- Visualização em Tabela para o Relatório -->
                 <div id="reportResult" class="table-view" style="margin-top: 20px;">
                     <table>
