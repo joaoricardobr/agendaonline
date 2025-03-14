@@ -1,8 +1,7 @@
-// script.js
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// Configuração do Firebase (substitua com suas próprias credenciais)
+// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBxPLohS2xOErPb8FH0cFRnNzxy699KHUM",
     authDomain: "agendaunica-fb0ea.firebaseapp.com",
@@ -38,7 +37,7 @@ let currentView = 'list';
 let medicos = JSON.parse(localStorage.getItem('medicos')) || [];
 let deleteAllPassword = localStorage.getItem('deleteAllPassword') || '1234';
 
-// Salvar os dados dos input no localstorage
+// Salvar os dados dos inputs no localStorage
 const formFields = ['nomePaciente', 'telefone', 'email', 'nomeMedico', 'localCRM', 'dataConsulta', 'horaConsulta', 'tipoCirurgia', 'procedimentos', 'agendamentoFeitoPor', 'descricao'];
 formFields.forEach(field => {
     const element = document.getElementById(field);
@@ -50,7 +49,7 @@ formFields.forEach(field => {
 // Função para exibir notificações
 function showNotification(message, isError = false) {
     notification.textContent = message;
-    notification.className = 'notification' + (isError ? ' error' : '');
+    notification.className = `notification${isError ? ' error' : ''}`;
     notification.style.display = 'block';
     notification.style.opacity = '1';
     setTimeout(() => {
@@ -58,26 +57,6 @@ function showNotification(message, isError = false) {
         setTimeout(() => notification.style.display = 'none', 500);
     }, 3000);
 }
-
-// Função para fechar modais ao clicar fora
-function setupModalClose(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) {
-        window.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-    }
-}
-
-// Configurar fechamento dos modais
-setupModalClose('settingsModal');
-setupModalClose('medicoModal');
-setupModalClose('deleteAllModal');
-setupModalClose('sortFilterModal');
-setupModalClose('printModal');
-setupModalClose('actionBox'); //Adicionado o actionBox
 
 // Evento de envio do formulário
 form.addEventListener('submit', async (e) => {
@@ -119,7 +98,7 @@ form.addEventListener('submit', async (e) => {
         formFields.forEach(field => localStorage.removeItem(field));
         loadAppointments();
     } catch (error) {
-        console.error('Error saving appointment:', error);
+        console.error('Erro ao salvar agendamento:', error);
         showNotification('Erro ao salvar agendamento: ' + error.message, true);
     }
 });
@@ -133,7 +112,7 @@ async function loadAppointments() {
         appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         renderAppointments();
     } catch (error) {
-        console.error('Error loading appointments:', error);
+        console.error('Erro ao carregar agendamentos:', error);
         showNotification('Erro ao carregar agendamentos: ' + error.message, true);
     }
 }
@@ -172,14 +151,14 @@ function renderAppointments() {
         appointmentsBody.appendChild(row);
     });
 
-    // renderizar os cards
+    // Renderizar os cards
     cardView.innerHTML = '';
     filteredAppointments.forEach(app => {
         const card = document.createElement('div');
         card.className = 'card';
-         card.innerHTML = `
+        card.innerHTML = `
             <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-             ${visibleColumns.includes('telefone') ? `<p>Telefone: ${app.telefone || '-'}</p>` : ''}
+            ${visibleColumns.includes('telefone') ? `<p>Telefone: ${app.telefone || '-'}</p>` : ''}
             ${visibleColumns.includes('email') ? `<p>Email: ${app.email || '-'}</p>` : ''}
             ${visibleColumns.includes('nomeMedico') ? `<p>Médico: ${app.nomeMedico || '-'}</p>` : ''}
             ${visibleColumns.includes('localCRM') ? `<p>Local CRM: ${app.localCRM || '-'}</p>` : ''}
@@ -200,7 +179,7 @@ function renderAppointments() {
         cardView.appendChild(card);
     });
 
-    //renderizar os grids
+    // Renderizar os grids
     gridView.innerHTML = '';
     filteredAppointments.forEach(app => {
         const item = document.createElement('div');
@@ -227,7 +206,7 @@ function renderAppointments() {
         gridView.appendChild(item);
     });
 
-    //renderizar os pipelines
+    // Renderizar os pipelines
     const columns = document.querySelectorAll('.pipeline-column');
     columns.forEach(column => {
         const status = column.dataset.status;
@@ -241,7 +220,7 @@ function renderAppointments() {
             card.draggable = true;
             card.dataset.id = app.id;
             card.dataset.status = app.status;
-           card.innerHTML = `
+            card.innerHTML = `
                 <h4>${app.nomePaciente || 'Sem Nome'}</h4>
                 <p class="medico">Médico: ${app.nomeMedico || '-'}</p>
                 <div class="data">
@@ -249,8 +228,8 @@ function renderAppointments() {
                     <span class="time">Hora: ${app.horaConsulta || '-'}</span>
                 </div>
                 <button class="action-btn view-btn" onclick="toggleDetails(this.parentElement)">Mais Detalhes</button>
-                <div class="card-details">
-                     <p>Nome: ${app.nomePaciente || '-'}</p>
+                <div class="card-details" style="display: none;">
+                    <p>Nome: ${app.nomePaciente || '-'}</p>
                     <p>Telefone: ${app.telefone || '-'}</p>
                     <p>Email: ${app.email || '-'}</p>
                     <p>Médico: ${app.nomeMedico || '-'}</p>
@@ -262,7 +241,6 @@ function renderAppointments() {
                     <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
                     <p>Descrição: ${app.descricao || '-'}</p>
                     <p>Status: ${app.status || '-'}</p>
-
                 </div>
             `;
             columnContent.appendChild(card);
@@ -282,14 +260,14 @@ function renderAppointments() {
         column.addEventListener('drop', handleDrop);
     });
 
-    //exibe a tabela, cards ou grid
+    // Exibe a tabela, cards ou grid conforme a visualização atual
     document.getElementById('appointmentsTable').querySelector('table').style.display = currentView === 'list' && window.innerWidth > 768 ? 'table' : 'none';
     cardView.style.display = currentView === 'grid' || (currentView === 'list' && window.innerWidth <= 768) ? 'grid' : 'none';
     gridView.style.display = currentView === 'grid' ? 'grid' : 'none';
     pipelineView.style.display = currentView === 'pipeline' ? 'grid' : 'none';
 }
 
-//funcoes de drag and drop
+// Funções de Drag and Drop
 let draggedCard = null;
 
 function handleDragStart(e) {
@@ -317,13 +295,13 @@ async function handleDrop(e) {
             showNotification(`Movido para "${newStatus}" com sucesso!`);
             loadAppointments();
         } catch (error) {
-            console.error('Error updating status:', error);
+            console.error('Erro ao mover status:', error);
             showNotification('Erro ao mover: ' + error.message, true);
         }
     }
 }
 
-//funcao para mostrar as opcoes ao clicar no card no pipeline
+// Função para mostrar as opções ao clicar no card no pipeline
 function handleCardClick(e, id) {
     if (e.target.classList.contains('action-btn')) return;
     const actionBox = document.getElementById('actionBox');
@@ -340,23 +318,15 @@ function handleCardClick(e, id) {
                 actionBox.style.display = 'none';
                 loadAppointments();
             } catch (error) {
-                console.error('Error updating status:', error);
+                console.error('Erro ao mover status:', error);
                 showNotification('Erro ao mover: ' + error.message, true);
             }
         };
     });
-
-    // Fechar o action box ao clicar fora dele e do card
-    document.addEventListener('click', function closeBox(event) {
-        if (!actionBox.contains(event.target) && !e.target.closest('.card').contains(event.target)) {
-            actionBox.style.display = 'none';
-            document.removeEventListener('click', closeBox);
-        }
-    }, { once: true });
 }
 
-//funcao de editar
-window.editAppointment = async (id) => {
+// Funções Globais
+window.editAppointment = (id) => {
     const app = appointments.find(a => a.id === id);
     if (app) {
         document.getElementById('nomePaciente').value = app.nomePaciente || '';
@@ -376,7 +346,6 @@ window.editAppointment = async (id) => {
     }
 };
 
-//funcao de deletar
 window.deleteAppointment = async (id) => {
     if (confirm('Tem certeza que deseja excluir este agendamento?')) {
         try {
@@ -384,13 +353,12 @@ window.deleteAppointment = async (id) => {
             showNotification('Agendamento excluído com sucesso!');
             loadAppointments();
         } catch (error) {
-            console.error('Error deleting appointment:', error);
+            console.error('Erro ao excluir agendamento:', error);
             showNotification('Erro ao excluir agendamento: ' + error.message, true);
         }
     }
 };
 
-//funcao de compartilhar
 window.shareAppointment = (id) => {
     const app = appointments.find(a => a.id === id);
     const message = `
@@ -411,7 +379,6 @@ window.shareAppointment = (id) => {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
 };
 
-//funcao de vizualizar
 window.viewAppointment = (id) => {
     const app = appointments.find(a => a.id === id);
     alert(`
@@ -430,17 +397,15 @@ window.viewAppointment = (id) => {
     `);
 };
 
-//funcao de adicionar medico
 window.openMedicoModal = () => {
     document.getElementById('medicoModal').style.display = 'block';
+    updateMedicosListDisplay();
 };
 
-//funcao de fechar o modal medico
 window.closeMedicoModal = () => {
     document.getElementById('medicoModal').style.display = 'none';
 };
 
-//funcao de salvar o medico no local storage
 window.saveMedico = () => {
     const nome = document.getElementById('novoMedicoNome').value;
     const crm = document.getElementById('novoMedicoCRM').value;
@@ -448,8 +413,8 @@ window.saveMedico = () => {
         medicos.push({ nome, crm });
         localStorage.setItem('medicos', JSON.stringify(medicos));
         updateMedicosList();
+        updateMedicosListDisplay();
         showNotification('Médico cadastrado com sucesso!');
-        closeMedicoModal();
         document.getElementById('novoMedicoNome').value = '';
         document.getElementById('novoMedicoCRM').value = '';
     } else {
@@ -457,7 +422,40 @@ window.saveMedico = () => {
     }
 };
 
-//funcao de atualizar a lista de medicos
+// Função para atualizar a lista de médicos no modal
+function updateMedicosListDisplay() {
+    const listDisplay = document.getElementById('medicosListDisplay');
+    listDisplay.innerHTML = '';
+    medicos.forEach((medico, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `${medico.nome} - CRM: ${medico.crm}`;
+        li.addEventListener('click', () => {
+            document.getElementById('nomeMedico').value = medico.nome;
+            document.getElementById('localCRM').value = medico.crm;
+            closeMedicoModal();
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-medico-btn';
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`Deseja excluir o médico ${medico.nome}?`)) {
+                medicos.splice(index, 1);
+                localStorage.setItem('medicos', JSON.stringify(medicos));
+                updateMedicosList();
+                updateMedicosListDisplay();
+                showNotification('Médico excluído com sucesso!');
+            }
+        });
+
+        li.appendChild(deleteBtn);
+        listDisplay.appendChild(li);
+    });
+    updateMedicosList();
+}
+
+// Função para atualizar a lista de médicos no datalist
 function updateMedicosList() {
     const datalist = document.getElementById('medicosList');
     datalist.innerHTML = '';
@@ -467,61 +465,65 @@ function updateMedicosList() {
         option.textContent = `${medico.nome} - CRM: ${medico.crm}`;
         datalist.appendChild(option);
     });
+
+    const nomeMedicoInput = document.getElementById('nomeMedico');
+    nomeMedicoInput.addEventListener('change', () => {
+        const selectedMedico = medicos.find(m => m.nome === nomeMedicoInput.value);
+        if (selectedMedico) {
+            document.getElementById('localCRM').value = selectedMedico.crm;
+        }
+    });
 }
 
-//funcao de mostrar a tab todos
+// Eventos de controle
 document.getElementById('allBtn').addEventListener('click', () => {
     document.getElementById('allTab').style.display = 'block';
     document.getElementById('reportsTab').style.display = 'none';
 });
 
-//funcao de mostrar a tab relatorios
 document.getElementById('reportsBtn').addEventListener('click', () => {
     document.getElementById('allTab').style.display = 'none';
     document.getElementById('reportsTab').style.display = 'block';
 });
 
-//funcao de impressao
 document.getElementById('printBtn').addEventListener('click', () => {
-    const printModal = document.getElementById('printModal');
-    printModal.style.display = 'block';
+    // Esconde todas as visualizações inicialmente
+    document.getElementById('appointmentsTable').querySelector('table').style.display = 'none';
+    document.getElementById('appointmentsTable').querySelector('table').classList.remove('print');
+    cardView.style.display = 'none';
+    cardView.classList.remove('print');
+    gridView.style.display = 'none';
+    gridView.classList.remove('print');
+    pipelineView.style.display = 'none';
+    pipelineView.classList.remove('print');
 
-    document.getElementById('printTableBtn').onclick = () => {
-        printModal.style.display = 'none';
+    // Mostra a visualização correta com base no modo atual
+    if (currentView === 'list') {
         document.getElementById('appointmentsTable').querySelector('table').style.display = 'table';
-        cardView.style.display = 'none';
-        gridView.style.display = 'none';
-        pipelineView.style.display = 'none';
-        window.print();
-        renderAppointments();
-    };
-
-    document.getElementById('printCardsBtn').onclick = () => {
-        printModal.style.display = 'none';
-        document.getElementById('appointmentsTable').querySelector('table').style.display = 'none';
+        document.getElementById('appointmentsTable').querySelector('table').classList.add('print');
+    } else if (currentView === 'grid') {
         cardView.style.display = 'grid';
         cardView.classList.add('print');
-        gridView.style.display = 'none';
-        pipelineView.style.display = 'none';
-        window.print();
-        cardView.classList.remove('print');
-        renderAppointments();
-    };
+    } else if (currentView === 'pipeline') {
+        pipelineView.style.display = 'grid';
+        pipelineView.classList.add('print');
+        // Expande todos os detalhes nos cards do pipeline
+        document.querySelectorAll('.mini-card .card-details').forEach(details => {
+            details.style.display = 'block';
+        });
+    }
 
-    document.addEventListener('click', function closeModal(event) {
-        if (!printModal.contains(event.target) && event.target.id !== 'printBtn') {
-            printModal.style.display = 'none';
-            document.removeEventListener('click', closeModal);
-        }
-    }, { once: true });
+    setTimeout(() => {
+        window.print();
+        // Após a impressão, reverte para a visualização normal
+        renderAppointments();
+    }, 100);
 });
 
-//funcao de focar no status
 document.getElementById('statusFilterBtn').addEventListener('click', () => {
     statusFilter.focus();
 });
 
-//funcao de resetar
 document.getElementById('resetBtn').addEventListener('click', () => {
     statusFilter.value = 'all';
     appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -529,17 +531,14 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     renderAppointments();
 });
 
-//funcao de deletar todos
 document.getElementById('deleteAllBtn').addEventListener('click', () => {
     document.getElementById('deleteAllModal').style.display = 'block';
 });
 
-//funcao de fechar a tab de deletar todos
 window.closeDeleteAllModal = () => {
     document.getElementById('deleteAllModal').style.display = 'none';
 };
 
-//funcao de confirmar o delete de todos
 window.confirmDeleteAll = async () => {
     const enteredPassword = document.getElementById('deletePassword').value;
     if (enteredPassword === deleteAllPassword) {
@@ -552,7 +551,7 @@ window.confirmDeleteAll = async () => {
             closeDeleteAllModal();
             loadAppointments();
         } catch (error) {
-            console.error('Error deleting all:', error);
+            console.error('Erro ao excluir todos:', error);
             showNotification('Erro ao excluir: ' + error.message, true);
         }
     } else {
@@ -560,17 +559,14 @@ window.confirmDeleteAll = async () => {
     }
 };
 
-//funcao de filtro
 document.getElementById('sortFilterBtn').addEventListener('click', () => {
     document.getElementById('sortFilterModal').style.display = 'block';
 });
 
-//funcao de fechar a tab filtro
 window.closeSortFilterModal = () => {
     document.getElementById('sortFilterModal').style.display = 'none';
 };
 
-//funcao de aplicar o filtro
 window.applySortFilter = () => {
     const sortType = document.getElementById('sortType').value;
     let sortedAppointments = [...appointments];
@@ -590,7 +586,6 @@ window.applySortFilter = () => {
     showNotification('Filtro aplicado com sucesso!');
 };
 
-//funcao de limpar os filtros
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
     statusFilter.value = 'all';
     document.getElementById('sortType').value = 'recent';
@@ -599,7 +594,6 @@ document.getElementById('clearFiltersBtn').addEventListener('click', () => {
     renderAppointments();
 });
 
-//funcao de exportar para o excel
 document.getElementById('exportExcelBtn').addEventListener('click', () => {
     const data = appointments.map(app => ({
         Paciente: app.nomePaciente || '-',
@@ -622,21 +616,9 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
 });
 
 document.getElementById('settingsBtn').addEventListener('click', () => {
-    const settingsModal = document.getElementById('settingsModal');
-    settingsModal.style.display = 'block';
-
-    // Fechar o modal ao clicar fora dele
-    window.addEventListener('click', (event) => {
-        if (event.target === settingsModal) {
-            settingsModal.style.display = 'none';
-            window.removeEventListener('click', arguments.callee); // Remove o listener para evitar múltiplos anexos
-        }
-        
-        
-    });
+    document.getElementById('settingsModal').style.display = 'block';
 });
 
-//funcao de salvar o tema
 document.getElementById('saveTheme').addEventListener('click', () => {
     const bodyBgColor = document.getElementById('bodyBgColor').value;
     const cardBgColor = document.getElementById('cardBgColor').value;
@@ -664,7 +646,6 @@ document.getElementById('saveTheme').addEventListener('click', () => {
     document.getElementById('settingsModal').style.display = 'none';
 });
 
-//funcao de restaurar o tema
 document.getElementById('resetTheme').addEventListener('click', () => {
     document.body.style.backgroundColor = '#f0f4f8';
     document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
@@ -680,7 +661,6 @@ document.getElementById('resetTheme').addEventListener('click', () => {
     document.getElementById('settingsModal').style.display = 'none';
 });
 
-//funcao de backup dos dados
 document.getElementById('backupData').addEventListener('click', () => {
     const backup = JSON.stringify(appointments);
     const blob = new Blob([backup], { type: 'application/json' });
@@ -693,7 +673,6 @@ document.getElementById('backupData').addEventListener('click', () => {
     showNotification('Backup realizado com sucesso!');
 });
 
-//funcao de restaurar o backup
 document.getElementById('restoreBackup').addEventListener('click', () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -718,7 +697,6 @@ document.getElementById('restoreBackup').addEventListener('click', () => {
     input.click();
 });
 
-//funcao de gerar o relatorio
 window.generateReport = () => {
     const reportType = document.getElementById('reportType').value;
     const reportMonth = document.getElementById('reportMonth').value;
@@ -729,9 +707,9 @@ window.generateReport = () => {
     switch (reportType) {
         case 'all': break;
         case 'byName': filteredAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
-        case 'recent': filteredAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-        case 'oldest': filteredAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); break;
-        case 'phone': filteredAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
+        case 'byRecent': filteredAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
+        case 'byOldest': filteredAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); break;
+        case 'byPhone': filteredAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
         case 'byDate': filteredAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
         case 'byDoctor':
             if (reportDoctor) filteredAppointments = filteredAppointments.filter(app => app.nomeMedico === reportDoctor);
@@ -791,39 +769,56 @@ window.generateReport = () => {
         reportGrid.appendChild(card);
     });
 
-    reportGrid.style.display = currentView === 'list' && window.innerWidth <= 768 ? 'grid' : 'none'; // Ativa o grid nos relatórios
+    reportBody.parentElement.style.display = 'block';
+    reportGrid.style.display = 'none';
     showNotification('Relatório gerado com sucesso!');
 };
 
-//funcao de vizualizacao de tabela, grid e pipeline
-viewModes.forEach(mode => {
-    mode.addEventListener('click', () => {
-        viewModes.forEach(m => m.classList.remove('active'));
-        mode.classList.add('active');
-        currentView = mode.dataset.view;
+// Função para alternar detalhes no pipeline
+window.toggleDetails = (card) => {
+    const details = card.querySelector('.card-details');
+    details.style.display = details.style.display === 'block' ? 'none' : 'block';
+};
+
+// Eventos de visualização
+viewModes.forEach(button => {
+    button.addEventListener('click', () => {
+        viewModes.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        currentView = button.dataset.view;
         renderAppointments();
+
+        // Remove os eventos de clique antigos do pipeline antes de adicionar novos
+        if (currentView === 'pipeline') {
+            document.querySelectorAll('.mini-card').forEach(card => {
+                card.removeEventListener('click', handleCardClick);
+                card.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('action-btn')) {
+                        handleCardClick(e, card.dataset.id);
+                    }
+                });
+            });
+        }
     });
 });
 
-//funcao para selecionar todos
+// Evento para selecionar todas as linhas
 selectAllCheckbox.addEventListener('change', () => {
-    const checkboxes = document.querySelectorAll('.select-row');
-    checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+    document.querySelectorAll('.select-row').forEach(cb => cb.checked = selectAllCheckbox.checked);
 });
 
-//funcao de filtro de status
-statusFilter.addEventListener('change', () => renderAppointments());
+// Evento para filtrar por status
+statusFilter.addEventListener('change', renderAppointments);
 
-//funcao de filtro de colunas
+// Evento para alternar colunas visíveis
 document.querySelectorAll('.column-toggle').forEach(toggle => {
-    toggle.addEventListener('change', () => renderAppointments());
+    toggle.addEventListener('change', () => {
+        const column = toggle.dataset.column;
+        const cells = document.querySelectorAll(`td:nth-child(${Array.from(toggle.parentElement.parentElement.children).indexOf(toggle.parentElement) + 1})`);
+        cells.forEach(cell => cell.style.display = toggle.checked ? '' : 'none');
+        renderAppointments();
+    });
 });
-
-//funcao para mostrar detalhes do card do pipeline
-function toggleDetails(card) {
-    const details = card.querySelector('.card-details');
-    details.style.display = details.style.display === 'block' ? 'none' : 'block';
-}
 
 // Carregar tema salvo
 const savedTheme = JSON.parse(localStorage.getItem('theme'));
@@ -838,12 +833,6 @@ if (savedTheme) {
     document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = savedTheme.borderColor);
 }
 
-updateMedicosList();
+// Inicializar a aplicação
 loadAppointments();
-        
-        
-        
-        
-        
-        
-        
+updateMedicosList();
