@@ -31,11 +31,12 @@ const reportBody = document.getElementById('reportBody');
 const reportGrid = document.getElementById('reportGrid');
 
 // Variáveis Globais
-let appointments = [];
+let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
 let editId = null;
 let currentView = 'list';
 let medicos = JSON.parse(localStorage.getItem('medicos')) || [];
 let deleteAllPassword = localStorage.getItem('deleteAllPassword') || '1234';
+let lastSync = localStorage.getItem('lastSync') || 0; // Timestamp da última sincronização
 
 // Salvar os dados dos inputs no localStorage
 const formFields = ['nomePaciente', 'telefone', 'email', 'nomeMedico', 'localCRM', 'dataConsulta', 'horaConsulta', 'tipoCirurgia', 'procedimentos', 'agendamentoFeitoPor', 'descricao'];
@@ -58,62 +59,29 @@ function showNotification(message, isError = false) {
     }, 3000);
 }
 
-// Evento de envio do formulário
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const dataConsulta = document.getElementById('dataConsulta').value;
-    if (!dataConsulta) {
-        showNotification('Por favor, insira a data da consulta', true);
+// Função para sincronizar com o Firebase apenas se necessário
+async function syncAppointments(force = false) {
+    const now = Date.now();
+    const syncInterval = 5 * 60 * 1000; // Sincronizar a cada 5 minutos, se necessário
+
+    if (!force && (now - lastSync < syncInterval) && appointments.length > 0) {
+        renderAppointments(); // Usa dados do cache
         return;
     }
 
-    const appointmentData = {
-        nomePaciente: document.getElementById('nomePaciente').value,
-        telefone: document.getElementById('telefone').value,
-        email: document.getElementById('email').value,
-        nomeMedico: document.getElementById('nomeMedico').value,
-        localCRM: document.getElementById('localCRM').value,
-        dataConsulta: dataConsulta,
-        horaConsulta: document.getElementById('horaConsulta').value,
-        tipoCirurgia: document.getElementById('tipoCirurgia').value,
-        procedimentos: document.getElementById('procedimentos').value,
-        agendamentoFeitoPor: document.getElementById('agendamentoFeitoPor').value,
-        descricao: document.getElementById('descricao').value,
-        status: editId ? document.getElementById('status').value : 'Aguardando Atendimento',
-        createdAt: editId ? appointments.find(a => a.id === editId).createdAt : new Date().toISOString()
-    };
-
-    try {
-        if (editId) {
-            const docRef = doc(db, 'agendaunica', editId);
-            await updateDoc(docRef, appointmentData);
-            showNotification('Agendamento atualizado com sucesso!');
-            editId = null;
-            statusGroup.style.display = 'none';
-        } else {
-            await addDoc(collection(db, 'agendaunica'), appointmentData);
-            showNotification('Agendamento salvo com sucesso!');
-        }
-        form.reset();
-        formFields.forEach(field => localStorage.removeItem(field));
-        loadAppointments();
-    } catch (error) {
-        console.error('Erro ao salvar agendamento:', error);
-        showNotification('Erro ao salvar agendamento: ' + error.message, true);
-    }
-});
-
-// Função para carregar os agendamentos do Firebase
-async function loadAppointments() {
     try {
         const querySnapshot = await getDocs(collection(db, 'agendaunica'));
         appointments = [];
         querySnapshot.forEach((doc) => appointments.push({ id: doc.id, ...doc.data() }));
         appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        localStorage.setItem('appointments', JSON.stringify(appointments));
+        localStorage.setItem('lastSync', now);
         renderAppointments();
+        showNotification('Dados sincronizados com o servidor!');
     } catch (error) {
-        console.error('Erro ao carregar agendamentos:', error);
-        showNotification('Erro ao carregar agendamentos: ' + error.message, true);
+        console.error('Erro ao sincronizar agendamentos:', error);
+        showNotification('Erro ao sincronizar agendamentos: ' + error.message, true);
+        if (appointments.length > 0) renderAppointments(); // Usa cache em caso de erro
     }
 }
 
@@ -154,7 +122,7 @@ function renderAppointments() {
 
     // Renderizar cards (usado em modo grid ou mobile)
     cardView.innerHTML = '';
-    gridView.innerHTML = ''; // Limpa gridView para evitar duplicatas
+    gridView.innerHTML = '';
     filteredAppointments.forEach(app => {
         const card = document.createElement('div');
         card.className = 'card';
@@ -241,9 +209,59 @@ function renderAppointments() {
     const isMobile = window.innerWidth <= 768;
     document.getElementById('appointmentsTable').querySelector('table').style.display = (currentView === 'list' && !isMobile) ? 'table' : 'none';
     cardView.style.display = (currentView === 'grid' || (currentView === 'list' && isMobile)) ? 'grid' : 'none';
-    gridView.style.display = 'none'; // Não usamos mais gridView separadamente
+    gridView.style.display = 'none';
     pipelineView.style.display = currentView === 'pipeline' ? 'block' : 'none';
 }
+
+// Evento de envio do formulário
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const dataConsulta = document.getElementById('dataConsulta').value;
+    if (!dataConsulta) {
+        showNotification('Por favor, insira a data da consulta', true);
+        return;
+    }
+
+    const appointmentData = {
+        nomePaciente: document.getElementById('nomePaciente').value,
+        telefone: document.getElementById('telefone').value,
+        email: document.getElementById('email').value,
+        nomeMedico: document.getElementById('nomeMedico').value,
+        localCRM: document.getElementById('localCRM').value,
+        dataConsulta: dataConsulta,
+        horaConsulta: document.getElementById('horaConsulta').value,
+        tipoCirurgia: document.getElementById('tipoCirurgia').value,
+        procedimentos: document.getElementById('procedimentos').value,
+        agendamentoFeitoPor: document.getElementById('agendamentoFeitoPor').value,
+        descricao: document.getElementById('descricao').value,
+        status: editId ? document.getElementById('status').value : 'Aguardando Atendimento',
+        createdAt: editId ? appointments.find(a => a.id === editId).createdAt : new Date().toISOString()
+    };
+
+    try {
+        if (editId) {
+            const docRef = doc(db, 'agendaunica', editId);
+            await updateDoc(docRef, appointmentData);
+            const index = appointments.findIndex(a => a.id === editId);
+            appointments[index] = { id: editId, ...appointmentData };
+            showNotification('Agendamento atualizado com sucesso!');
+            editId = null;
+            statusGroup.style.display = 'none';
+        } else {
+            const docRef = await addDoc(collection(db, 'agendaunica'), appointmentData);
+            appointmentData.id = docRef.id;
+            appointments.unshift(appointmentData);
+            showNotification('Agendamento salvo com sucesso!');
+        }
+        localStorage.setItem('appointments', JSON.stringify(appointments));
+        form.reset();
+        formFields.forEach(field => localStorage.removeItem(field));
+        renderAppointments();
+    } catch (error) {
+        console.error('Erro ao salvar agendamento:', error);
+        showNotification('Erro ao salvar agendamento: ' + error.message, true);
+    }
+});
 
 // Funções de Ações
 window.editAppointment = (id) => {
@@ -278,8 +296,10 @@ window.deleteAppointment = async (id) => {
 
     try {
         await deleteDoc(doc(db, 'agendaunica', id));
+        appointments = appointments.filter(app => app.id !== id);
+        localStorage.setItem('appointments', JSON.stringify(appointments));
         showNotification('Agendamento excluído com sucesso!');
-        loadAppointments();
+        renderAppointments();
     } catch (error) {
         console.error('Erro ao excluir agendamento:', error);
         showNotification('Erro ao excluir agendamento: ' + error.message, true);
@@ -313,8 +333,11 @@ function handleDrop(e) {
     const docRef = doc(db, 'agendaunica', id);
     updateDoc(docRef, { status: newStatus })
         .then(() => {
+            const appointment = appointments.find(app => app.id === id);
+            appointment.status = newStatus;
+            localStorage.setItem('appointments', JSON.stringify(appointments));
             showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
-            loadAppointments();
+            renderAppointments();
         })
         .catch(error => {
             console.error('Erro ao mover agendamento:', error);
@@ -333,9 +356,12 @@ function handleCardClick(e, id) {
             const docRef = doc(db, 'agendaunica', id);
             updateDoc(docRef, { status: newStatus })
                 .then(() => {
+                    const appointment = appointments.find(app => app.id === id);
+                    appointment.status = newStatus;
+                    localStorage.setItem('appointments', JSON.stringify(appointments));
                     showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
                     actionBox.style.display = 'none';
-                    loadAppointments();
+                    renderAppointments();
                 })
                 .catch(error => showNotification('Erro ao mover agendamento: ' + error.message, true));
         };
@@ -465,7 +491,6 @@ window.generateReport = () => {
     showNotification('Relatório gerado com sucesso!');
 };
 
-// Função para alternar visualização nos relatórios
 window.toggleReportView = (view) => {
     const reportTable = document.getElementById('reportResult');
     const reportGrid = document.getElementById('reportGrid');
@@ -549,9 +574,11 @@ window.confirmDeleteAll = async () => {
         const querySnapshot = await getDocs(collection(db, 'agendaunica'));
         const batch = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
         await Promise.all(batch);
+        appointments = [];
+        localStorage.setItem('appointments', JSON.stringify(appointments));
         showNotification('Todos os agendamentos foram excluídos!');
         document.getElementById('deleteAllModal').style.display = 'none';
-        loadAppointments();
+        renderAppointments();
     } catch (error) {
         showNotification('Erro ao excluir todos os agendamentos: ' + error.message, true);
     }
@@ -590,6 +617,7 @@ window.applySortFilter = () => {
     }
 
     appointments = sortedAppointments;
+    localStorage.setItem('appointments', JSON.stringify(appointments));
     renderAppointments();
     closeSortFilterModal();
     showNotification('Filtro aplicado com sucesso!');
@@ -598,6 +626,7 @@ window.applySortFilter = () => {
 document.getElementById('clearFiltersBtn').addEventListener('click', () => {
     statusFilter.value = 'all';
     appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    localStorage.setItem('appointments', JSON.stringify(appointments));
     renderAppointments();
     showNotification('Filtros limpos!');
 });
@@ -682,6 +711,7 @@ document.getElementById('restoreBackup').addEventListener('click', () => {
                 appointments = data.appointments || [];
                 medicos = data.medicos || [];
                 localStorage.setItem('medicos', JSON.stringify(medicos));
+                localStorage.setItem('appointments', JSON.stringify(appointments));
 
                 const batch = appointments.map(app => {
                     if (app.id) return updateDoc(doc(db, 'agendaunica', app.id), app);
@@ -689,7 +719,7 @@ document.getElementById('restoreBackup').addEventListener('click', () => {
                 });
                 await Promise.all(batch);
 
-                loadAppointments();
+                renderAppointments();
                 updateMedicosList();
                 showNotification('Backup restaurado com sucesso!');
             } catch (error) {
@@ -743,5 +773,5 @@ if (savedTheme) {
 }
 
 // Inicializar a aplicação
-loadAppointments();
+syncAppointments(); // Carrega do cache ou sincroniza se necessário
 updateMedicosList();
