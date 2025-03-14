@@ -6,9 +6,11 @@
 }
 
 body {
-    font-family: 'Arial', sans-serif;
-    background-color: #f0f4f8;
-    color: #1f2937;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f9f9fb; /* Cor de fundo igual ao de referência */
+    color: #343a40; /* Cor do texto igual ao de referência */
+    line-height: 1.6;
+    overflow-x: hidden;
 }
 
 .container {
@@ -20,16 +22,21 @@ body {
 header {
     text-align: center;
     margin-bottom: 40px;
-    color: #1f2937;
+    color: #495057; /* Cor do texto do header igual ao de referência */
+    padding: 30px;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 /* Seção de Busca */
 .search-card {
     background-color: #ffffff;
     padding: 15px;
-    border-radius: 8px;
-    border: 1px solid #1e40af;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 15px; /* Ajustado para ser igual ao de referência */
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Ajustado para ser igual ao de referência */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Ajustado para ser igual ao de referência */
     margin: 25px auto;
     max-width: 1200px;
     display: flex;
@@ -49,21 +56,24 @@ header {
 /* Botões de Controle e Modo de Visualização */
 .control-btn, .view-mode {
     background: none;
-    border: 1px solid #1e40af;
-    border-radius: 8px;
+    border: 1.5px solid #007bff; /* Cor da borda igual ao de referência */
+    border-radius: 10px; /* Ajustado para ser igual ao de referência */
     padding: 8px 12px;
     cursor: pointer;
     font-size: 12px;
-    color: #1f2937;
+    color: #007bff; /* Cor do texto igual ao de referência */
     display: flex;
     align-items: center;
     gap: 5px;
     position: relative;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, color 0.3s, transform 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15); /* Sombra igual ao de referência */
 }
 
 .control-btn:hover, .view-mode:hover {
-    background-color: #dbeafe;
+    background-color: #007bff; /* Cor de fundo no hover igual ao de referência */
+    color: #fff; /* Cor do texto no hover igual ao de referência */
+    transform: translateY(-2px); /* Efeito de elevação no hover igual ao de referência */
 }
 
 .control-btn:hover::after, .view-mode:hover::after {
@@ -72,7 +82,7 @@ header {
     top: -30px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: #1f2937;
+    background-color: #343a40; /* Cor de fundo do tooltip igual ao de referência */
     color: #fff;
     padding: 5px 10px;
     border-radius: 5px;
@@ -82,17 +92,19 @@ header {
 }
 
 .view-mode.active {
-    background-color: #3b82f6;
+    background-color: #0056b3; /* Cor de fundo ativo igual ao de referência */
     color: #ffffff;
+    border-color: #0056b3;
+    box-shadow: 0 3px 12px rgba(0, 86, 179, 0.3); /* Sombra igual ao de referência */
 }
 
 /* Seção do Formulário */
 .form-section {
     background-color: #ffffff;
     padding: 30px;
-    border-radius: 8px;
-    border: 1px solid #1e40af;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 15px; /* Ajustado para ser igual ao de referência */
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Ajustado para ser igual ao de referência */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Ajustado para ser igual ao de referência */
     margin-bottom: 25px;
 }
 
@@ -111,7 +123,7 @@ header {
 
 .form-group label {
     margin-bottom: 8px;
-    color: #1f2937;
+    color: #495057; /* Cor do texto igual ao de referência */
     font-weight: 600;
     font-size: 14px;
 }
@@ -120,11 +132,20 @@ header {
 .form-group textarea,
 .form-group select {
     padding: 12px;
-    border: 1px solid #1e40af;
-    border-radius: 8px;
+    border: 1.5px solid #ced4da; /* Cor da borda igual ao de referência */
+    border-radius: 10px; /* Ajustado para ser igual ao de referência */
     font-size: 15px;
-    background-color: #ffffff;
-    color: #1f2937;
+    background-color: #f8f9fa; /* Cor de fundo igual ao de referência */
+    color: #495057; /* Cor do texto igual ao de referência */
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    border-color: #007bff; /* Cor da borda ao focar igual ao de referência */
+    outline: none;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.25); /* Sombra ao focar igual ao de referência */
 }
 
 .form-group .add-medico-btn {
@@ -132,18 +153,20 @@ header {
     right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    background-color: #3b82f6;
+    background-color: #28a745; /* Cor de fundo igual ao de referência */
     color: #ffffff;
     border: none;
     border-radius: 6px;
     padding: 4px 8px;
     font-size: 10px;
     cursor: pointer;
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, transform 0.2s;
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2); /* Sombra igual ao de referência */
 }
 
 .form-group .add-medico-btn:hover {
-    background-color: #2563eb;
+    background-color: #218838; /* Cor de fundo no hover igual ao de referência */
+    transform: translateY(-50%) scale(1.05); /* Efeito de escala no hover igual ao de referência */
 }
 
 .form-group textarea {
@@ -164,27 +187,29 @@ header {
 
 button {
     padding: 12px 25px;
-    background-color: #3b82f6;
+    background-color: #007bff; /* Cor de fundo igual ao de referência */
     color: #ffffff;
-    border: 1px solid #3b82f6;
-    border-radius: 8px;
+    border: none;
+    border-radius: 10px; /* Ajustado para ser igual ao de referência */
     cursor: pointer;
     font-size: 15px;
-    transition: background-color 0.3s, transform 0.2s;
+    transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+    box-shadow: 0 3px 10px rgba(0, 123, 255, 0.3); /* Sombra igual ao de referência */
 }
 
 button:hover {
-    background-color: #2563eb;
-    transform: scale(1.03);
+    background-color: #0056b3; /* Cor de fundo no hover igual ao de referência */
+    transform: translateY(-2px); /* Efeito de elevação no hover igual ao de referência */
+    box-shadow: 0 4px 12px rgba(0, 86, 179, 0.4); /* Sombra no hover igual ao de referência */
 }
 
 /* Seção de Agendamentos */
 .appointments-section {
     background-color: #ffffff;
     padding: 30px;
-    border-radius: 8px;
-    border: 1px solid #1e40af;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 15px; /* Ajustado para ser igual ao de referência */
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Ajustado para ser igual ao de referência */
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Ajustado para ser igual ao de referência */
 }
 
 .table-controls {
@@ -204,11 +229,11 @@ button:hover {
 
 .filters select {
     padding: 12px;
-    border: 1px solid #1e40af;
-    border-radius: 8px;
+    border: 1.5px solid #ced4da; /* Cor da borda igual ao de referência */
+    border-radius: 10px; /* Ajustado para ser igual ao de referência */
     font-size: 15px;
-    background-color: #ffffff;
-    color: #1f2937;
+    background-color: #f8f9fa; /* Cor de fundo igual ao de referência */
+    color: #495057; /* Cor do texto igual ao de referência */
 }
 
 /* Visualização em Tabela */
@@ -225,14 +250,14 @@ button:hover {
 .table-view table {
     width: 100%;
     border-collapse: collapse;
-    border: 1px solid #1e40af;
+    border: 1px solid #dee2e6; /* Cor da borda igual ao de referência */
 }
 
 .table-view th,
 .table-view td {
     padding: 15px;
     text-align: left;
-    border-bottom: 1px solid #1e40af;
+    border-bottom: 1px solid #dee2e6; /* Cor da borda igual ao de referência */
     word-wrap: break-word;
     max-width: 160px;
 }
@@ -263,10 +288,10 @@ button:hover {
 /* Estilos para Cards */
 .card {
     background-color: #ffffff;
-    border: 1px solid #1e40af;
-    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Ajustado para ser igual ao de referência */
+    border-radius: 15px; /* Ajustado para ser igual ao de referência */
     padding: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); /* Ajustado para ser igual ao de referência */
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -276,20 +301,20 @@ button:hover {
 }
 
 .card:hover {
-    transform: scale(1.02);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-3px); /* Efeito de elevação no hover igual ao de referência */
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* Sombra no hover igual ao de referência */
 }
 
 .card h4 {
     margin-bottom: 8px;
-    color: #1f2937;
+    color: #495057; /* Cor do texto igual ao de referência */
     font-size: 17px;
     font-weight: 600;
 }
 
 .card p {
     margin: 0;
-    color: #6b7280;
+    color: #6c757d; /* Cor do texto igual ao de referência */
 }
 
 .card-actions {
@@ -313,16 +338,16 @@ button:hover {
     transform: scale(1.05);
 }
 
-.edit-btn { background-color: #f59e0b; }
-.share-btn { background-color: #10b981; }
-.view-btn { background-color: #3b82f6; }
-.delete-btn { background-color: #ef4444; }
-.delete-all-btn { background-color: #dc2626; }
+.edit-btn { background-color: #ffc107; } /* Cor igual ao de referência */
+.share-btn { background-color: #28a745; } /* Cor igual ao de referência */
+.view-btn { background-color: #007bff; } /* Cor igual ao de referência */
+.delete-btn { background-color: #dc3545; } /* Cor igual ao de referência */
+.delete-all-btn { background-color: #dc3545; } /* Cor ajustada para ser consistente */
 
 /* Visualização em Pipeline */
 .pipeline-column {
-    background-color: #f0f4f8;
-    border: 1px solid #1e40af;
+    background-color: #f0f4f8; /* Cor de fundo igual ao de referência */
+    border: 1px solid #dee2e6; /* Cor da borda igual ao de referência */
     border-radius: 8px;
     padding: 20px;
     min-height: 350px;
@@ -330,7 +355,7 @@ button:hover {
 
 .pipeline-column h3 {
     margin-bottom: 15px;
-    color: #1f2937;
+    color: #495057; /* Cor do texto igual ao de referência */
     font-size: 17px;
     text-align: center;
     font-weight: 600;
@@ -338,7 +363,7 @@ button:hover {
 
 .mini-card {
     background-color: #ffffff;
-    border: 1px solid #1e40af;
+    border: 1px solid #dee2e6; /* Cor da borda igual ao de referência */
     border-radius: 8px;
     padding: 10px;
     margin-bottom: 10px;
@@ -370,27 +395,29 @@ button:hover {
 
 /* Estilos para Insights */
 .insights-card {
-    background: linear-gradient(135deg, #ffffff, #f0f4f8);
-    border: 1px solid #1e40af;
-    border-radius: 8px;
+    background: linear-gradient(135deg, #ffffff, #f0f4f8); /* Gradiente igual ao de referência */
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Ajustado para ser igual ao de referência */
+    border-radius: 15px; /* Ajustado para ser igual ao de referência */
     padding: 20px;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08); /* Ajustado para ser igual ao de referência */
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .insights-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-5px); /* Efeito de elevação no hover igual ao de referência */
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.1); /* Sombra no hover igual ao de referência */
 }
 
 .insights-card h4 {
     font-size: 18px;
     font-weight: 600;
     margin-bottom: 10px;
+    color: #495057; /* Cor do texto igual ao de referência */
 }
 
 .insights-card p, .insights-card ul {
     font-size: 14px;
-    color: #1f2937;
+    color: #6c757d; /* Cor do texto igual ao de referência */
 }
 
 /* Notificações */
@@ -398,7 +425,7 @@ button:hover {
     position: fixed;
     top: 25px;
     right: 25px;
-    background-color: #10b981;
+    background-color: #28a745; /* Cor de fundo igual ao de referência */
     color: #ffffff;
     padding: 12px 25px;
     border-radius: 8px;
@@ -415,7 +442,7 @@ button:hover {
 }
 
 .notification.error {
-    background-color: #ef4444;
+    background-color: #dc3545; /* Cor de fundo no erro igual ao de referência */
 }
 
 /* Modais */
@@ -436,14 +463,14 @@ button:hover {
     left: 50%;
     transform: translate(-50%, -50%);
     background-color: #ffffff;
-    border: 1px solid #1e40af;
-    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Ajustado para ser igual ao de referência */
+    border-radius: 15px; /* Ajustado para ser igual ao de referência */
     padding: 20px;
     width: 400px;
     max-width: 90%;
     max-height: 80vh;
     overflow-y: auto;
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2); /* Sombra igual ao de referência */
 }
 
 .modal-close {
@@ -451,7 +478,7 @@ button:hover {
     top: 10px;
     right: 10px;
     font-size: 24px;
-    color: #ef4444;
+    color: #dc3545; /* Cor do botão de fechar igual ao de referência */
     cursor: pointer;
     border: none;
     background: none;
@@ -459,7 +486,7 @@ button:hover {
 
 .modal-content h4 {
     margin-bottom: 20px;
-    color: #1f2937;
+    color: #495057; /* Cor do texto igual ao de referência */
     font-size: 19px;
     font-weight: 600;
     text-align: center;
@@ -493,18 +520,18 @@ button:hover {
 
 .medicos-list li, .users-list li {
     padding: 10px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #dee2e6; /* Cor da borda igual ao de referência */
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .medicos-list li:hover, .users-list li:hover {
-    background-color: #f0f4f8;
+    background-color: #f0f4f8; /* Cor de fundo no hover igual ao de referência */
 }
 
 .medicos-list .delete-medico-btn, .users-list button {
-    background-color: #ef4444;
+    background-color: #dc3545; /* Cor de fundo igual ao de referência */
     color: white;
     border: none;
     border-radius: 5px;
@@ -517,12 +544,12 @@ footer {
     text-align: center;
     padding: 20px;
     margin-top: 40px;
-    color: #6b7280;
+    color: #6c757d; /* Cor do texto igual ao de referência */
     font-size: 14px;
 }
 
 footer a {
-    color: #3b82f6;
+    color: #007bff; /* Cor do link igual ao de referência */
     text-decoration: none;
 }
 
@@ -538,7 +565,7 @@ footer a:hover {
     #appointmentsTable.print { display: block !important; }
     #gridView.print { display: grid !important; }
     .table-view table { width: 100%; font-size: 10pt; border-collapse: collapse; }
-    .table-view th, .table-view td { padding: 5px; border: 1px solid #1e40af; }
+    .table-view th, .table-view td { padding: 5px; border: 1px solid #dee2e6; } /* Cor da borda ajustada */
     #appointmentsTable:not(.print), #gridView:not(.print) { display: none !important; }
 }
 
@@ -550,17 +577,17 @@ footer a:hover {
     #appointmentsTable.print { display: block !important; }
     #gridView.print { display: grid !important; }
     .table-view table { width: 100%; font-size: 10pt; border-collapse: collapse; }
-    .table-view th, .table-view td { padding: 5px; border: 1px solid #1e40af; }
+    .table-view th, .table-view td { padding: 5px; border: 1px solid #dee2e6; } /* Cor da borda ajustada */
     #appointmentsTable:not(.print), #gridView:not(.print) { display: none !important; }
-    .table-view th.hidden, .table-view td.hidden { display: none !important; } /* Oculta colunas desmarcadas */
+    .table-view th.hidden, .table-view td.hidden { display: none !important; }
 }
 
 .insights-card {
     background: linear-gradient(135deg, #ffffff, #f0f4f8);
-    border: 1px solid #1e40af;
+    border: 1px solid rgba(0, 0, 0, 0.05);
     border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
     transition: transform 0.3s, box-shadow 0.3s;
     display: flex;
     flex-direction: column;
@@ -571,7 +598,7 @@ footer a:hover {
 
 .insights-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.1);
 }
 
 .insights-card::before {
@@ -581,13 +608,13 @@ footer a:hover {
     left: 0;
     width: 100%;
     height: 4px;
-    background: linear-gradient(to right, #3b82f6, #10b981);
+    background: linear-gradient(to right, #007bff, #28a745); /* Gradiente ajustado */
 }
 
 .insights-card h4 {
     font-size: 18px;
     font-weight: 600;
-    color: #1f2937;
+    color: #495057;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -595,7 +622,7 @@ footer a:hover {
 
 .insights-card p, .insights-card ul {
     font-size: 14px;
-    color: #1f2937;
+    color: #6c757d;
 }
 
 .insights-card ul {
@@ -604,10 +631,10 @@ footer a:hover {
 }
 
 .insights-card ul li::before {
-    content: '\f058'; /* Ícone de check-circle */
+    content: '\f058';
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
-    color: #10b981;
+    color: #28a745;
     margin-right: 10px;
 }
 
@@ -620,7 +647,7 @@ footer a:hover {
     max-height: 300px;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #1e40af #f0f4f8;
+    scrollbar-color: #007bff #f0f4f8; /* Cores ajustadas */
 }
 
 .error-log-card::-webkit-scrollbar {
@@ -628,7 +655,7 @@ footer a:hover {
 }
 
 .error-log-card::-webkit-scrollbar-thumb {
-    background-color: #1e40af;
+    background-color: #007bff;
     border-radius: 10px;
 }
 
