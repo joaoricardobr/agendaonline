@@ -20,9 +20,9 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1350px;
             margin: 0 auto;
-            padding: 25px;
+            padding: 15px;
         }
 
         header {
@@ -222,7 +222,7 @@
         /* Visualização em Tabela */
         .table-view {
             width: 100%;
-            overflow-x: auto; /* Adicionado para responsividade em telas menores */
+            overflow-x: auto;
         }
 
         .table-view table {
@@ -343,7 +343,7 @@
             border-top: 1px solid #ddd;
         }
 
-         .mini-card .card-details p {
+        .mini-card .card-details p {
             margin: 5px 0;
         }
 
@@ -460,9 +460,54 @@
             text-decoration: underline;
         }
 
+        /* Estilos para lista de médicos no modal */
+        .medicos-list ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .medicos-list li {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .medicos-list li:hover {
+            background-color: #f0f4f8;
+        }
+
+        .medicos-list .delete-medico-btn {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
         /* Estilos de Impressão */
         @media print {
-            .search-card, .table-controls, .form-section, header, .notification, .action-box, footer {
+            @page {
+                margin: 0.5mm 0mm;
+            }
+
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                margin: 0;
+                padding: 0;
+            }
+
+            .container {
+                padding: 0;
+                margin: 0;
+            }
+
+            .search-card, .table-controls, .form-section, header, .notification, 
+            .action-box, footer, .card-actions {
                 display: none !important;
             }
 
@@ -470,45 +515,46 @@
                 box-shadow: none;
                 padding: 0;
                 border: none;
+                margin: 0;
             }
 
             .no-print {
                 display: none;
             }
 
-            /* Estilos para impressão da tabela */
-            .table-view {
-                overflow: visible !important; /* Garante que a tabela não seja cortada */
+            /* Impressão para visualização em tabela (modo list) */
+            .table-view table {
+                display: none;
+                width: 100%;
+                transform: none;
+                position: static;
+                margin: 0;
+                font-size: 10pt;
+                border-collapse: collapse;
             }
 
-            .table-view table {
+            .table-view table.print {
                 display: table !important;
-                border-collapse: collapse;
-                width: 100%;
             }
 
             .table-view th,
             .table-view td {
-                border: 1px solid #000;
-                padding: 10px;
-                text-align: left;
-                color: #000 !important;
+                padding: 5px;
+                border: 1px solid #1e40af;
+                word-wrap: break-word;
+                max-width: none;
+                font-size: 10pt;
             }
 
-            /* Remover botões de ação na impressão */
-            .table-view td:last-child {
-                display: none !important;
-            }
-
-            /* Estilos para impressão dos cards */
-            .card-view, .grid-view, .pipeline-view {
-                display: none !important;
+            /* Impressão para visualização em cards (modo grid) */
+            .card-view {
+                display: none;
             }
 
             .card-view.print {
                 display: grid !important;
-                grid-template-columns: repeat(2, 1fr) !important;
-                gap: 15px !important;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 10px !important;
                 page-break-inside: avoid;
             }
 
@@ -517,31 +563,68 @@
                 width: 100% !important;
                 max-width: none !important;
                 margin: 0 !important;
-                padding: 15px !important;
-                font-size: 13px !important;
+                padding: 10px !important;
+                font-size: 10pt !important;
                 color: #000 !important;
+                border: 1px solid #1e40af;
             }
 
-            .card-actions {
+            /* Impressão para pipeline */
+            .pipeline-view {
+                display: none;
+            }
+
+            .pipeline-view.print {
+                display: block !important;
+            }
+
+            .pipeline-column {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+                width: 100% !important;
+            }
+
+            .pipeline-column h3 {
+                font-size: 12pt;
+                border-bottom: 1px solid #1e40af;
+                padding-bottom: 5px;
+                margin-bottom: 10px;
+            }
+
+            .mini-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                margin-bottom: 10px;
+                padding: 8px;
+                font-size: 10pt;
+                border: 1px solid #1e40af;
+            }
+
+            .mini-card .card-details {
+                display: block !important;
+                border-top: 1px solid #ddd;
+                padding-top: 5px;
+                margin-top: 5px;
+            }
+
+            .grid-view:not(.print) {
                 display: none !important;
-            }
-
-            body {
-                color: #000 !important;
             }
         }
 
         /* Responsividade */
         @media (max-width: 768px) {
-             .table-view table {
-                display: none !important; /* Oculta a tabela */
+            .table-view table {
+                display: none !important;
             }
 
             .card-view {
-                display: grid; /* Mostra a visualização em card */
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Layout em grid para os cards */
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
                 gap: 15px;
             }
+
             .search-card {
                 flex-direction: column;
                 gap: 15px;
@@ -679,7 +762,7 @@
                 <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir</button>
                 <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
                 <button class="control-btn" id="clearFiltersBtn" data-tooltip="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
-                 <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Config</button>
+                <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Config</button>
             </div>
         </div>
 
@@ -698,10 +781,9 @@
                         </select>
                     </div>
                     <button class="control-btn" id="exportExcelBtn" data-tooltip="Exportar Excel"><i class="fas fa-file-excel"></i> Excel</button>
-                <button class="view-mode active" data-view="list" data-tooltip="Lista"><i class="fas fa-list"></i> Lista</button>
-                <button class="view-mode" data-view="grid" data-tooltip="Grid"><i class="fas fa-th"></i> Grid</button>
-                <button class="view-mode" data-view="pipeline" data-tooltip="Pipeline"><i class="fas fa-stream"></i> Pipeline</button>
-               
+                    <button class="view-mode active" data-view="list" data-tooltip="Lista"><i class="fas fa-list"></i> Lista</button>
+                    <button class="view-mode" data-view="grid" data-tooltip="Grid"><i class="fas fa-th"></i> Grid</button>
+                    <button class="view-mode" data-view="pipeline" data-tooltip="Pipeline"><i class="fas fa-stream"></i> Pipeline</button>
                 </div>
 
                 <!-- Visualização em Tabela -->
@@ -825,11 +907,6 @@
         <button data-status="Reagendado">Reagendado</button>
         <button data-status="Cancelado">Cancelado</button>
     </div>
-    <div class="action-box" id="printModal" style="display: none;">
-        <h4>Escolha o Formato de Impressão</h4>
-        <button id="printTableBtn">Imprimir Tabela</button>
-        <button id="printCardsBtn">Imprimir Cards</button>
-    </div>
     <div class="action-box" id="medicoModal" style="display: none;">
         <h4>Cadastrar Novo Médico</h4>
         <div class="form-group">
@@ -842,6 +919,10 @@
         </div>
         <button onclick="saveMedico()">Salvar Médico</button>
         <button onclick="closeMedicoModal()">Cancelar</button>
+        <div class="medicos-list" style="margin-top: 20px; max-height: 200px; overflow-y: auto;">
+            <h4>Médicos Cadastrados</h4>
+            <ul id="medicosListDisplay"></ul>
+        </div>
     </div>
     <div class="action-box" id="deleteAllModal" style="display: none;">
         <h4>Digite a senha para excluir todos</h4>
