@@ -1,5 +1,6 @@
+// Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, getDocs, setDoc, updateDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // Configuração do Firebase
 const firebaseConfig = {
@@ -13,103 +14,210 @@ const firebaseConfig = {
 };
 
 // Inicialização do Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Elementos do DOM
-const form = document.getElementById('appointmentForm');
-const appointmentsBody = document.getElementById('appointmentsBody');
-const cardView = document.getElementById('cardView');
-const gridView = document.getElementById('gridView');
-const pipelineView = document.getElementById('pipelineView');
-const viewModes = document.querySelectorAll('.view-mode');
-const selectAllCheckbox = document.getElementById('selectAll');
-const notification = document.getElementById('notification');
-const statusFilter = document.getElementById('statusFilter');
-const statusGroup = document.getElementById('statusGroup');
-const reportBody = document.getElementById('reportBody');
-const reportGrid = document.getElementById('reportGrid');
+let app, db;
+try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log("Firebase inicializado com sucesso!");
+} catch (error) {
+    console.error("Erro ao inicializar Firebase:", error);
+}
 
 // Variáveis Globais
-let appointments = JSON.parse(localStorage.getItem('appointments')) || [];
-let editId = null;
+let appointments = [];
+let medicos = [];
+let users = [];
 let currentView = 'list';
-let medicos = JSON.parse(localStorage.getItem('medicos')) || [];
-let deleteAllPassword = localStorage.getItem('deleteAllPassword') || '1234';
-let lastSync = localStorage.getItem('lastSync') || 0; // Timestamp da última sincronização
+let lastSync = 0;
+let deleteAllPassword = '1234';
+let draggedCard = null;
+let theme = {};
 
-// Salvar os dados dos inputs no localStorage
-const formFields = ['nomePaciente', 'telefone', 'email', 'nomeMedico', 'localCRM', 'dataConsulta', 'horaConsulta', 'tipoCirurgia', 'procedimentos', 'agendamentoFeitoPor', 'descricao'];
-formFields.forEach(field => {
-    const element = document.getElementById(field);
-    const savedValue = localStorage.getItem(field);
-    if (savedValue) element.value = savedValue;
-    element.addEventListener('input', () => localStorage.setItem(field, element.value));
+// Elementos do DOM
+const appointmentForm = document.getElementById('appointmentForm');
+const appointmentsBody = document.getElementById('appointmentsBody');
+const gridView = document.getElementById('gridView');
+const pipelineView = document.getElementById('pipelineView');
+const statusFilter = document.getElementById('statusFilter');
+const notification = document.getElementById('notification');
+const actionBox = document.getElementById('actionBox');
+const medicoModal = document.getElementById('medicoModal');
+const deleteAllModal = document.getElementById('deleteAllModal');
+const sortFilterModal = document.getElementById('sortFilterModal');
+const settingsModal = document.getElementById('settingsModal');
+const medicosListDisplay = document.getElementById('medicosListDisplay');
+const usersList = document.getElementById('usersList');
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log("DOM carregado, iniciando aplicação...");
+    await loadInitialData();
+    setupEventListeners();
+    renderAppointments();
+
+    document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal(modal);
+        });
+    });
 });
 
-// Função para exibir notificações
-function showNotification(message, isError = false) {
-    notification.textContent = message;
-    notification.className = `notification${isError ? ' error' : ''}`;
-    notification.style.display = 'block';
-    notification.style.opacity = '1';
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.style.display = 'none', 500);
-    }, 3000);
+// Carregamento Inicial
+async function loadInitialData() {
+    try {
+        console.log("Carregando dados iniciais...");
+        await syncLocalWithFirebase();
+        const cachedData = await loadFromIndexedDB();
+        appointments = cachedData.appointments || [];
+        medicos = cachedData.medicos || [];
+        users = cachedData.users && cachedData.users.length > 0 ? cachedData.users : [{ username: 'admin', password: '1234' }];
+        currentView = cachedData.settings?.currentView || 'list';
+        deleteAllPassword = cachedData.settings?.deleteAllPassword || '1234';
+        lastSync = cachedData.settings?.lastSync || 0;
+        theme = cachedData.settings?.theme || {};
+
+        console.log("Dados carregados:", { appointments, medicos, users, currentView, theme });
+        loadFormData();
+        updateMedicosList();
+        updateUsersList();
+        applyTheme();
+        showNotification('Aplicação inicializada com sucesso!');
+    } catch (error) {
+        console.error('Erro ao carregar dados iniciais:', error);
+        showNotification('Erro ao inicializar: ' + error.message, true);
+        // Carrega dados locais mesmo com erro no Firebase
+        const cachedData = await loadFromIndexedDB();
+        appointments = cachedData.appointments || [];
+        medicos = cachedData.medicos || [];
+        users = cachedData.users || [{ username: 'admin', password: '1234' }];
+        renderAppointments();
+    }
 }
 
-// Função para sincronizar com o Firebase apenas se necessário
-async function syncAppointments(force = false) {
-    const now = Date.now();
-    const syncInterval = 5 * 60 * 1000; // Sincronizar a cada 5 minutos, se necessário
+// Configuração de Listeners
+function setupEventListeners() {
+    console.log("Configurando eventos...");
+    appointmentForm.addEventListener('submit', saveAppointment);
+    statusFilter.addEventListener('change', renderAppointments);
+    document.getElementById('selectAll').addEventListener('change', toggleSelectAll);
+    document.querySelectorAll('.view-mode').forEach(btn => btn.addEventListener('click', changeView));
+    document.getElementById('allBtn').addEventListener('click', () => showTab('allTab'));
+    document.getElementById('reportsBtn').addEventListener('click', () => showTab('reportsTab'));
+    document.getElementById('insightsBtn').addEventListener('click', () => showTab('insightsTab'));
+    document.getElementById('printBtn').addEventListener('click', printAppointments);
+    document.getElementById('deleteAllBtn').addEventListener('click', openDeleteAllModal);
+    document.getElementById('sortFilterBtn').addEventListener('click', openSortFilterModal);
+    document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
+    document.getElementById('resetBtn').addEventListener('click', resetForm);
+    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
+}
 
-    if (!force && (now - lastSync < syncInterval) && appointments.length > 0) {
-        renderAppointments(); // Usa dados do cache
-        return;
-    }
+// Funções de CRUD
+async function saveAppointment(e) {
+    e.preventDefault();
+    const appointment = {
+        id: appointmentForm.dataset.id || Date.now().toString(),
+        nomePaciente: document.getElementById('nomePaciente').value || '',
+        telefone: document.getElementById('telefone').value || '',
+        email: document.getElementById('email').value || '',
+        nomeMedico: document.getElementById('nomeMedico').value || '',
+        localCRM: document.getElementById('localCRM').value || '',
+        dataConsulta: document.getElementById('dataConsulta').value || '',
+        horaConsulta: document.getElementById('horaConsulta').value || '',
+        tipoCirurgia: document.getElementById('tipoCirurgia').value || '',
+        procedimentos: document.getElementById('procedimentos').value || '',
+        agendamentoFeitoPor: document.getElementById('agendamentoFeitoPor').value || '',
+        descricao: document.getElementById('descricao').value || '',
+        status: document.getElementById('status').value || 'Aguardando Atendimento'
+    };
+
+    const index = appointments.findIndex(a => a.id === appointment.id);
+    if (index !== -1) appointments[index] = appointment;
+    else appointments.push(appointment);
 
     try {
-        const querySnapshot = await getDocs(collection(db, 'agendaunica'));
-        appointments = [];
-        querySnapshot.forEach((doc) => appointments.push({ id: doc.id, ...doc.data() }));
-        appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        localStorage.setItem('appointments', JSON.stringify(appointments));
-        localStorage.setItem('lastSync', now);
+        await saveToFirebase('appointments', appointment);
+        await saveToIndexedDB('appointments', appointments);
+        resetForm();
         renderAppointments();
-        showNotification('Dados sincronizados com o servidor!');
+        showNotification('Agendamento salvo com sucesso!');
     } catch (error) {
-        console.error('Erro ao sincronizar agendamentos:', error);
-        showNotification('Erro ao sincronizar agendamentos: ' + error.message, true);
-        if (appointments.length > 0) renderAppointments(); // Usa cache em caso de erro
+        console.error('Erro ao salvar agendamento:', error);
+        showNotification('Erro ao salvar: ' + error.message, true);
     }
 }
 
-// Função para renderizar os agendamentos na tela
-function renderAppointments() {
-    let filteredAppointments = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
+async function deleteAppointment(id) {
+    if (confirm('Tem certeza que deseja excluir este agendamento?')) {
+        try {
+            appointments = appointments.filter(a => a.id !== id);
+            await deleteFromFirebase('appointments', id);
+            await saveToIndexedDB('appointments', appointments);
+            renderAppointments();
+            showNotification('Agendamento excluído com sucesso!');
+        } catch (error) {
+            console.error('Erro ao excluir:', error);
+            showNotification('Erro ao excluir: ' + error.message, true);
+        }
+    }
+}
 
+function editAppointment(id) {
+    const appointment = appointments.find(a => a.id === id);
+    if (appointment) {
+        loadFormData(appointment);
+        document.getElementById('statusGroup').style.display = 'block';
+    }
+}
+
+function viewAppointment(id) {
+    const appointment = appointments.find(a => a.id === id);
+    if (appointment) alert(JSON.stringify(appointment, null, 2));
+}
+
+function shareAppointment(id) {
+    const appointment = appointments.find(a => a.id === id);
+    if (appointment) {
+        const message = `Agendamento:\nPaciente: ${appointment.nomePaciente}\nTelefone: ${appointment.telefone}\nMédico: ${appointment.nomeMedico}\nData: ${appointment.dataConsulta} às ${appointment.horaConsulta}\nStatus: ${appointment.status}`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    }
+}
+
+// Renderização
+function renderAppointments() {
+    console.log("Renderizando agendamentos...");
+    let filteredAppointments = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
     const columnToggles = document.querySelectorAll('.column-toggle');
     const visibleColumns = Array.from(columnToggles).filter(t => t.checked).map(t => t.dataset.column);
 
-    // Renderizar tabela
     appointmentsBody.innerHTML = '';
+    gridView.innerHTML = '';
+    pipelineView.querySelectorAll('.column-content').forEach(col => col.innerHTML = '');
+
+    document.querySelectorAll('.table-view th, .table-view td').forEach(el => {
+        const columnName = el.querySelector('input')?.dataset.column;
+        if (columnName) el.style.display = visibleColumns.includes(columnName) ? '' : 'none';
+    });
+
     filteredAppointments.forEach(app => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><input type="checkbox" class="select-row" data-id="${app.id}"></td>
-            ${visibleColumns.includes('nomePaciente') ? `<td>${app.nomePaciente || '-'}</td>` : ''}
-            ${visibleColumns.includes('telefone') ? `<td>${app.telefone || '-'}</td>` : ''}
-            ${visibleColumns.includes('email') ? `<td>${app.email || '-'}</td>` : ''}
-            ${visibleColumns.includes('nomeMedico') ? `<td>${app.nomeMedico || '-'}</td>` : ''}
-            ${visibleColumns.includes('localCRM') ? `<td>${app.localCRM || '-'}</td>` : ''}
-            ${visibleColumns.includes('dataConsulta') ? `<td>${app.dataConsulta || '-'}</td>` : ''}
-            ${visibleColumns.includes('horaConsulta') ? `<td>${app.horaConsulta || '-'}</td>` : ''}
-            ${visibleColumns.includes('tipoCirurgia') ? `<td>${app.tipoCirurgia || '-'}</td>` : ''}
-            ${visibleColumns.includes('procedimentos') ? `<td>${app.procedimentos || '-'}</td>` : ''}
-            ${visibleColumns.includes('agendamentoFeitoPor') ? `<td>${app.agendamentoFeitoPor || '-'}</td>` : ''}
-            ${visibleColumns.includes('descricao') ? `<td>${app.descricao || '-'}</td>` : ''}
-            ${visibleColumns.includes('status') ? `<td>${app.status || '-'}</td>` : ''}
+            <td data-column="nomePaciente">${app.nomePaciente || '-'}</td>
+            <td data-column="telefone">${app.telefone || '-'}</td>
+            <td data-column="email">${app.email || '-'}</td>
+            <td data-column="nomeMedico">${app.nomeMedico || '-'}</td>
+            <td data-column="localCRM">${app.localCRM || '-'}</td>
+            <td data-column="dataConsulta">${app.dataConsulta || '-'}</td>
+            <td data-column="horaConsulta">${app.horaConsulta || '-'}</td>
+            <td data-column="tipoCirurgia">${app.tipoCirurgia || '-'}</td>
+            <td data-column="procedimentos">${app.procedimentos || '-'}</td>
+            <td data-column="agendamentoFeitoPor">${app.agendamentoFeitoPor || '-'}</td>
+            <td data-column="descricao">${app.descricao || '-'}</td>
+            <td data-column="status">${app.status || '-'}</td>
             <td class="no-print">
                 <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
                 <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
@@ -118,12 +226,7 @@ function renderAppointments() {
             </td>
         `;
         appointmentsBody.appendChild(row);
-    });
 
-    // Renderizar cards (usado em modo grid ou mobile)
-    cardView.innerHTML = '';
-    gridView.innerHTML = '';
-    filteredAppointments.forEach(app => {
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
@@ -131,13 +234,8 @@ function renderAppointments() {
             ${visibleColumns.includes('telefone') ? `<p>Telefone: ${app.telefone || '-'}</p>` : ''}
             ${visibleColumns.includes('email') ? `<p>Email: ${app.email || '-'}</p>` : ''}
             ${visibleColumns.includes('nomeMedico') ? `<p>Médico: ${app.nomeMedico || '-'}</p>` : ''}
-            ${visibleColumns.includes('localCRM') ? `<p>Local CRM: ${app.localCRM || '-'}</p>` : ''}
             ${visibleColumns.includes('dataConsulta') ? `<p>Data: ${app.dataConsulta || '-'}</p>` : ''}
             ${visibleColumns.includes('horaConsulta') ? `<p>Hora: ${app.horaConsulta || '-'}</p>` : ''}
-            ${visibleColumns.includes('tipoCirurgia') ? `<p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>` : ''}
-            ${visibleColumns.includes('procedimentos') ? `<p>Procedimentos: ${app.procedimentos || '-'}</p>` : ''}
-            ${visibleColumns.includes('agendamentoFeitoPor') ? `<p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>` : ''}
-            ${visibleColumns.includes('descricao') ? `<p>Descrição: ${app.descricao || '-'}</p>` : ''}
             ${visibleColumns.includes('status') ? `<p>Status: ${app.status || '-'}</p>` : ''}
             <div class="card-actions">
                 <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
@@ -146,32 +244,19 @@ function renderAppointments() {
                 <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
             </div>
         `;
-        if (currentView === 'grid' || (currentView === 'list' && window.innerWidth <= 768)) {
-            cardView.appendChild(card);
-        }
-    });
+        gridView.appendChild(card);
 
-    // Renderizar pipeline
-    const columns = document.querySelectorAll('.pipeline-column');
-    columns.forEach(column => {
-        const status = column.dataset.status;
-        const columnContent = column.querySelector('.column-content');
-        columnContent.innerHTML = '';
-
-        const statusFiltered = filteredAppointments.filter(app => app.status === status);
-        statusFiltered.forEach(app => {
-            const card = document.createElement('div');
-            card.className = 'card mini-card';
-            card.draggable = true;
-            card.dataset.id = app.id;
-            card.dataset.status = app.status;
-            card.innerHTML = `
+        const column = pipelineView.querySelector(`.pipeline-column[data-status="${app.status}"] .column-content`);
+        if (column) {
+            const miniCard = document.createElement('div');
+            miniCard.className = 'mini-card';
+            miniCard.draggable = true;
+            miniCard.dataset.id = app.id;
+            miniCard.dataset.status = app.status;
+            miniCard.innerHTML = `
                 <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-                <p class="medico">Médico: ${app.nomeMedico || '-'}</p>
-                <div class="data">
-                    <span class="date">Data: ${app.dataConsulta || '-'}</span>
-                    <span class="time">Hora: ${app.horaConsulta || '-'}</span>
-                </div>
+                <p>Médico: ${app.nomeMedico || '-'}</p>
+                <p>Data: ${app.dataConsulta || '-'} às ${app.horaConsulta || '-'}</p>
                 <button class="action-btn view-btn" onclick="toggleDetails(this.parentElement)">Mais Detalhes</button>
                 <div class="card-details" style="display: none;">
                     <p>Nome: ${app.nomePaciente || '-'}</p>
@@ -186,136 +271,60 @@ function renderAppointments() {
                     <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
                     <p>Descrição: ${app.descricao || '-'}</p>
                     <p>Status: ${app.status || '-'}</p>
+                    <div class="card-actions">
+                        <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
+                        <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
+                        <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
+                        <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
+                    </div>
                 </div>
             `;
-            columnContent.appendChild(card);
+            column.appendChild(miniCard);
+        }
+    });
 
-            card.addEventListener('dragstart', handleDragStart);
-            card.addEventListener('dragend', handleDragEnd);
-            if (currentView === 'pipeline') {
-                card.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('action-btn')) {
-                        handleCardClick(e, app.id);
-                    }
-                });
-            }
+    document.getElementById('appointmentsTable').classList.toggle('active', currentView === 'list');
+    gridView.classList.toggle('active', currentView === 'grid');
+    pipelineView.classList.toggle('active', currentView === 'pipeline');
+
+    pipelineView.querySelectorAll('.mini-card').forEach(card => {
+        card.addEventListener('dragstart', handleDragStart);
+        card.addEventListener('dragend', handleDragEnd);
+        card.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('action-btn')) handleCardClick(e, card.dataset.id);
         });
+    });
 
+    pipelineView.querySelectorAll('.pipeline-column').forEach(column => {
         column.addEventListener('dragover', handleDragOver);
         column.addEventListener('drop', handleDrop);
     });
-
-    // Controle de visibilidade das visualizações
-    const isMobile = window.innerWidth <= 768;
-    document.getElementById('appointmentsTable').querySelector('table').style.display = (currentView === 'list' && !isMobile) ? 'table' : 'none';
-    cardView.style.display = (currentView === 'grid' || (currentView === 'list' && isMobile)) ? 'grid' : 'none';
-    gridView.style.display = 'none';
-    pipelineView.style.display = currentView === 'pipeline' ? 'block' : 'none';
 }
 
-// Evento de envio do formulário
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const dataConsulta = document.getElementById('dataConsulta').value;
-    if (!dataConsulta) {
-        showNotification('Por favor, insira a data da consulta', true);
-        return;
-    }
+// Funções de Visualização
+function changeView(e) {
+    currentView = e.target.closest('.view-mode').dataset.view;
+    document.querySelectorAll('.view-mode').forEach(btn => btn.classList.remove('active'));
+    e.target.closest('.view-mode').classList.add('active');
+    renderAppointments();
+    saveToFirebase('settings', { key: 'currentView', value: currentView });
+    saveToIndexedDB('settings', { key: 'currentView', value: currentView });
+}
 
-    const appointmentData = {
-        nomePaciente: document.getElementById('nomePaciente').value,
-        telefone: document.getElementById('telefone').value,
-        email: document.getElementById('email').value,
-        nomeMedico: document.getElementById('nomeMedico').value,
-        localCRM: document.getElementById('localCRM').value,
-        dataConsulta: dataConsulta,
-        horaConsulta: document.getElementById('horaConsulta').value,
-        tipoCirurgia: document.getElementById('tipoCirurgia').value,
-        procedimentos: document.getElementById('procedimentos').value,
-        agendamentoFeitoPor: document.getElementById('agendamentoFeitoPor').value,
-        descricao: document.getElementById('descricao').value,
-        status: editId ? document.getElementById('status').value : 'Aguardando Atendimento',
-        createdAt: editId ? appointments.find(a => a.id === editId).createdAt : new Date().toISOString()
-    };
+function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    if (tabId === 'allTab') renderAppointments();
+    else if (tabId === 'insightsTab') generateInsights();
+}
 
-    try {
-        if (editId) {
-            const docRef = doc(db, 'agendaunica', editId);
-            await updateDoc(docRef, appointmentData);
-            const index = appointments.findIndex(a => a.id === editId);
-            appointments[index] = { id: editId, ...appointmentData };
-            showNotification('Agendamento atualizado com sucesso!');
-            editId = null;
-            statusGroup.style.display = 'none';
-        } else {
-            const docRef = await addDoc(collection(db, 'agendaunica'), appointmentData);
-            appointmentData.id = docRef.id;
-            appointments.unshift(appointmentData);
-            showNotification('Agendamento salvo com sucesso!');
-        }
-        localStorage.setItem('appointments', JSON.stringify(appointments));
-        form.reset();
-        formFields.forEach(field => localStorage.removeItem(field));
-        renderAppointments();
-    } catch (error) {
-        console.error('Erro ao salvar agendamento:', error);
-        showNotification('Erro ao salvar agendamento: ' + error.message, true);
-    }
-});
-
-// Funções de Ações
-window.editAppointment = (id) => {
-    const appointment = appointments.find(app => app.id === id);
-    if (!appointment) return;
-
-    editId = id;
-    statusGroup.style.display = 'block';
-    formFields.forEach(field => document.getElementById(field).value = appointment[field] || '');
-    document.getElementById('status').value = appointment.status;
-};
-
-window.shareAppointment = (id) => {
-    const appointment = appointments.find(app => app.id === id);
-    if (!appointment) return;
-
-    const message = `Agendamento:\nNome: ${appointment.nomePaciente || '-'}\nTelefone: ${appointment.telefone || '-'}\nMédico: ${appointment.nomeMedico || '-'}\nData: ${appointment.dataConsulta || '-'}\nHora: ${appointment.horaConsulta || '-'}\nStatus: ${appointment.status || '-'}`;
-    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-};
-
-window.viewAppointment = (id) => {
-    const appointment = appointments.find(app => app.id === id);
-    if (!appointment) return;
-
-    const message = `Detalhes do Agendamento:\nNome: ${appointment.nomePaciente || '-'}\nTelefone: ${appointment.telefone || '-'}\nEmail: ${appointment.email || '-'}\nMédico: ${appointment.nomeMedico || '-'}\nLocal CRM: ${appointment.localCRM || '-'}\nData: ${appointment.dataConsulta || '-'}\nHora: ${appointment.horaConsulta || '-'}\nTipo Cirurgia: ${appointment.tipoCirurgia || '-'}\nProcedimentos: ${appointment.procedimentos || '-'}\nFeito Por: ${appointment.agendamentoFeitoPor || '-'}\nDescrição: ${appointment.descricao || '-'}\nStatus: ${appointment.status || '-'}`;
-    alert(message);
-};
-
-window.deleteAppointment = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este agendamento?')) return;
-
-    try {
-        await deleteDoc(doc(db, 'agendaunica', id));
-        appointments = appointments.filter(app => app.id !== id);
-        localStorage.setItem('appointments', JSON.stringify(appointments));
-        showNotification('Agendamento excluído com sucesso!');
-        renderAppointments();
-    } catch (error) {
-        console.error('Erro ao excluir agendamento:', error);
-        showNotification('Erro ao excluir agendamento: ' + error.message, true);
-    }
-};
-
-// Funções de Pipeline
-let draggedCard = null;
-
+// Drag and Drop
 function handleDragStart(e) {
     draggedCard = e.target;
-    setTimeout(() => draggedCard.style.opacity = '0.5', 0);
+    e.dataTransfer.setData('text/plain', draggedCard.dataset.id);
 }
 
 function handleDragEnd() {
-    draggedCard.style.opacity = '1';
     draggedCard = null;
 }
 
@@ -323,132 +332,418 @@ function handleDragOver(e) {
     e.preventDefault();
 }
 
-function handleDrop(e) {
+async function handleDrop(e) {
     e.preventDefault();
-    if (!draggedCard) return;
-
-    const newStatus = e.currentTarget.dataset.status;
-    const id = draggedCard.dataset.id;
-
-    const docRef = doc(db, 'agendaunica', id);
-    updateDoc(docRef, { status: newStatus })
-        .then(() => {
-            const appointment = appointments.find(app => app.id === id);
-            appointment.status = newStatus;
-            localStorage.setItem('appointments', JSON.stringify(appointments));
-            showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
-            renderAppointments();
-        })
-        .catch(error => {
-            console.error('Erro ao mover agendamento:', error);
-            showNotification('Erro ao mover agendamento: ' + error.message, true);
-        });
+    const id = e.dataTransfer.getData('text/plain');
+    const newStatus = e.target.closest('.pipeline-column').dataset.status;
+    const appointment = appointments.find(a => a.id === id);
+    if (appointment) {
+        appointment.status = newStatus;
+        await saveToFirebase('appointments', appointment);
+        await saveToIndexedDB('appointments', appointments);
+        renderAppointments();
+    }
 }
 
 function handleCardClick(e, id) {
-    const actionBox = document.getElementById('actionBox');
-    actionBox.dataset.id = id;
     actionBox.style.display = 'block';
-
-    actionBox.querySelectorAll('button').forEach(btn => {
-        btn.onclick = () => {
-            const newStatus = btn.dataset.status;
-            const docRef = doc(db, 'agendaunica', id);
-            updateDoc(docRef, { status: newStatus })
-                .then(() => {
-                    const appointment = appointments.find(app => app.id === id);
-                    appointment.status = newStatus;
-                    localStorage.setItem('appointments', JSON.stringify(appointments));
-                    showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
-                    actionBox.style.display = 'none';
-                    renderAppointments();
-                })
-                .catch(error => showNotification('Erro ao mover agendamento: ' + error.message, true));
-        };
+    actionBox.querySelectorAll('button[data-status]').forEach(btn => {
+        btn.onclick = () => moveCard(id, btn.dataset.status);
     });
 }
 
-// Funções de Médicos
-window.openMedicoModal = () => document.getElementById('medicoModal').style.display = 'block';
-window.closeMedicoModal = () => document.getElementById('medicoModal').style.display = 'none';
-
-window.saveMedico = () => {
-    const nome = document.getElementById('novoMedicoNome').value;
-    const crm = document.getElementById('novoMedicoCRM').value;
-    if (!nome || !crm) {
-        showNotification('Por favor, preencha todos os campos do médico', true);
-        return;
+async function moveCard(id, newStatus) {
+    const appointment = appointments.find(a => a.id === id);
+    if (appointment) {
+        appointment.status = newStatus;
+        await saveToFirebase('appointments', appointment);
+        await saveToIndexedDB('appointments', appointments);
+        renderAppointments();
+        closeModal(actionBox);
     }
+}
 
-    medicos.push({ nome, crm });
-    localStorage.setItem('medicos', JSON.stringify(medicos));
-    updateMedicosList();
-    document.getElementById('novoMedicoNome').value = '';
-    document.getElementById('novoMedicoCRM').value = '';
-    closeMedicoModal();
-    showNotification('Médico cadastrado com sucesso!');
-};
+// Funções Auxiliares
+function toggleSelectAll(e) {
+    document.querySelectorAll('.select-row').forEach(checkbox => checkbox.checked = e.target.checked);
+}
+
+function resetForm() {
+    appointmentForm.reset();
+    document.getElementById('statusGroup').style.display = 'none';
+    delete appointmentForm.dataset.id;
+}
+
+function loadFormData(appointment = {}) {
+    document.getElementById('nomePaciente').value = appointment.nomePaciente || '';
+    document.getElementById('telefone').value = appointment.telefone || '';
+    document.getElementById('email').value = appointment.email || '';
+    document.getElementById('nomeMedico').value = appointment.nomeMedico || '';
+    document.getElementById('localCRM').value = appointment.localCRM || '';
+    document.getElementById('dataConsulta').value = appointment.dataConsulta || '';
+    document.getElementById('horaConsulta').value = appointment.horaConsulta || '';
+    document.getElementById('tipoCirurgia').value = appointment.tipoCirurgia || '';
+    document.getElementById('procedimentos').value = appointment.procedimentos || '';
+    document.getElementById('agendamentoFeitoPor').value = appointment.agendamentoFeitoPor || '';
+    document.getElementById('descricao').value = appointment.descricao || '';
+    document.getElementById('status').value = appointment.status || 'Aguardando Atendimento';
+    appointmentForm.dataset.id = appointment.id || '';
+}
+
+function showNotification(message, isError = false) {
+    notification.textContent = message;
+    notification.className = `notification ${isError ? 'error' : ''}`;
+    notification.classList.add('show');
+    setTimeout(() => notification.classList.remove('show'), 3000);
+}
+
+function closeModal(modal) {
+    modal.style.display = 'none';
+}
+
+function clearFilters() {
+    statusFilter.value = 'all';
+    renderAppointments();
+}
+
+// Gestão de Médicos
+function openMedicoModal() {
+    medicoModal.style.display = 'block';
+}
+
+function closeMedicoModal() {
+    closeModal(medicoModal);
+}
+
+async function saveMedico() {
+    const nome = document.getElementById('novoMedicoNome').value || '';
+    const crm = document.getElementById('novoMedicoCRM').value || '';
+    if (nome && crm) {
+        const medico = { nome, crm };
+        medicos.push(medico);
+        await saveToFirebase('medicos', medico);
+        await saveToIndexedDB('medicos', medicos);
+        updateMedicosList();
+        closeMedicoModal();
+        showNotification('Médico cadastrado com sucesso!');
+    } else {
+        showNotification('Preencha nome e CRM do médico!', true);
+    }
+}
 
 function updateMedicosList() {
     const datalist = document.getElementById('medicosList');
-    const displayList = document.getElementById('medicosListDisplay');
     datalist.innerHTML = '';
-    displayList.innerHTML = '';
-
+    medicosListDisplay.innerHTML = '';
     medicos.forEach(medico => {
         const option = document.createElement('option');
         option.value = medico.nome;
         datalist.appendChild(option);
 
         const li = document.createElement('li');
-        li.innerHTML = `${medico.nome} - CRM: ${medico.crm} <button class="delete-medico-btn" onclick="deleteMedico('${medico.nome}')">Excluir</button>`;
-        displayList.appendChild(li);
+        li.innerHTML = `${medico.nome} (CRM: ${medico.crm}) <button class="delete-medico-btn" onclick="deleteMedico('${medico.nome}')">Excluir</button>`;
+        medicosListDisplay.appendChild(li);
     });
 }
 
-window.deleteMedico = (nome) => {
-    medicos = medicos.filter(m => m.nome !== nome);
-    localStorage.setItem('medicos', JSON.stringify(medicos));
-    updateMedicosList();
-    showNotification('Médico excluído com sucesso!');
-};
+async function deleteMedico(nome) {
+    if (confirm(`Tem certeza que deseja excluir o médico ${nome}?`)) {
+        medicos = medicos.filter(m => m.nome !== nome);
+        await deleteFromFirebase('medicos', nome);
+        await saveToIndexedDB('medicos', medicos);
+        updateMedicosList();
+        showNotification('Médico excluído com sucesso!');
+    }
+}
 
-// Funções de Relatórios
-window.generateReport = () => {
+// Gestão de Usuários
+function updateUsersList() {
+    usersList.innerHTML = '';
+    users.forEach(user => {
+        const li = document.createElement('li');
+        li.innerHTML = `${user.username} <button onclick="deleteUser('${user.username}')">Excluir</button>`;
+        usersList.appendChild(li);
+    });
+}
+
+async function addUser() {
+    const username = document.getElementById('newUsername').value || '';
+    const password = document.getElementById('newPassword').value || '';
+    if (username && password) {
+        const user = { username, password };
+        users.push(user);
+        await saveToFirebase('users', user);
+        await saveToIndexedDB('users', users);
+        updateUsersList();
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        showNotification('Usuário adicionado com sucesso!');
+    } else {
+        showNotification('Preencha usuário e senha!', true);
+    }
+}
+
+async function deleteUser(username) {
+    if (confirm(`Tem certeza que deseja excluir o usuário ${username}?`)) {
+        users = users.filter(u => u.username !== username);
+        await deleteFromFirebase('users', username);
+        await saveToIndexedDB('users', users);
+        updateUsersList();
+        showNotification('Usuário excluído com sucesso!');
+    }
+}
+
+// Backup
+async function backupLocal() {
+    const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_${new Date().toISOString()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Backup local realizado com sucesso!');
+}
+
+async function restoreLocal() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        const text = await file.text();
+        const data = JSON.parse(text);
+        appointments = data.appointments || [];
+        medicos = data.medicos || [];
+        users = data.users || [];
+        currentView = data.settings?.currentView || 'list';
+        deleteAllPassword = data.settings?.deleteAllPassword || '1234';
+        lastSync = data.settings?.lastSync || 0;
+        theme = data.settings?.theme || {};
+        await saveToFirebase('appointments', appointments);
+        await saveToFirebase('medicos', medicos);
+        await saveToFirebase('users', users);
+        await saveToFirebase('settings', { key: 'theme', value: theme });
+        await saveToIndexedDB('appointments', appointments);
+        await saveToIndexedDB('medicos', medicos);
+        await saveToIndexedDB('users', users);
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        renderAppointments();
+        updateMedicosList();
+        updateUsersList();
+        applyTheme();
+        showNotification('Backup restaurado com sucesso!');
+    };
+    input.click();
+}
+
+async function backupFirebase() {
+    try {
+        for (const appointment of appointments) await saveToFirebase('appointments', appointment);
+        for (const medico of medicos) await saveToFirebase('medicos', medico);
+        for (const user of users) await saveToFirebase('users', user);
+        await saveToFirebase('settings', { key: 'currentView', value: currentView });
+        await saveToFirebase('settings', { key: 'theme', value: theme });
+        showNotification('Backup enviado ao Firebase com sucesso!');
+    } catch (error) {
+        console.error('Erro ao fazer backup no Firebase:', error);
+        showNotification('Erro ao fazer backup: ' + error.message, true);
+    }
+}
+
+async function restoreFirebase() {
+    try {
+        await syncLocalWithFirebase();
+        showNotification('Dados restaurados do Firebase com sucesso!');
+    } catch (error) {
+        console.error('Erro ao restaurar do Firebase:', error);
+        showNotification('Erro ao restaurar: ' + error.message, true);
+    }
+}
+
+// Integração com Firebase
+async function saveToFirebase(collectionName, data) {
+    try {
+        const cleanedData = {};
+        for (const [key, value] of Object.entries(data)) {
+            cleanedData[key] = value !== undefined ? value : null;
+        }
+        const docId = Array.isArray(data) ? data.map(d => d.id || d.nome || d.username) : (data.id || data.nome || data.username || data.key);
+        if (Array.isArray(data)) {
+            for (const item of data) {
+                const docRef = doc(db, collectionName, item.id || item.nome || item.username);
+                await setDoc(docRef, item, { merge: true });
+            }
+        } else {
+            const docRef = doc(db, collectionName, docId);
+            await setDoc(docRef, cleanedData, { merge: true });
+        }
+        console.log(`Dados salvos em ${collectionName}:`, cleanedData);
+    } catch (error) {
+        console.error(`Erro ao salvar em ${collectionName}:`, error);
+        throw error;
+    }
+}
+
+async function deleteFromFirebase(collectionName, id) {
+    try {
+        const docRef = doc(db, collectionName, id);
+        await deleteDoc(docRef);
+        console.log(`Documento excluído de ${collectionName}: ${id}`);
+    } catch (error) {
+        console.error(`Erro ao excluir de ${collectionName}:`, error);
+        throw error;
+    }
+}
+
+async function syncLocalWithFirebase() {
+    try {
+        console.log("Sincronizando com Firebase...");
+        const appointmentsSnapshot = await getDocs(collection(db, 'appointments'));
+        const firebaseAppointments = [];
+        appointmentsSnapshot.forEach(doc => firebaseAppointments.push({ id: doc.id, ...doc.data() }));
+        if (firebaseAppointments.length > 0) {
+            appointments = firebaseAppointments;
+            await saveToIndexedDB('appointments', appointments);
+        } else if (appointments.length > 0) {
+            for (const appointment of appointments) await saveToFirebase('appointments', appointment);
+        }
+
+        const medicosSnapshot = await getDocs(collection(db, 'medicos'));
+        const firebaseMedicos = [];
+        medicosSnapshot.forEach(doc => firebaseMedicos.push({ nome: doc.id, ...doc.data() }));
+        if (firebaseMedicos.length > 0) {
+            medicos = firebaseMedicos;
+            await saveToIndexedDB('medicos', medicos);
+        } else if (medicos.length > 0) {
+            for (const medico of medicos) await saveToFirebase('medicos', medico);
+        }
+
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const firebaseUsers = [];
+        usersSnapshot.forEach(doc => firebaseUsers.push({ username: doc.id, ...doc.data() }));
+        if (firebaseUsers.length > 0) {
+            users = firebaseUsers;
+            await saveToIndexedDB('users', users);
+        } else if (users.length > 0) {
+            for (const user of users) await saveToFirebase('users', user);
+        }
+
+        const settingsSnapshot = await getDocs(collection(db, 'settings'));
+        const firebaseSettings = {};
+        settingsSnapshot.forEach(doc => firebaseSettings[doc.id] = doc.data().value);
+        if (Object.keys(firebaseSettings).length > 0) {
+            currentView = firebaseSettings.currentView || 'list';
+            deleteAllPassword = firebaseSettings.deleteAllPassword || '1234';
+            theme = firebaseSettings.theme || {};
+            lastSync = Date.now();
+            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        } else {
+            await saveToFirebase('settings', { key: 'currentView', value: currentView });
+            await saveToFirebase('settings', { key: 'deleteAllPassword', value: deleteAllPassword });
+            await saveToFirebase('settings', { key: 'theme', value: theme });
+        }
+
+        console.log("Sincronização concluída!");
+        renderAppointments();
+        lastSync = Date.now();
+        await saveToIndexedDB('settings', { key: 'lastSync', value: lastSync });
+    } catch (error) {
+        console.error('Erro ao sincronizar com Firebase:', error);
+        throw error;
+    }
+}
+
+// IndexedDB
+async function saveToIndexedDB(storeName, data) {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('ClinicDB', 1);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'nome' });
+            if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
+            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+        };
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            const transaction = db.transaction([storeName], 'readwrite');
+            const store = transaction.objectStore(storeName);
+            if (Array.isArray(data)) {
+                data.forEach(item => store.put(item));
+            } else {
+                store.put({ ...data, key: data.key || 'data' });
+            }
+            transaction.oncomplete = () => {
+                db.close();
+                resolve();
+            };
+            transaction.onerror = () => reject(transaction.error);
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function loadFromIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('ClinicDB', 1);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'nome' });
+            if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
+            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+        };
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readonly');
+            const appointmentsStore = transaction.objectStore('appointments');
+            const medicosStore = transaction.objectStore('medicos');
+            const usersStore = transaction.objectStore('users');
+            const settingsStore = transaction.objectStore('settings');
+
+            const data = { appointments: [], medicos: [], users: [], settings: {} };
+            appointmentsStore.getAll().onsuccess = (e) => data.appointments = e.target.result || [];
+            medicosStore.getAll().onsuccess = (e) => data.medicos = e.target.result || [];
+            usersStore.getAll().onsuccess = (e) => data.users = e.target.result || [];
+            settingsStore.getAll().onsuccess = (e) => e.target.result.forEach(s => data.settings[s.key] = s.value);
+
+            transaction.oncomplete = () => {
+                db.close();
+                resolve(data);
+            };
+            transaction.onerror = () => reject(transaction.error);
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Relatórios e Insights
+function generateReport() {
     const reportType = document.getElementById('reportType').value;
-    const reportMonth = document.getElementById('reportMonth').value;
-    const reportYear = document.getElementById('reportYear').value;
-    const reportDoctor = document.getElementById('reportDoctor').value;
+    const reportBody = document.getElementById('reportBody');
+    const reportGrid = document.getElementById('reportGrid');
     let filteredAppointments = [...appointments];
 
-    switch (reportType) {
-        case 'all': break;
-        case 'byName': filteredAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
-        case 'byRecent': filteredAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-        case 'byOldest': filteredAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); break;
-        case 'byPhone': filteredAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
-        case 'byDate': filteredAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
-        case 'byDoctor':
-            if (reportDoctor) filteredAppointments = filteredAppointments.filter(app => app.nomeMedico === reportDoctor);
-            filteredAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || ''));
-            break;
-        case 'byMonth':
-            if (reportMonth) {
-                const [year, month] = reportMonth.split('-');
-                filteredAppointments = filteredAppointments.filter(app => {
-                    const date = new Date(app.dataConsulta);
-                    return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1;
-                });
-            }
-            break;
-        case 'byYear':
-            if (reportYear) filteredAppointments = filteredAppointments.filter(app => new Date(app.dataConsulta).getFullYear() === parseInt(reportYear));
-            break;
+    if (reportType === 'byName') filteredAppointments.sort((a, b) => a.nomePaciente.localeCompare(b.nomePaciente));
+    else if (reportType === 'byRecent') filteredAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta));
+    else if (reportType === 'byOldest') filteredAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta));
+    else if (reportType === 'byPhone') filteredAppointments.sort((a, b) => a.telefone.localeCompare(b.telefone));
+    else if (reportType === 'byDate') filteredAppointments.sort((a, b) => a.dataConsulta.localeCompare(b.dataConsulta));
+    else if (reportType === 'byDoctor') {
+        const doctor = document.getElementById('reportDoctor').value;
+        filteredAppointments = filteredAppointments.filter(a => a.nomeMedico === doctor);
+    } else if (reportType === 'byMonth') {
+        const month = document.getElementById('reportMonth').value;
+        filteredAppointments = filteredAppointments.filter(a => a.dataConsulta.startsWith(month));
+    } else if (reportType === 'byYear') {
+        const year = document.getElementById('reportYear').value;
+        filteredAppointments = filteredAppointments.filter(a => a.dataConsulta.startsWith(year));
     }
 
     reportBody.innerHTML = '';
     reportGrid.innerHTML = '';
-
     filteredAppointments.forEach(app => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -474,304 +769,205 @@ window.generateReport = () => {
             <p>Telefone: ${app.telefone || '-'}</p>
             <p>Email: ${app.email || '-'}</p>
             <p>Médico: ${app.nomeMedico || '-'}</p>
-            <p>Local CRM: ${app.localCRM || '-'}</p>
             <p>Data: ${app.dataConsulta || '-'}</p>
             <p>Hora: ${app.horaConsulta || '-'}</p>
-            <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
-            <p>Procedimentos: ${app.procedimentos || '-'}</p>
-            <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
-            <p>Descrição: ${app.descricao || '-'}</p>
             <p>Status: ${app.status || '-'}</p>
         `;
         reportGrid.appendChild(card);
     });
-
-    reportBody.parentElement.style.display = 'block';
-    reportGrid.style.display = 'none';
-    showNotification('Relatório gerado com sucesso!');
-};
-
-window.toggleReportView = (view) => {
-    const reportTable = document.getElementById('reportResult');
-    const reportGrid = document.getElementById('reportGrid');
-    const buttons = document.querySelectorAll('#reportsTab .view-mode');
-
-    buttons.forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
-
-    if (view === 'list') {
-        reportTable.style.display = 'block';
-        reportGrid.style.display = 'none';
-    } else if (view === 'grid') {
-        reportTable.style.display = 'none';
-        reportGrid.style.display = 'grid';
-    }
-};
-
-// Função para alternar detalhes no pipeline
-window.toggleDetails = (card) => {
-    const details = card.querySelector('.card-details');
-    details.style.display = details.style.display === 'block' ? 'none' : 'block';
-};
-
-// Eventos de Controles
-document.getElementById('allBtn').addEventListener('click', () => {
-    document.getElementById('allTab').style.display = 'block';
-    document.getElementById('reportsTab').style.display = 'none';
-});
-
-document.getElementById('reportsBtn').addEventListener('click', () => {
-    document.getElementById('allTab').style.display = 'none';
-    document.getElementById('reportsTab').style.display = 'block';
-});
-
-document.getElementById('printBtn').addEventListener('click', () => {
-    if (currentView === 'list') {
-        document.querySelector('#appointmentsTable table').classList.add('print');
-    } else if (currentView === 'grid') {
-        cardView.classList.add('print');
-    } else if (currentView === 'pipeline') {
-        pipelineView.classList.add('print');
-    }
-    window.print();
-    document.querySelector('#appointmentsTable table').classList.remove('print');
-    cardView.classList.remove('print');
-    pipelineView.classList.remove('print');
-});
-
-document.getElementById('exportExcelBtn').addEventListener('click', () => {
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(appointments.map(app => ({
-        'Nome do Paciente': app.nomePaciente,
-        'Telefone': app.telefone,
-        'Email': app.email,
-        'Médico': app.nomeMedico,
-        'Local CRM': app.localCRM,
-        'Data': app.dataConsulta,
-        'Hora': app.horaConsulta,
-        'Tipo Cirurgia': app.tipoCirurgia,
-        'Procedimentos': app.procedimentos,
-        'Feito Por': app.agendamentoFeitoPor,
-        'Descrição': app.descricao,
-        'Status': app.status
-    })));
-    XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
-    XLSX.writeFile(wb, 'agendamentos.xlsx');
-});
-
-document.getElementById('deleteAllBtn').addEventListener('click', () => {
-    document.getElementById('deleteAllModal').style.display = 'block';
-});
-
-window.confirmDeleteAll = async () => {
-    const password = document.getElementById('deletePassword').value;
-    if (password !== deleteAllPassword) {
-        showNotification('Senha incorreta!', true);
-        return;
-    }
-
-    try {
-        const querySnapshot = await getDocs(collection(db, 'agendaunica'));
-        const batch = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
-        await Promise.all(batch);
-        appointments = [];
-        localStorage.setItem('appointments', JSON.stringify(appointments));
-        showNotification('Todos os agendamentos foram excluídos!');
-        document.getElementById('deleteAllModal').style.display = 'none';
-        renderAppointments();
-    } catch (error) {
-        showNotification('Erro ao excluir todos os agendamentos: ' + error.message, true);
-    }
-};
-
-window.closeDeleteAllModal = () => document.getElementById('deleteAllModal').style.display = 'none';
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-    form.reset();
-    formFields.forEach(field => localStorage.removeItem(field));
-    editId = null;
-    statusGroup.style.display = 'none';
-    showNotification('Formulário restaurado!');
-});
-
-document.getElementById('sortFilterBtn').addEventListener('click', () => document.getElementById('sortFilterModal').style.display = 'block');
-window.closeSortFilterModal = () => document.getElementById('sortFilterModal').style.display = 'none';
-
-window.applySortFilter = () => {
-    const sortType = document.getElementById('sortType').value;
-    let sortedAppointments = [...appointments];
-
-    switch (sortType) {
-        case 'nameAZ': sortedAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
-        case 'recent': sortedAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-        case 'oldest': sortedAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); break;
-        case 'phone': sortedAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
-        case 'date': sortedAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
-        case 'doctor': sortedAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || '')); break;
-        case 'month':
-            sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth());
-            break;
-        case 'year':
-            sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear());
-            break;
-    }
-
-    appointments = sortedAppointments;
-    localStorage.setItem('appointments', JSON.stringify(appointments));
-    renderAppointments();
-    closeSortFilterModal();
-    showNotification('Filtro aplicado com sucesso!');
-};
-
-document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-    statusFilter.value = 'all';
-    appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    localStorage.setItem('appointments', JSON.stringify(appointments));
-    renderAppointments();
-    showNotification('Filtros limpos!');
-});
-
-document.getElementById('settingsBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('settingsModal').style.display = 'block';
-});
-
-document.addEventListener('click', (e) => {
-    const settingsModal = document.getElementById('settingsModal');
-    const settingsBtn = document.getElementById('settingsBtn');
-    if (settingsModal.style.display === 'block' && !settingsModal.contains(e.target) && !settingsBtn.contains(e.target)) {
-        settingsModal.style.display = 'none';
-    }
-});
-
-document.getElementById('saveTheme').addEventListener('click', () => {
-    const bodyBgColor = document.getElementById('bodyBgColor').value;
-    const cardBgColor = document.getElementById('cardBgColor').value;
-    const formBgColor = document.getElementById('formBgColor').value;
-    const textColor = document.getElementById('textColor').value;
-    const borderColor = document.getElementById('borderColor').value;
-    const newPassword = document.getElementById('deleteAllPassword').value;
-
-    document.body.style.backgroundColor = bodyBgColor;
-    document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
-        el.style.backgroundColor = cardBgColor;
-        el.style.borderColor = borderColor;
-    });
-    document.querySelector('.form-section').style.backgroundColor = formBgColor;
-    document.body.style.color = textColor;
-    document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = borderColor);
-
-    if (newPassword) {
-        deleteAllPassword = newPassword;
-        localStorage.setItem('deleteAllPassword', newPassword);
-    }
-
-    localStorage.setItem('theme', JSON.stringify({ bodyBgColor, cardBgColor, formBgColor, textColor, borderColor }));
-    showNotification('Tema salvo com sucesso!');
-    document.getElementById('settingsModal').style.display = 'none';
-});
-
-document.getElementById('resetTheme').addEventListener('click', () => {
-    document.body.style.backgroundColor = '#f0f4f8';
-    document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
-        el.style.backgroundColor = '#ffffff';
-        el.style.borderColor = '#1e40af';
-    });
-    document.querySelector('.form-section').style.backgroundColor = '#ffffff';
-    document.body.style.color = '#1f2937';
-    document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = '#1e40af');
-
-    localStorage.removeItem('theme');
-    showNotification('Tema restaurado!');
-    document.getElementById('settingsModal').style.display = 'none';
-});
-
-document.getElementById('backupData').addEventListener('click', () => {
-    const backupData = JSON.stringify({ appointments, medicos });
-    const blob = new Blob([backupData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'backup-agendamentos.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotification('Backup realizado com sucesso!');
-});
-
-document.getElementById('restoreBackup').addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                appointments = data.appointments || [];
-                medicos = data.medicos || [];
-                localStorage.setItem('medicos', JSON.stringify(medicos));
-                localStorage.setItem('appointments', JSON.stringify(appointments));
-
-                const batch = appointments.map(app => {
-                    if (app.id) return updateDoc(doc(db, 'agendaunica', app.id), app);
-                    return addDoc(collection(db, 'agendaunica'), app);
-                });
-                await Promise.all(batch);
-
-                renderAppointments();
-                updateMedicosList();
-                showNotification('Backup restaurado com sucesso!');
-            } catch (error) {
-                showNotification('Erro ao restaurar backup: ' + error.message, true);
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-});
-
-// Eventos de visualização
-viewModes.forEach(button => {
-    button.addEventListener('click', () => {
-        viewModes.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-        currentView = button.dataset.view;
-        renderAppointments();
-    });
-});
-
-// Evento para selecionar todas as linhas
-selectAllCheckbox.addEventListener('change', () => {
-    document.querySelectorAll('.select-row').forEach(cb => cb.checked = selectAllCheckbox.checked);
-});
-
-// Evento para filtrar por status
-statusFilter.addEventListener('change', renderAppointments);
-
-// Evento para alternar colunas visíveis
-document.querySelectorAll('.column-toggle').forEach(toggle => {
-    toggle.addEventListener('change', () => {
-        const column = toggle.dataset.column;
-        const cells = document.querySelectorAll(`td:nth-child(${Array.from(toggle.parentElement.parentElement.children).indexOf(toggle.parentElement) + 1})`);
-        cells.forEach(cell => cell.style.display = toggle.checked ? '' : 'none');
-        renderAppointments();
-    });
-});
-
-// Carregar tema salvo
-const savedTheme = JSON.parse(localStorage.getItem('theme'));
-if (savedTheme) {
-    document.body.style.backgroundColor = savedTheme.bodyBgColor;
-    document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
-        el.style.backgroundColor = savedTheme.cardBgColor;
-        el.style.borderColor = savedTheme.borderColor;
-    });
-    document.querySelector('.form-section').style.backgroundColor = savedTheme.formBgColor;
-    document.body.style.color = savedTheme.textColor;
-    document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = savedTheme.borderColor);
 }
 
-// Inicializar a aplicação
-syncAppointments(); // Carrega do cache ou sincroniza se necessário
-updateMedicosList();
+function toggleReportView(view) {
+    document.querySelectorAll('#reportsTab .view-mode').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
+    document.getElementById('reportResult').style.display = view === 'list' ? 'block' : 'none';
+    document.getElementById('reportGrid').style.display = view === 'grid' ? 'grid' : 'none';
+}
+
+function generateInsights() {
+    const insightsCards = document.getElementById('insightsCards');
+    insightsCards.innerHTML = '';
+
+    const totalAppointments = appointments.length;
+    const statusCount = { 'Aguardando Atendimento': 0, 'Atendido': 0, 'Reagendado': 0, 'Cancelado': 0 };
+    appointments.forEach(app => statusCount[app.status]++);
+
+    const insights = [
+        { title: 'Total de Agendamentos', content: `<p>${totalAppointments} agendamentos registrados.</p>` },
+        { title: 'Status dos Agendamentos', content: `<ul><li>Aguardando: ${statusCount['Aguardando Atendimento']}</li><li>Atendido: ${statusCount['Atendido']}</li><li>Reagendado: ${statusCount['Reagendado']}</li><li>Cancelado: ${statusCount['Cancelado']}</li></ul>` },
+        { title: 'Médicos Mais Ativos', content: getTopDoctors() }
+    ];
+
+    insights.forEach(insight => {
+        const card = document.createElement('div');
+        card.className = 'insights-card';
+        card.innerHTML = `<h4>${insight.title}</h4>${insight.content}`;
+        insightsCards.appendChild(card);
+    });
+}
+
+function getTopDoctors() {
+    const doctorCount = {};
+    appointments.forEach(app => doctorCount[app.nomeMedico] = (doctorCount[app.nomeMedico] || 0) + 1);
+    const sortedDoctors = Object.entries(doctorCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, count]) => `<li>${name}: ${count} agendamentos</li>`);
+    return `<ul>${sortedDoctors.join('')}</ul>`;
+}
+
+// Impressão
+function printAppointments() {
+    if (currentView === 'list') {
+        document.getElementById('appointmentsTable').classList.add('print');
+        document.getElementById('gridView').classList.remove('print');
+    } else if (currentView === 'grid') {
+        document.getElementById('gridView').classList.add('print');
+        document.getElementById('appointmentsTable').classList.remove('print');
+    }
+    window.print();
+    document.getElementById('appointmentsTable').classList.remove('print');
+    document.getElementById('gridView').classList.remove('print');
+}
+
+// Exportação para Excel
+function exportToExcel() {
+    const data = appointments.map(app => ({
+        Paciente: app.nomePaciente || '',
+        Telefone: app.telefone || '',
+        Email: app.email || '',
+        Médico: app.nomeMedico || '',
+        'Local CRM': app.localCRM || '',
+        Data: app.dataConsulta || '',
+        Hora: app.horaConsulta || '',
+        'Tipo Cirurgia': app.tipoCirurgia || '',
+        Procedimentos: app.procedimentos || '',
+        'Feito Por': app.agendamentoFeitoPor || '',
+        Descrição: app.descricao || '',
+        Status: app.status || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
+    XLSX.writeFile(wb, `agendamentos_${new Date().toISOString().split('T')[0]}.xlsx`);
+    showNotification('Exportação para Excel concluída!');
+}
+
+// Filtros Avançados
+function openSortFilterModal() {
+    sortFilterModal.style.display = 'block';
+}
+
+function closeSortFilterModal() {
+    closeModal(sortFilterModal);
+}
+
+function applySortFilter() {
+    const sortType = document.getElementById('sortType').value;
+    let sortedAppointments = [...appointments];
+    if (sortType === 'nameAZ') sortedAppointments.sort((a, b) => a.nomePaciente.localeCompare(b.nomePaciente));
+    else if (sortType === 'recent') sortedAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta));
+    else if (sortType === 'oldest') sortedAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta));
+    else if (sortType === 'phone') sortedAppointments.sort((a, b) => a.telefone.localeCompare(b.telefone));
+    else if (sortType === 'date') sortedAppointments.sort((a, b) => a.dataConsulta.localeCompare(b.dataConsulta));
+    else if (sortType === 'doctor') sortedAppointments.sort((a, b) => a.nomeMedico.localeCompare(b.nomeMedico));
+    else if (sortType === 'month') sortedAppointments.sort((a, b) => a.dataConsulta.slice(0, 7).localeCompare(b.dataConsulta.slice(0, 7)));
+    else if (sortType === 'year') sortedAppointments.sort((a, b) => a.dataConsulta.slice(0, 4).localeCompare(b.dataConsulta.slice(0, 4)));
+    appointments = sortedAppointments;
+    renderAppointments();
+    closeSortFilterModal();
+}
+
+// Configurações
+function openSettingsModal() {
+    document.getElementById('deleteAllPassword').value = deleteAllPassword;
+    settingsModal.style.display = 'block';
+}
+
+async function saveTheme() {
+    theme = {
+        bodyBgColor: document.getElementById('bodyBgColor').value,
+        cardBgColor: document.getElementById('cardBgColor').value,
+        formBgColor: document.getElementById('formBgColor').value,
+        textColor: document.getElementById('textColor').value,
+        borderColor: document.getElementById('borderColor').value
+    };
+    applyTheme();
+    await saveToFirebase('settings', { key: 'theme', value: theme });
+    await saveToIndexedDB('settings', { key: 'theme', value: theme });
+    showNotification('Tema salvo com sucesso!');
+}
+
+function applyTheme() {
+    document.body.style.backgroundColor = theme.bodyBgColor || '#f0f4f8';
+    document.querySelectorAll('.card, .search-card, .appointments-section, .form-section').forEach(el => {
+        el.style.backgroundColor = theme.cardBgColor || '#ffffff';
+        el.style.borderColor = theme.borderColor || '#1e40af';
+    });
+    document.querySelector('.form-section').style.backgroundColor = theme.formBgColor || '#ffffff';
+    document.body.style.color = theme.textColor || '#1f2937';
+}
+
+async function resetTheme() {
+    theme = {};
+    applyTheme();
+    await saveToFirebase('settings', { key: 'theme', value: theme });
+    await saveToIndexedDB('settings', { key: 'theme', value: theme });
+    showNotification('Tema restaurado para o padrão!');
+}
+
+// Exclusão de Todos
+function openDeleteAllModal() {
+    deleteAllModal.style.display = 'block';
+}
+
+function closeDeleteAllModal() {
+    closeModal(deleteAllModal);
+}
+
+async function confirmDeleteAll() {
+    const password = document.getElementById('deletePassword').value;
+    if (password === deleteAllPassword) {
+        appointments = [];
+        await saveToFirebase('appointments', appointments);
+        await saveToIndexedDB('appointments', appointments);
+        const querySnapshot = await getDocs(collection(db, 'appointments'));
+        querySnapshot.forEach(async (doc) => await deleteDoc(doc.ref));
+        renderAppointments();
+        closeDeleteAllModal();
+        showNotification('Todos os agendamentos foram excluídos!');
+    } else {
+        showNotification('Senha incorreta!', true);
+    }
+}
+
+// Detalhes no Pipeline
+function toggleDetails(card) {
+    const details = card.querySelector('.card-details');
+    details.style.display = details.style.display === 'none' ? 'block' : 'none';
+}
+
+// Exportar Funções Globais
+window.editAppointment = editAppointment;
+window.deleteAppointment = deleteAppointment;
+window.shareAppointment = shareAppointment;
+window.viewAppointment = viewAppointment;
+window.openMedicoModal = openMedicoModal;
+window.closeMedicoModal = closeMedicoModal;
+window.saveMedico = saveMedico;
+window.deleteMedico = deleteMedico;
+window.addUser = addUser;
+window.deleteUser = deleteUser;
+window.generateReport = generateReport;
+window.toggleReportView = toggleReportView;
+window.backupLocal = backupLocal;
+window.restoreLocal = restoreLocal;
+window.backupFirebase = backupFirebase;
+window.restoreFirebase = restoreFirebase;
+window.openDeleteAllModal = openDeleteAllModal;
+window.closeDeleteAllModal = closeDeleteAllModal;
+window.confirmDeleteAll = confirmDeleteAll;
+window.openSortFilterModal = openSortFilterModal;
+window.closeSortFilterModal = closeSortFilterModal;
+window.applySortFilter = applySortFilter;
+window.openSettingsModal = openSettingsModal;
+window.saveTheme = saveTheme;
+window.resetTheme = resetTheme;
+window.toggleDetails = toggleDetails;
