@@ -615,10 +615,25 @@ document.getElementById('exportExcelBtn').addEventListener('click', () => {
     XLSX.writeFile(wb, 'agendamentos.xlsx');
 });
 
-document.getElementById('settingsBtn').addEventListener('click', () => {
+// Evento para abrir o modal de configurações
+document.getElementById('settingsBtn').addEventListener('click', (e) => {
+    e.stopPropagation(); // Impede a propagação do clique
     document.getElementById('settingsModal').style.display = 'block';
 });
 
+// Evento para fechar o modal ao clicar fora
+document.addEventListener('click', (e) => {
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsBtn = document.getElementById('settingsBtn');
+
+    if (settingsModal.style.display === 'block' && 
+        !settingsModal.contains(e.target) && 
+        !settingsBtn.contains(e.target)) {
+        settingsModal.style.display = 'none';
+    }
+});
+
+// Eventos de salvar e restaurar tema (mantidos como estavam)
 document.getElementById('saveTheme').addEventListener('click', () => {
     const bodyBgColor = document.getElementById('bodyBgColor').value;
     const cardBgColor = document.getElementById('cardBgColor').value;
