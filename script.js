@@ -124,6 +124,7 @@ function renderAppointments() {
     const columnToggles = document.querySelectorAll('.column-toggle');
     const visibleColumns = Array.from(columnToggles).filter(t => t.checked).map(t => t.dataset.column);
 
+    // Renderizar tabela
     appointmentsBody.innerHTML = '';
     filteredAppointments.forEach(app => {
         const row = document.createElement('tr');
@@ -151,8 +152,9 @@ function renderAppointments() {
         appointmentsBody.appendChild(row);
     });
 
-    // Renderizar os cards
+    // Renderizar cards (usado em modo grid ou mobile)
     cardView.innerHTML = '';
+    gridView.innerHTML = ''; // Limpa gridView para evitar duplicatas
     filteredAppointments.forEach(app => {
         const card = document.createElement('div');
         card.className = 'card';
@@ -176,37 +178,12 @@ function renderAppointments() {
                 <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
             </div>
         `;
-        cardView.appendChild(card);
+        if (currentView === 'grid' || (currentView === 'list' && window.innerWidth <= 768)) {
+            cardView.appendChild(card);
+        }
     });
 
-    // Renderizar os grids
-    gridView.innerHTML = '';
-    filteredAppointments.forEach(app => {
-        const item = document.createElement('div');
-        item.className = 'card';
-        item.innerHTML = `
-            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-            ${visibleColumns.includes('telefone') ? `<p>Telefone: ${app.telefone || '-'}</p>` : ''}
-            ${visibleColumns.includes('email') ? `<p>Email: ${app.email || '-'}</p>` : ''}
-            ${visibleColumns.includes('nomeMedico') ? `<p>Médico: ${app.nomeMedico || '-'}</p>` : ''}
-            ${visibleColumns.includes('localCRM') ? `<p>Local CRM: ${app.localCRM || '-'}</p>` : ''}
-            ${visibleColumns.includes('dataConsulta') ? `<p>Data: ${app.dataConsulta || '-'}</p>` : ''}
-            ${visibleColumns.includes('horaConsulta') ? `<p>Hora: ${app.horaConsulta || '-'}</p>` : ''}
-            ${visibleColumns.includes('tipoCirurgia') ? `<p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>` : ''}
-            ${visibleColumns.includes('procedimentos') ? `<p>Procedimentos: ${app.procedimentos || '-'}</p>` : ''}
-            ${visibleColumns.includes('agendamentoFeitoPor') ? `<p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>` : ''}
-            ${visibleColumns.includes('descricao') ? `<p>Descrição: ${app.descricao || '-'}</p>` : ''}
-            ${visibleColumns.includes('status') ? `<p>Status: ${app.status || '-'}</p>` : ''}
-            <div class="card-actions">
-                <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
-                <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
-                <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
-            </div>
-        `;
-        gridView.appendChild(item);
-    });
-
-    // Renderizar os pipelines
+    // Renderizar pipeline
     const columns = document.querySelectorAll('.pipeline-column');
     columns.forEach(column => {
         const status = column.dataset.status;
@@ -260,23 +237,65 @@ function renderAppointments() {
         column.addEventListener('drop', handleDrop);
     });
 
-    // Exibe a tabela, cards ou grid conforme a visualização atual
-    document.getElementById('appointmentsTable').querySelector('table').style.display = currentView === 'list' && window.innerWidth > 768 ? 'table' : 'none';
-    cardView.style.display = currentView === 'grid' || (currentView === 'list' && window.innerWidth <= 768) ? 'grid' : 'none';
-    gridView.style.display = currentView === 'grid' ? 'grid' : 'none';
-    pipelineView.style.display = currentView === 'pipeline' ? 'grid' : 'none';
+    // Controle de visibilidade das visualizações
+    const isMobile = window.innerWidth <= 768;
+    document.getElementById('appointmentsTable').querySelector('table').style.display = (currentView === 'list' && !isMobile) ? 'table' : 'none';
+    cardView.style.display = (currentView === 'grid' || (currentView === 'list' && isMobile)) ? 'grid' : 'none';
+    gridView.style.display = 'none'; // Não usamos mais gridView separadamente
+    pipelineView.style.display = currentView === 'pipeline' ? 'block' : 'none';
 }
 
-// Funções de Drag and Drop
+// Funções de Ações
+window.editAppointment = (id) => {
+    const appointment = appointments.find(app => app.id === id);
+    if (!appointment) return;
+
+    editId = id;
+    statusGroup.style.display = 'block';
+    formFields.forEach(field => document.getElementById(field).value = appointment[field] || '');
+    document.getElementById('status').value = appointment.status;
+};
+
+window.shareAppointment = (id) => {
+    const appointment = appointments.find(app => app.id === id);
+    if (!appointment) return;
+
+    const message = `Agendamento:\nNome: ${appointment.nomePaciente || '-'}\nTelefone: ${appointment.telefone || '-'}\nMédico: ${appointment.nomeMedico || '-'}\nData: ${appointment.dataConsulta || '-'}\nHora: ${appointment.horaConsulta || '-'}\nStatus: ${appointment.status || '-'}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+};
+
+window.viewAppointment = (id) => {
+    const appointment = appointments.find(app => app.id === id);
+    if (!appointment) return;
+
+    const message = `Detalhes do Agendamento:\nNome: ${appointment.nomePaciente || '-'}\nTelefone: ${appointment.telefone || '-'}\nEmail: ${appointment.email || '-'}\nMédico: ${appointment.nomeMedico || '-'}\nLocal CRM: ${appointment.localCRM || '-'}\nData: ${appointment.dataConsulta || '-'}\nHora: ${appointment.horaConsulta || '-'}\nTipo Cirurgia: ${appointment.tipoCirurgia || '-'}\nProcedimentos: ${appointment.procedimentos || '-'}\nFeito Por: ${appointment.agendamentoFeitoPor || '-'}\nDescrição: ${appointment.descricao || '-'}\nStatus: ${appointment.status || '-'}`;
+    alert(message);
+};
+
+window.deleteAppointment = async (id) => {
+    if (!confirm('Tem certeza que deseja excluir este agendamento?')) return;
+
+    try {
+        await deleteDoc(doc(db, 'agendaunica', id));
+        showNotification('Agendamento excluído com sucesso!');
+        loadAppointments();
+    } catch (error) {
+        console.error('Erro ao excluir agendamento:', error);
+        showNotification('Erro ao excluir agendamento: ' + error.message, true);
+    }
+};
+
+// Funções de Pipeline
 let draggedCard = null;
 
 function handleDragStart(e) {
     draggedCard = e.target;
-    e.target.classList.add('dragging');
+    setTimeout(() => draggedCard.style.opacity = '0.5', 0);
 }
 
-function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
+function handleDragEnd() {
+    draggedCard.style.opacity = '1';
     draggedCard = null;
 }
 
@@ -284,434 +303,91 @@ function handleDragOver(e) {
     e.preventDefault();
 }
 
-async function handleDrop(e) {
+function handleDrop(e) {
     e.preventDefault();
-    if (draggedCard) {
-        const newStatus = e.currentTarget.dataset.status;
-        const appointmentId = draggedCard.dataset.id;
-        try {
-            const docRef = doc(db, 'agendaunica', appointmentId);
-            await updateDoc(docRef, { status: newStatus });
-            showNotification(`Movido para "${newStatus}" com sucesso!`);
+    if (!draggedCard) return;
+
+    const newStatus = e.currentTarget.dataset.status;
+    const id = draggedCard.dataset.id;
+
+    const docRef = doc(db, 'agendaunica', id);
+    updateDoc(docRef, { status: newStatus })
+        .then(() => {
+            showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
             loadAppointments();
-        } catch (error) {
-            console.error('Erro ao mover status:', error);
-            showNotification('Erro ao mover: ' + error.message, true);
-        }
-    }
+        })
+        .catch(error => {
+            console.error('Erro ao mover agendamento:', error);
+            showNotification('Erro ao mover agendamento: ' + error.message, true);
+        });
 }
 
-// Função para mostrar as opções ao clicar no card no pipeline
 function handleCardClick(e, id) {
-    if (e.target.classList.contains('action-btn')) return;
     const actionBox = document.getElementById('actionBox');
+    actionBox.dataset.id = id;
     actionBox.style.display = 'block';
 
-    const buttons = actionBox.querySelectorAll('button');
-    buttons.forEach(btn => {
-        btn.onclick = async () => {
+    actionBox.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
             const newStatus = btn.dataset.status;
-            try {
-                const docRef = doc(db, 'agendaunica', id);
-                await updateDoc(docRef, { status: newStatus });
-                showNotification(`Movido para "${newStatus}" com sucesso!`);
-                actionBox.style.display = 'none';
-                loadAppointments();
-            } catch (error) {
-                console.error('Erro ao mover status:', error);
-                showNotification('Erro ao mover: ' + error.message, true);
-            }
+            const docRef = doc(db, 'agendaunica', id);
+            updateDoc(docRef, { status: newStatus })
+                .then(() => {
+                    showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
+                    actionBox.style.display = 'none';
+                    loadAppointments();
+                })
+                .catch(error => showNotification('Erro ao mover agendamento: ' + error.message, true));
         };
     });
 }
 
-// Funções Globais
-window.editAppointment = (id) => {
-    const app = appointments.find(a => a.id === id);
-    if (app) {
-        document.getElementById('nomePaciente').value = app.nomePaciente || '';
-        document.getElementById('telefone').value = app.telefone || '';
-        document.getElementById('email').value = app.email || '';
-        document.getElementById('nomeMedico').value = app.nomeMedico || '';
-        document.getElementById('localCRM').value = app.localCRM || '';
-        document.getElementById('dataConsulta').value = app.dataConsulta || '';
-        document.getElementById('horaConsulta').value = app.horaConsulta || '';
-        document.getElementById('tipoCirurgia').value = app.tipoCirurgia || '';
-        document.getElementById('procedimentos').value = app.procedimentos || '';
-        document.getElementById('agendamentoFeitoPor').value = app.agendamentoFeitoPor || '';
-        document.getElementById('descricao').value = app.descricao || '';
-        document.getElementById('status').value = app.status || 'Aguardando Atendimento';
-        statusGroup.style.display = 'block';
-        editId = id;
-    }
-};
-
-window.deleteAppointment = async (id) => {
-    if (confirm('Tem certeza que deseja excluir este agendamento?')) {
-        try {
-            await deleteDoc(doc(db, 'agendaunica', id));
-            showNotification('Agendamento excluído com sucesso!');
-            loadAppointments();
-        } catch (error) {
-            console.error('Erro ao excluir agendamento:', error);
-            showNotification('Erro ao excluir agendamento: ' + error.message, true);
-        }
-    }
-};
-
-window.shareAppointment = (id) => {
-    const app = appointments.find(a => a.id === id);
-    const message = `
-        Agendamento:
-        Paciente: ${app.nomePaciente || '-'}
-        Telefone: ${app.telefone || '-'}
-        Email: ${app.email || '-'}
-        Médico: ${app.nomeMedico || '-'}
-        Local CRM: ${app.localCRM || '-'}
-        Data: ${app.dataConsulta || '-'}
-        Hora: ${app.horaConsulta || '-'}
-        Tipo Cirurgia: ${app.tipoCirurgia || '-'}
-        Procedimentos: ${app.procedimentos || '-'}
-        Feito Por: ${app.agendamentoFeitoPor || '-'}
-        Descrição: ${app.descricao || '-'}
-        Status: ${app.status || '-'}
-    `.trim();
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
-};
-
-window.viewAppointment = (id) => {
-    const app = appointments.find(a => a.id === id);
-    alert(`
-        Paciente: ${app.nomePaciente || '-'}
-        Telefone: ${app.telefone || '-'}
-        Email: ${app.email || '-'}
-        Médico: ${app.nomeMedico || '-'}
-        Local CRM: ${app.localCRM || '-'}
-        Data: ${app.dataConsulta || '-'}
-        Hora: ${app.horaConsulta || '-'}
-        Tipo de Cirurgia: ${app.tipoCirurgia || '-'}
-        Procedimentos: ${app.procedimentos || '-'}
-        Descrição: ${app.descricao || '-'}
-        Agendamento Feito Por: ${app.agendamentoFeitoPor || '-'}
-        Status: ${app.status || '-'}
-    `);
-};
-
-window.openMedicoModal = () => {
-    document.getElementById('medicoModal').style.display = 'block';
-    updateMedicosListDisplay();
-};
-
-window.closeMedicoModal = () => {
-    document.getElementById('medicoModal').style.display = 'none';
-};
+// Funções de Médicos
+window.openMedicoModal = () => document.getElementById('medicoModal').style.display = 'block';
+window.closeMedicoModal = () => document.getElementById('medicoModal').style.display = 'none';
 
 window.saveMedico = () => {
     const nome = document.getElementById('novoMedicoNome').value;
     const crm = document.getElementById('novoMedicoCRM').value;
-    if (nome && crm) {
-        medicos.push({ nome, crm });
-        localStorage.setItem('medicos', JSON.stringify(medicos));
-        updateMedicosList();
-        updateMedicosListDisplay();
-        showNotification('Médico cadastrado com sucesso!');
-        document.getElementById('novoMedicoNome').value = '';
-        document.getElementById('novoMedicoCRM').value = '';
-    } else {
-        showNotification('Preencha todos os campos', true);
+    if (!nome || !crm) {
+        showNotification('Por favor, preencha todos os campos do médico', true);
+        return;
     }
+
+    medicos.push({ nome, crm });
+    localStorage.setItem('medicos', JSON.stringify(medicos));
+    updateMedicosList();
+    document.getElementById('novoMedicoNome').value = '';
+    document.getElementById('novoMedicoCRM').value = '';
+    closeMedicoModal();
+    showNotification('Médico cadastrado com sucesso!');
 };
 
-// Função para atualizar a lista de médicos no modal
-function updateMedicosListDisplay() {
-    const listDisplay = document.getElementById('medicosListDisplay');
-    listDisplay.innerHTML = '';
-    medicos.forEach((medico, index) => {
-        const li = document.createElement('li');
-        li.innerHTML = `${medico.nome} - CRM: ${medico.crm}`;
-        li.addEventListener('click', () => {
-            document.getElementById('nomeMedico').value = medico.nome;
-            document.getElementById('localCRM').value = medico.crm;
-            closeMedicoModal();
-        });
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-medico-btn';
-        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm(`Deseja excluir o médico ${medico.nome}?`)) {
-                medicos.splice(index, 1);
-                localStorage.setItem('medicos', JSON.stringify(medicos));
-                updateMedicosList();
-                updateMedicosListDisplay();
-                showNotification('Médico excluído com sucesso!');
-            }
-        });
-
-        li.appendChild(deleteBtn);
-        listDisplay.appendChild(li);
-    });
-    updateMedicosList();
-}
-
-// Função para atualizar a lista de médicos no datalist
 function updateMedicosList() {
     const datalist = document.getElementById('medicosList');
+    const displayList = document.getElementById('medicosListDisplay');
     datalist.innerHTML = '';
+    displayList.innerHTML = '';
+
     medicos.forEach(medico => {
         const option = document.createElement('option');
         option.value = medico.nome;
-        option.textContent = `${medico.nome} - CRM: ${medico.crm}`;
         datalist.appendChild(option);
-    });
 
-    const nomeMedicoInput = document.getElementById('nomeMedico');
-    nomeMedicoInput.addEventListener('change', () => {
-        const selectedMedico = medicos.find(m => m.nome === nomeMedicoInput.value);
-        if (selectedMedico) {
-            document.getElementById('localCRM').value = selectedMedico.crm;
-        }
+        const li = document.createElement('li');
+        li.innerHTML = `${medico.nome} - CRM: ${medico.crm} <button class="delete-medico-btn" onclick="deleteMedico('${medico.nome}')">Excluir</button>`;
+        displayList.appendChild(li);
     });
 }
 
-// Eventos de controle
-document.getElementById('allBtn').addEventListener('click', () => {
-    document.getElementById('allTab').style.display = 'block';
-    document.getElementById('reportsTab').style.display = 'none';
-});
-
-document.getElementById('reportsBtn').addEventListener('click', () => {
-    document.getElementById('allTab').style.display = 'none';
-    document.getElementById('reportsTab').style.display = 'block';
-});
-
-document.getElementById('printBtn').addEventListener('click', () => {
-    // Esconde todas as visualizações inicialmente
-    document.getElementById('appointmentsTable').querySelector('table').style.display = 'none';
-    document.getElementById('appointmentsTable').querySelector('table').classList.remove('print');
-    cardView.style.display = 'none';
-    cardView.classList.remove('print');
-    gridView.style.display = 'none';
-    gridView.classList.remove('print');
-    pipelineView.style.display = 'none';
-    pipelineView.classList.remove('print');
-
-    // Mostra a visualização correta com base no modo atual
-    if (currentView === 'list') {
-        document.getElementById('appointmentsTable').querySelector('table').style.display = 'table';
-        document.getElementById('appointmentsTable').querySelector('table').classList.add('print');
-    } else if (currentView === 'grid') {
-        cardView.style.display = 'grid';
-        cardView.classList.add('print');
-    } else if (currentView === 'pipeline') {
-        pipelineView.style.display = 'grid';
-        pipelineView.classList.add('print');
-        // Expande todos os detalhes nos cards do pipeline
-        document.querySelectorAll('.mini-card .card-details').forEach(details => {
-            details.style.display = 'block';
-        });
-    }
-
-    setTimeout(() => {
-        window.print();
-        // Após a impressão, reverte para a visualização normal
-        renderAppointments();
-    }, 100);
-});
-
-document.getElementById('statusFilterBtn').addEventListener('click', () => {
-    statusFilter.focus();
-});
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-    statusFilter.value = 'all';
-    appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    showNotification('Tabela restaurada!');
-    renderAppointments();
-});
-
-document.getElementById('deleteAllBtn').addEventListener('click', () => {
-    document.getElementById('deleteAllModal').style.display = 'block';
-});
-
-window.closeDeleteAllModal = () => {
-    document.getElementById('deleteAllModal').style.display = 'none';
+window.deleteMedico = (nome) => {
+    medicos = medicos.filter(m => m.nome !== nome);
+    localStorage.setItem('medicos', JSON.stringify(medicos));
+    updateMedicosList();
+    showNotification('Médico excluído com sucesso!');
 };
 
-window.confirmDeleteAll = async () => {
-    const enteredPassword = document.getElementById('deletePassword').value;
-    if (enteredPassword === deleteAllPassword) {
-        try {
-            const querySnapshot = await getDocs(collection(db, 'agendaunica'));
-            for (const docSnap of querySnapshot.docs) {
-                await deleteDoc(doc(db, 'agendaunica', docSnap.id));
-            }
-            showNotification('Todos os agendamentos excluídos!');
-            closeDeleteAllModal();
-            loadAppointments();
-        } catch (error) {
-            console.error('Erro ao excluir todos:', error);
-            showNotification('Erro ao excluir: ' + error.message, true);
-        }
-    } else {
-        showNotification('Senha incorreta', true);
-    }
-};
-
-document.getElementById('sortFilterBtn').addEventListener('click', () => {
-    document.getElementById('sortFilterModal').style.display = 'block';
-});
-
-window.closeSortFilterModal = () => {
-    document.getElementById('sortFilterModal').style.display = 'none';
-};
-
-window.applySortFilter = () => {
-    const sortType = document.getElementById('sortType').value;
-    let sortedAppointments = [...appointments];
-    switch (sortType) {
-        case 'nameAZ': sortedAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
-        case 'recent': sortedAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
-        case 'oldest': sortedAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); break;
-        case 'phone': sortedAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
-        case 'date': sortedAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
-        case 'doctor': sortedAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || '')); break;
-        case 'month': sortedAppointments.sort((a, b) => new Date(a.dataConsulta || '9999-12-31').getMonth() - new Date(b.dataConsulta || '9999-12-31').getMonth()); break;
-        case 'year': sortedAppointments.sort((a, b) => new Date(a.dataConsulta || '9999-12-31').getFullYear() - new Date(b.dataConsulta || '9999-12-31').getFullYear()); break;
-    }
-    appointments = sortedAppointments;
-    renderAppointments();
-    closeSortFilterModal();
-    showNotification('Filtro aplicado com sucesso!');
-};
-
-document.getElementById('clearFiltersBtn').addEventListener('click', () => {
-    statusFilter.value = 'all';
-    document.getElementById('sortType').value = 'recent';
-    appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    showNotification('Filtros limpos!');
-    renderAppointments();
-});
-
-document.getElementById('exportExcelBtn').addEventListener('click', () => {
-    const data = appointments.map(app => ({
-        Paciente: app.nomePaciente || '-',
-        Telefone: app.telefone || '-',
-        Email: app.email || '-',
-        Médico: app.nomeMedico || '-',
-        'Local CRM': app.localCRM || '-',
-        Data: app.dataConsulta || '-',
-        Hora: app.horaConsulta || '-',
-        'Tipo Cirurgia': app.tipoCirurgia || '-',
-        Procedimentos: app.procedimentos || '-',
-        'Feito Por': app.agendamentoFeitoPor || '-',
-        Descrição: app.descricao || '-',
-        Status: app.status || '-'
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
-    XLSX.writeFile(wb, 'agendamentos.xlsx');
-});
-
-// Evento para abrir o modal de configurações
-document.getElementById('settingsBtn').addEventListener('click', (e) => {
-    e.stopPropagation(); // Impede a propagação do clique
-    document.getElementById('settingsModal').style.display = 'block';
-});
-
-// Evento para fechar o modal ao clicar fora
-document.addEventListener('click', (e) => {
-    const settingsModal = document.getElementById('settingsModal');
-    const settingsBtn = document.getElementById('settingsBtn');
-
-    if (settingsModal.style.display === 'block' && 
-        !settingsModal.contains(e.target) && 
-        !settingsBtn.contains(e.target)) {
-        settingsModal.style.display = 'none';
-    }
-});
-
-// Eventos de salvar e restaurar tema (mantidos como estavam)
-document.getElementById('saveTheme').addEventListener('click', () => {
-    const bodyBgColor = document.getElementById('bodyBgColor').value;
-    const cardBgColor = document.getElementById('cardBgColor').value;
-    const formBgColor = document.getElementById('formBgColor').value;
-    const textColor = document.getElementById('textColor').value;
-    const borderColor = document.getElementById('borderColor').value;
-    const newPassword = document.getElementById('deleteAllPassword').value;
-
-    document.body.style.backgroundColor = bodyBgColor;
-    document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
-        el.style.backgroundColor = cardBgColor;
-        el.style.borderColor = borderColor;
-    });
-    document.querySelector('.form-section').style.backgroundColor = formBgColor;
-    document.body.style.color = textColor;
-    document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = borderColor);
-
-    if (newPassword) {
-        deleteAllPassword = newPassword;
-        localStorage.setItem('deleteAllPassword', newPassword);
-    }
-
-    localStorage.setItem('theme', JSON.stringify({ bodyBgColor, cardBgColor, formBgColor, textColor, borderColor }));
-    showNotification('Tema salvo com sucesso!');
-    document.getElementById('settingsModal').style.display = 'none';
-});
-
-document.getElementById('resetTheme').addEventListener('click', () => {
-    document.body.style.backgroundColor = '#f0f4f8';
-    document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
-        el.style.backgroundColor = '#ffffff';
-        el.style.borderColor = '#1e40af';
-    });
-    document.querySelector('.form-section').style.backgroundColor = '#ffffff';
-    document.body.style.color = '#1f2937';
-    document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = '#1e40af');
-
-    localStorage.removeItem('theme');
-    showNotification('Tema restaurado!');
-    document.getElementById('settingsModal').style.display = 'none';
-});
-
-document.getElementById('backupData').addEventListener('click', () => {
-    const backup = JSON.stringify(appointments);
-    const blob = new Blob([backup], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'backup_agendamentos.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotification('Backup realizado com sucesso!');
-});
-
-document.getElementById('restoreBackup').addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                for (const app of data) {
-                    await addDoc(collection(db, 'agendaunica'), app);
-                }
-                showNotification('Backup restaurado com sucesso!');
-                loadAppointments();
-            } catch (error) {
-                showNotification('Erro ao restaurar backup: ' + error.message, true);
-            }
-        };
-        reader.readAsText(file);
-    };
-    input.click();
-});
-
+// Funções de Relatórios
 window.generateReport = () => {
     const reportType = document.getElementById('reportType').value;
     const reportMonth = document.getElementById('reportMonth').value;
@@ -789,11 +465,241 @@ window.generateReport = () => {
     showNotification('Relatório gerado com sucesso!');
 };
 
+// Função para alternar visualização nos relatórios
+window.toggleReportView = (view) => {
+    const reportTable = document.getElementById('reportResult');
+    const reportGrid = document.getElementById('reportGrid');
+    const buttons = document.querySelectorAll('#reportsTab .view-mode');
+
+    buttons.forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
+
+    if (view === 'list') {
+        reportTable.style.display = 'block';
+        reportGrid.style.display = 'none';
+    } else if (view === 'grid') {
+        reportTable.style.display = 'none';
+        reportGrid.style.display = 'grid';
+    }
+};
+
 // Função para alternar detalhes no pipeline
 window.toggleDetails = (card) => {
     const details = card.querySelector('.card-details');
     details.style.display = details.style.display === 'block' ? 'none' : 'block';
 };
+
+// Eventos de Controles
+document.getElementById('allBtn').addEventListener('click', () => {
+    document.getElementById('allTab').style.display = 'block';
+    document.getElementById('reportsTab').style.display = 'none';
+});
+
+document.getElementById('reportsBtn').addEventListener('click', () => {
+    document.getElementById('allTab').style.display = 'none';
+    document.getElementById('reportsTab').style.display = 'block';
+});
+
+document.getElementById('printBtn').addEventListener('click', () => {
+    if (currentView === 'list') {
+        document.querySelector('#appointmentsTable table').classList.add('print');
+    } else if (currentView === 'grid') {
+        cardView.classList.add('print');
+    } else if (currentView === 'pipeline') {
+        pipelineView.classList.add('print');
+    }
+    window.print();
+    document.querySelector('#appointmentsTable table').classList.remove('print');
+    cardView.classList.remove('print');
+    pipelineView.classList.remove('print');
+});
+
+document.getElementById('exportExcelBtn').addEventListener('click', () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(appointments.map(app => ({
+        'Nome do Paciente': app.nomePaciente,
+        'Telefone': app.telefone,
+        'Email': app.email,
+        'Médico': app.nomeMedico,
+        'Local CRM': app.localCRM,
+        'Data': app.dataConsulta,
+        'Hora': app.horaConsulta,
+        'Tipo Cirurgia': app.tipoCirurgia,
+        'Procedimentos': app.procedimentos,
+        'Feito Por': app.agendamentoFeitoPor,
+        'Descrição': app.descricao,
+        'Status': app.status
+    })));
+    XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
+    XLSX.writeFile(wb, 'agendamentos.xlsx');
+});
+
+document.getElementById('deleteAllBtn').addEventListener('click', () => {
+    document.getElementById('deleteAllModal').style.display = 'block';
+});
+
+window.confirmDeleteAll = async () => {
+    const password = document.getElementById('deletePassword').value;
+    if (password !== deleteAllPassword) {
+        showNotification('Senha incorreta!', true);
+        return;
+    }
+
+    try {
+        const querySnapshot = await getDocs(collection(db, 'agendaunica'));
+        const batch = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(batch);
+        showNotification('Todos os agendamentos foram excluídos!');
+        document.getElementById('deleteAllModal').style.display = 'none';
+        loadAppointments();
+    } catch (error) {
+        showNotification('Erro ao excluir todos os agendamentos: ' + error.message, true);
+    }
+};
+
+window.closeDeleteAllModal = () => document.getElementById('deleteAllModal').style.display = 'none';
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+    form.reset();
+    formFields.forEach(field => localStorage.removeItem(field));
+    editId = null;
+    statusGroup.style.display = 'none';
+    showNotification('Formulário restaurado!');
+});
+
+document.getElementById('sortFilterBtn').addEventListener('click', () => document.getElementById('sortFilterModal').style.display = 'block');
+window.closeSortFilterModal = () => document.getElementById('sortFilterModal').style.display = 'none';
+
+window.applySortFilter = () => {
+    const sortType = document.getElementById('sortType').value;
+    let sortedAppointments = [...appointments];
+
+    switch (sortType) {
+        case 'nameAZ': sortedAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
+        case 'recent': sortedAppointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); break;
+        case 'oldest': sortedAppointments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)); break;
+        case 'phone': sortedAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
+        case 'date': sortedAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
+        case 'doctor': sortedAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || '')); break;
+        case 'month':
+            sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth());
+            break;
+        case 'year':
+            sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear());
+            break;
+    }
+
+    appointments = sortedAppointments;
+    renderAppointments();
+    closeSortFilterModal();
+    showNotification('Filtro aplicado com sucesso!');
+};
+
+document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+    statusFilter.value = 'all';
+    appointments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    renderAppointments();
+    showNotification('Filtros limpos!');
+});
+
+document.getElementById('settingsBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('settingsModal').style.display = 'block';
+});
+
+document.addEventListener('click', (e) => {
+    const settingsModal = document.getElementById('settingsModal');
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsModal.style.display === 'block' && !settingsModal.contains(e.target) && !settingsBtn.contains(e.target)) {
+        settingsModal.style.display = 'none';
+    }
+});
+
+document.getElementById('saveTheme').addEventListener('click', () => {
+    const bodyBgColor = document.getElementById('bodyBgColor').value;
+    const cardBgColor = document.getElementById('cardBgColor').value;
+    const formBgColor = document.getElementById('formBgColor').value;
+    const textColor = document.getElementById('textColor').value;
+    const borderColor = document.getElementById('borderColor').value;
+    const newPassword = document.getElementById('deleteAllPassword').value;
+
+    document.body.style.backgroundColor = bodyBgColor;
+    document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
+        el.style.backgroundColor = cardBgColor;
+        el.style.borderColor = borderColor;
+    });
+    document.querySelector('.form-section').style.backgroundColor = formBgColor;
+    document.body.style.color = textColor;
+    document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = borderColor);
+
+    if (newPassword) {
+        deleteAllPassword = newPassword;
+        localStorage.setItem('deleteAllPassword', newPassword);
+    }
+
+    localStorage.setItem('theme', JSON.stringify({ bodyBgColor, cardBgColor, formBgColor, textColor, borderColor }));
+    showNotification('Tema salvo com sucesso!');
+    document.getElementById('settingsModal').style.display = 'none';
+});
+
+document.getElementById('resetTheme').addEventListener('click', () => {
+    document.body.style.backgroundColor = '#f0f4f8';
+    document.querySelectorAll('.card, .search-card, .form-section, .appointments-section, .action-box').forEach(el => {
+        el.style.backgroundColor = '#ffffff';
+        el.style.borderColor = '#1e40af';
+    });
+    document.querySelector('.form-section').style.backgroundColor = '#ffffff';
+    document.body.style.color = '#1f2937';
+    document.querySelectorAll('input, select, textarea').forEach(el => el.style.borderColor = '#1e40af');
+
+    localStorage.removeItem('theme');
+    showNotification('Tema restaurado!');
+    document.getElementById('settingsModal').style.display = 'none';
+});
+
+document.getElementById('backupData').addEventListener('click', () => {
+    const backupData = JSON.stringify({ appointments, medicos });
+    const blob = new Blob([backupData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'backup-agendamentos.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotification('Backup realizado com sucesso!');
+});
+
+document.getElementById('restoreBackup').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                appointments = data.appointments || [];
+                medicos = data.medicos || [];
+                localStorage.setItem('medicos', JSON.stringify(medicos));
+
+                const batch = appointments.map(app => {
+                    if (app.id) return updateDoc(doc(db, 'agendaunica', app.id), app);
+                    return addDoc(collection(db, 'agendaunica'), app);
+                });
+                await Promise.all(batch);
+
+                loadAppointments();
+                updateMedicosList();
+                showNotification('Backup restaurado com sucesso!');
+            } catch (error) {
+                showNotification('Erro ao restaurar backup: ' + error.message, true);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+});
 
 // Eventos de visualização
 viewModes.forEach(button => {
@@ -802,18 +708,6 @@ viewModes.forEach(button => {
         button.classList.add('active');
         currentView = button.dataset.view;
         renderAppointments();
-
-        // Remove os eventos de clique antigos do pipeline antes de adicionar novos
-        if (currentView === 'pipeline') {
-            document.querySelectorAll('.mini-card').forEach(card => {
-                card.removeEventListener('click', handleCardClick);
-                card.addEventListener('click', (e) => {
-                    if (!e.target.classList.contains('action-btn')) {
-                        handleCardClick(e, card.dataset.id);
-                    }
-                });
-            });
-        }
     });
 });
 
