@@ -3,7 +3,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-/// Configuração do Firebase
+// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBxPLohS2xOErPb8FH0cFRnNzxy699KHUM",
     authDomain: "agendaunica-fb0ea.firebaseapp.com",
@@ -14,9 +14,7 @@ const firebaseConfig = {
     measurementId: "G-L8C2KQZMH7"
 };
 
-
-
-// Variáveis Globais (declaradas no topo para evitar erros de inicialização)
+// Variáveis Globais
 let app, db, auth;
 let appointments = [];
 let medicos = [];
@@ -28,9 +26,9 @@ let draggedCard = null;
 let theme = {};
 let errorLogs = [];
 let currentUser = null;
-let notification = null; // Declarado aqui, será inicializado depois
+let notification = null;
 
-// Elementos do DOM (declarados como null e inicializados no DOMContentLoaded)
+// Elementos do DOM
 let appointmentForm = null;
 let appointmentsBody = null;
 let gridView = null;
@@ -1040,12 +1038,134 @@ function generateInsights() {
 
 // Impressão
 function printAppointments() {
-    document.getElementById('appointmentsTable').classList.add('print');
-    document.getElementById('gridView').classList.add('print');
-    window.print();
-    document.getElementById('appointmentsTable').classList.remove('print');
-    document.getElementById('gridView').classList.remove('print');
-    showNotification('Impressão iniciada!');
+    // Filtra os agendamentos com base no filtro de status atual
+    let selectedAppointments = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
+
+    // Verifica se há agendamentos para imprimir
+    if (selectedAppointments.length === 0) {
+        showNotification('Nenhum agendamento para imprimir!', true);
+        return;
+    }
+
+    // Cria uma nova janela para impressão
+    const printWindow = window.open('', '_blank');
+
+    // Verifica o modo de visualização atual e ajusta o formato da impressão
+    if (currentView === 'list') {
+        // Impressão em Tabela (Lista)
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Impressão - Lista de Agendamentos</title>
+                <style>
+                    @page { size: landscape; margin: 5mm; }
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 5mm; }
+                    h1 { text-align: center; font-size: 18px; margin-bottom: 10px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                    th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+                    th { background-color: #e9ecef; font-weight: bold; }
+                    tr:nth-child(even) { background-color: #f9f9f9; }
+                </style>
+            </head>
+            <body>
+                <h1>Lista de Agendamentos</h1>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Paciente</th>
+                            <th>Telefone</th>
+                            <th>Email</th>
+                            <th>Médico</th>
+                            <th>Local CRM</th>
+                            <th>Data</th>
+                            <th>Hora</th>
+                            <th>Tipo Cirurgia</th>
+                            <th>Procedimentos</th>
+                            <th>Feito Por</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${selectedAppointments.map(app => `
+                            <tr>
+                                <td>${app.id || '-'}</td>
+                                <td>${app.nomePaciente || '-'}</td>
+                                <td>${app.telefone || '-'}</td>
+                                <td>${app.email || '-'}</td>
+                                <td>${app.nomeMedico || '-'}</td>
+                                <td>${app.localCRM || '-'}</td>
+                                <td>${app.dataConsulta || '-'}</td>
+                                <td>${app.horaConsulta || '-'}</td>
+                                <td>${app.tipoCirurgia || '-'}</td>
+                                <td>${app.procedimentos || '-'}</td>
+                                <td>${app.agendamentoFeitoPor || '-'}</td>
+                                <td>${app.descricao || '-'}</td>
+                                <td>${app.status || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `);
+    } else if (currentView === 'grid') {
+        // Impressão em Cards (Grid)
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Impressão - Grid de Agendamentos</title>
+                <style>
+                    @page { size: landscape; margin: 5mm; }
+                    body { font-family: Arial, sans-serif; margin: 0; padding: 5mm; }
+                    h1 { text-align: center; font-size: 18px; margin-bottom: 10px; }
+                    .card-container { display: flex; flex-wrap: wrap; gap: 10px; }
+                    .card { border: 1px solid #333; padding: 10px; width: 250px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); background-color: #fff; }
+                    .card h4 { font-size: 14px; margin-bottom: 8px; color: #007bff; }
+                    .card p { font-size: 12px; margin: 4px 0; }
+                    .card p strong { color: #333; }
+                </style>
+            </head>
+            <body>
+                <h1>Grid de Agendamentos</h1>
+                <div class="card-container">
+                    ${selectedAppointments.map(app => `
+                        <div class="card">
+                            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                            <p><strong>ID:</strong> ${app.id || '-'}</p>
+                            <p><strong>Telefone:</strong> ${app.telefone || '-'}</p>
+                            <p><strong>Email:</strong> ${app.email || '-'}</p>
+                            <p><strong>Médico:</strong> ${app.nomeMedico || '-'}</p>
+                            <p><strong>Local CRM:</strong> ${app.localCRM || '-'}</p>
+                            <p><strong>Data:</strong> ${app.dataConsulta || '-'}</p>
+                            <p><strong>Hora:</strong> ${app.horaConsulta || '-'}</p>
+                            <p><strong>Tipo Cirurgia:</strong> ${app.tipoCirurgia || '-'}</p>
+                            <p><strong>Procedimentos:</strong> ${app.procedimentos || '-'}</p>
+                            <p><strong>Feito Por:</strong> ${app.agendamentoFeitoPor || '-'}</p>
+                            <p><strong>Descrição:</strong> ${app.descricao || '-'}</p>
+                            <p><strong>Status:</strong> ${app.status || '-'}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </body>
+            </html>
+        `);
+    } else {
+        // Modo pipeline não é suportado para impressão
+        printWindow.close();
+        showNotification('Impressão não suportada no modo Pipeline!', true);
+        return;
+    }
+
+    // Finaliza e imprime a janela
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+
+    // Exibe notificação de sucesso
+    showNotification(`Impressão iniciada no modo ${currentView === 'list' ? 'Lista' : 'Grid'}!`);
 }
 
 // Exportação para Excel
