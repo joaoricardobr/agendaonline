@@ -1,8 +1,9 @@
 // Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
-// Configuração do Firebase
+/// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBxPLohS2xOErPb8FH0cFRnNzxy699KHUM",
     authDomain: "agendaunica-fb0ea.firebaseapp.com",
@@ -13,17 +14,10 @@ const firebaseConfig = {
     measurementId: "G-L8C2KQZMH7"
 };
 
-// Inicialização do Firebase
-let app, db;
-try {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    console.log("Firebase inicializado com sucesso!");
-} catch (error) {
-    console.error("Erro ao inicializar Firebase:", error);
-}
 
-// Variáveis Globais
+
+// Variáveis Globais (declaradas no topo para evitar erros de inicialização)
+let app, db, auth;
 let appointments = [];
 let medicos = [];
 let users = [];
@@ -33,28 +27,108 @@ let deleteAllPassword = '1234';
 let draggedCard = null;
 let theme = {};
 let errorLogs = [];
+let currentUser = null;
+let notification = null; // Declarado aqui, será inicializado depois
 
-// Elementos do DOM
-const appointmentForm = document.getElementById('appointmentForm');
-const appointmentsBody = document.getElementById('appointmentsBody');
-const gridView = document.getElementById('gridView');
-const pipelineView = document.getElementById('pipelineView');
-const statusFilter = document.getElementById('statusFilter');
-const notification = document.getElementById('notification');
-const actionBox = document.getElementById('actionBox');
-const medicoModal = document.getElementById('medicoModal');
-const deleteAllModal = document.getElementById('deleteAllModal');
-const sortFilterModal = document.getElementById('sortFilterModal');
-const settingsModal = document.getElementById('settingsModal');
-const medicosListDisplay = document.getElementById('medicosListDisplay');
-const usersList = document.getElementById('usersList');
+// Elementos do DOM (declarados como null e inicializados no DOMContentLoaded)
+let appointmentForm = null;
+let appointmentsBody = null;
+let gridView = null;
+let pipelineView = null;
+let statusFilter = null;
+let actionBox = null;
+let medicoModal = null;
+let deleteAllModal = null;
+let sortFilterModal = null;
+let settingsModal = null;
+let medicosListDisplay = null;
+let usersList = null;
+let loginForm = null;
+let loginEmail = null;
+let loginPassword = null;
+let rememberMe = null;
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', async () => {
+// Inicialização do Firebase
+try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    console.log("Firebase inicializado com sucesso!");
+} catch (error) {
+    console.error("Erro ao inicializar Firebase:", error);
+    errorLogs.push(`[${new Date().toISOString()}] Erro ao inicializar Firebase: ${error.message}`);
+}
+
+// Inicialização do DOM
+document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM carregado, iniciando aplicação...");
-    await loadInitialData();
+
+    // Inicializar elementos do DOM
+    notification = document.getElementById('notification');
+    appointmentForm = document.getElementById('appointmentForm');
+    appointmentsBody = document.getElementById('appointmentsBody');
+    gridView = document.getElementById('gridView');
+    pipelineView = document.getElementById('pipelineView');
+    statusFilter = document.getElementById('statusFilter');
+    actionBox = document.getElementById('actionBox');
+    medicoModal = document.getElementById('medicoModal');
+    deleteAllModal = document.getElementById('deleteAllModal');
+    sortFilterModal = document.getElementById('sortFilterModal');
+    settingsModal = document.getElementById('settingsModal');
+    medicosListDisplay = document.getElementById('medicosListDisplay');
+    usersList = document.getElementById('usersList');
+    loginForm = document.getElementById('loginForm');
+    loginEmail = document.getElementById('loginEmail');
+    loginPassword = document.getElementById('loginPassword');
+    rememberMe = document.getElementById('rememberMe');
+
+    if (notification) {
+        showNotification("Firebase inicializado com sucesso!");
+    } else {
+        console.warn("Elemento de notificação não encontrado!");
+    }
+
     setupEventListeners();
-    renderAppointments();
+
+    // Verificar estado de autenticação
+    onAuthStateChanged(auth, (user) => {
+        console.log("Estado de autenticação alterado:", user ? "Usuário logado" : "Nenhum usuário logado");
+        currentUser = user;
+        if (user) {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+            loadInitialData();
+            showNotification(`Bem-vindo de volta, ${user.email}!`);
+        } else {
+            document.getElementById('loginContainer').style.display = 'flex';
+            document.getElementById('mainContent').style.display = 'none';
+            loadSavedCredentials();
+        }
+    });
+});
+
+// Configuração de Listeners
+function setupEventListeners() {
+    console.log("Configurando eventos...");
+    if (loginForm) loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        loginUser();
+    });
+    if (appointmentForm) appointmentForm.addEventListener('submit', saveAppointment);
+    if (statusFilter) statusFilter.addEventListener('change', renderAppointments);
+    document.getElementById('selectAll')?.addEventListener('change', toggleSelectAll);
+    document.querySelectorAll('.view-mode').forEach(btn => btn.addEventListener('click', changeView));
+    document.getElementById('allBtn')?.addEventListener('click', () => showTab('allTab'));
+    document.getElementById('reportsBtn')?.addEventListener('click', () => showTab('reportsTab'));
+    document.getElementById('insightsBtn')?.addEventListener('click', () => showTab('insightsTab'));
+    document.getElementById('printBtn')?.addEventListener('click', printAppointments);
+    document.getElementById('deleteAllBtn')?.addEventListener('click', openDeleteAllModal);
+    document.getElementById('sortFilterBtn')?.addEventListener('click', openSortFilterModal);
+    document.getElementById('settingsBtn')?.addEventListener('click', openSettingsModal);
+    document.getElementById('resetBtn')?.addEventListener('click', resetForm);
+    document.getElementById('exportExcelBtn')?.addEventListener('click', exportToExcel);
+    document.getElementById('clearFiltersBtn')?.addEventListener('click', clearFilters);
+    document.getElementById('logoutBtn')?.addEventListener('click', logoutUser);
 
     document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
     document.querySelectorAll('.modal').forEach(modal => {
@@ -62,7 +136,89 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (e.target === modal) closeModal(modal);
         });
     });
-});
+
+    // Configurações
+    document.getElementById('saveTheme')?.addEventListener('click', saveTheme);
+    document.getElementById('resetTheme')?.addEventListener('click', resetTheme);
+}
+
+// Funções de Autenticação
+async function loginUser() {
+    const email = loginEmail.value.trim();
+    const password = loginPassword.value.trim();
+
+    if (!email || !password) {
+        showNotification('Por favor, preencha email e senha!', true);
+        return;
+    }
+
+    console.log("Tentando login com:", { email, password });
+    try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        console.log("Login bem-sucedido:", user);
+
+        if (rememberMe.checked) {
+            localStorage.setItem('savedEmail', email);
+            localStorage.setItem('savedPassword', password);
+            console.log("Credenciais salvas no localStorage.");
+        } else {
+            localStorage.removeItem('savedEmail');
+            localStorage.removeItem('savedPassword');
+            console.log("Credenciais removidas do localStorage.");
+        }
+        showNotification(`Login realizado com sucesso! Bem-vindo, ${user.email}!`);
+    } catch (error) {
+        console.error('Erro ao fazer login:', error.code, error.message);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao fazer login: ${error.code} - ${error.message}`);
+        let errorMessage = 'Erro ao fazer login: ';
+        switch (error.code) {
+            case 'auth/invalid-email':
+                errorMessage += 'Email inválido.';
+                break;
+            case 'auth/user-not-found':
+                errorMessage += 'Usuário não encontrado.';
+                break;
+            case 'auth/wrong-password':
+                errorMessage += 'Senha incorreta.';
+                break;
+            case 'auth/invalid-credential':
+                errorMessage += 'Credenciais inválidas.';
+                break;
+            case 'auth/too-many-requests':
+                errorMessage += 'Muitas tentativas. Tente novamente mais tarde.';
+                break;
+            default:
+                errorMessage += error.message;
+        }
+        showNotification(errorMessage, true);
+    }
+}
+
+function loadSavedCredentials() {
+    const savedEmail = localStorage.getItem('savedEmail');
+    const savedPassword = localStorage.getItem('savedPassword');
+    if (savedEmail && savedPassword) {
+        loginEmail.value = savedEmail;
+        loginPassword.value = savedPassword;
+        rememberMe.checked = true;
+        console.log("Credenciais carregadas do localStorage:", { savedEmail });
+    } else {
+        console.log("Nenhuma credencial salva encontrada.");
+    }
+}
+
+async function logoutUser() {
+    try {
+        await signOut(auth);
+        console.log("Logout realizado com sucesso.");
+        showNotification('Logout realizado com sucesso!');
+    } catch (error) {
+        console.error('Erro ao fazer logout:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao fazer logout: ${error.message}`);
+        showNotification('Erro ao fazer logout: ' + error.message, true);
+    }
+}
 
 // Carregamento Inicial
 async function loadInitialData() {
@@ -83,40 +239,13 @@ async function loadInitialData() {
         updateMedicosList();
         updateUsersList();
         applyTheme();
+        renderAppointments();
         showNotification('Aplicação inicializada com sucesso!');
     } catch (error) {
         console.error('Erro ao carregar dados iniciais:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar dados iniciais: ${error.message}`);
         showNotification('Erro ao inicializar: ' + error.message, true);
-        const cachedData = await loadFromIndexedDB();
-        appointments = cachedData.appointments || [];
-        medicos = cachedData.medicos || [];
-        users = cachedData.users || [{ username: 'admin', password: '1234' }];
-        renderAppointments();
     }
-}
-
-// Configuração de Listeners
-function setupEventListeners() {
-    console.log("Configurando eventos...");
-    appointmentForm.addEventListener('submit', saveAppointment);
-    statusFilter.addEventListener('change', renderAppointments);
-    document.getElementById('selectAll').addEventListener('change', toggleSelectAll);
-    document.querySelectorAll('.view-mode').forEach(btn => btn.addEventListener('click', changeView));
-    document.getElementById('allBtn').addEventListener('click', () => showTab('allTab'));
-    document.getElementById('reportsBtn').addEventListener('click', () => showTab('reportsTab'));
-    document.getElementById('insightsBtn').addEventListener('click', () => showTab('insightsTab'));
-    document.getElementById('printBtn').addEventListener('click', printAppointments);
-    document.getElementById('deleteAllBtn').addEventListener('click', openDeleteAllModal);
-    document.getElementById('sortFilterBtn').addEventListener('click', openSortFilterModal);
-    document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
-    document.getElementById('resetBtn').addEventListener('click', resetForm);
-    document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
-    document.getElementById('clearFiltersBtn').addEventListener('click', clearFilters);
-
-    // Configurações
-    document.getElementById('saveTheme').addEventListener('click', saveTheme);
-    document.getElementById('resetTheme').addEventListener('click', resetTheme);
 }
 
 // Funções de CRUD
@@ -190,6 +319,7 @@ function shareAppointment(id) {
         const message = `Agendamento:\nPaciente: ${appointment.nomePaciente}\nTelefone: ${appointment.telefone}\nMédico: ${appointment.nomeMedico}\nData: ${appointment.dataConsulta} às ${appointment.horaConsulta}\nStatus: ${appointment.status}`;
         const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, '_blank');
+        showNotification('Agendamento compartilhado via WhatsApp!');
     }
 }
 
@@ -205,7 +335,7 @@ function renderAppointments() {
     pipelineView.querySelectorAll('.column-content').forEach(col => col.innerHTML = '');
 
     document.querySelectorAll('.table-view th, .table-view td').forEach(el => {
-        const columnName = el.querySelector('input')?.dataset.column;
+        const columnName = el.querySelector('input')?.dataset.column || el.dataset.column;
         if (columnName) {
             el.classList.toggle('hidden', !visibleColumns.includes(columnName));
         }
@@ -215,7 +345,7 @@ function renderAppointments() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><input type="checkbox" class="select-row" data-id="${app.id}"></td>
-            <td data-column="id">${app.id || '-'}</td>
+            <td data-column="ID">${app.id || '-'}</td>
             <td data-column="nomePaciente">${app.nomePaciente || '-'}</td>
             <td data-column="telefone">${app.telefone || '-'}</td>
             <td data-column="email">${app.email || '-'}</td>
@@ -326,7 +456,8 @@ function changeView(e) {
     e.target.closest('.view-mode').classList.add('active');
     renderAppointments();
     saveToFirebase('settings', { key: 'currentView', value: currentView });
-    saveToIndexedDB('settings', { key: 'currentView', value: currentView });
+    saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+    showNotification('Modo de visualização alterado!');
 }
 
 function showTab(tabId) {
@@ -334,6 +465,7 @@ function showTab(tabId) {
     document.getElementById(tabId).style.display = 'block';
     if (tabId === 'allTab') renderAppointments();
     else if (tabId === 'insightsTab') generateInsights();
+    showNotification(`Aba ${tabId === 'allTab' ? 'Todos' : tabId === 'reportsTab' ? 'Relatórios' : 'Insights'} exibida!`);
 }
 
 // Drag and Drop
@@ -360,6 +492,7 @@ async function handleDrop(e) {
         await saveToFirebase('appointments', appointment);
         await saveToIndexedDB('appointments', appointments);
         renderAppointments();
+        showNotification(`Agendamento movido para ${newStatus}!`);
     }
 }
 
@@ -378,6 +511,7 @@ async function moveCard(id, newStatus) {
         await saveToIndexedDB('appointments', appointments);
         renderAppointments();
         closeModal(actionBox);
+        showNotification(`Agendamento movido para ${newStatus}!`);
     }
 }
 
@@ -390,6 +524,7 @@ function resetForm() {
     appointmentForm.reset();
     document.getElementById('statusGroup').style.display = 'none';
     delete appointmentForm.dataset.id;
+    showNotification('Formulário restaurado!');
 }
 
 function loadFormData(appointment = {}) {
@@ -409,10 +544,14 @@ function loadFormData(appointment = {}) {
 }
 
 function showNotification(message, isError = false) {
-    notification.textContent = message;
-    notification.className = `notification ${isError ? 'error' : ''}`;
-    notification.classList.add('show');
-    setTimeout(() => notification.classList.remove('show'), 3000);
+    if (notification) {
+        notification.textContent = message;
+        notification.className = `notification ${isError ? 'error' : ''}`;
+        notification.classList.add('show');
+        setTimeout(() => notification.classList.remove('show'), 3000);
+    } else {
+        console.warn("Notificação não exibida: elemento 'notification' não encontrado.");
+    }
 }
 
 function closeModal(modal) {
@@ -522,16 +661,17 @@ async function backupLocal() {
     a.download = `backup_${new Date().toISOString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showNotification('Backup local realizado com sucesso!');
+    showNotification('Backup local gerado com sucesso!');
 }
 
 async function restoreLocal() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = 'application/json';
     input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
         try {
-            const file = e.target.files[0];
             const text = await file.text();
             const data = JSON.parse(text);
             appointments = data.appointments || [];
@@ -548,20 +688,19 @@ async function restoreLocal() {
                 saveToFirebase('users', users),
                 saveToFirebase('settings', { key: 'currentView', value: currentView }),
                 saveToFirebase('settings', { key: 'deleteAllPassword', value: deleteAllPassword }),
+                saveToFirebase('settings', { key: 'lastSync', value: lastSync }),
                 saveToFirebase('settings', { key: 'theme', value: theme })
             ]);
+            await saveToIndexedDB('appointments', appointments);
+            await saveToIndexedDB('medicos', medicos);
+            await saveToIndexedDB('users', users);
+            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
 
-            await Promise.all([
-                saveToIndexedDB('appointments', appointments),
-                saveToIndexedDB('medicos', medicos),
-                saveToIndexedDB('users', users),
-                saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme })
-            ]);
-
-            renderAppointments();
+            loadFormData();
             updateMedicosList();
             updateUsersList();
             applyTheme();
+            renderAppointments();
             showNotification('Backup restaurado com sucesso!');
         } catch (error) {
             console.error('Erro ao restaurar backup local:', error);
@@ -574,237 +713,241 @@ async function restoreLocal() {
 
 async function backupFirebase() {
     try {
-        await Promise.all([
-            ...appointments.map(appointment => saveToFirebase('appointments', appointment)),
-            ...medicos.map(medico => saveToFirebase('medicos', medico)),
-            ...users.map(user => saveToFirebase('users', user)),
-            saveToFirebase('settings', { key: 'currentView', value: currentView }),
-            saveToFirebase('settings', { key: 'deleteAllPassword', value: deleteAllPassword }),
-            saveToFirebase('settings', { key: 'theme', value: theme })
-        ]);
-        showNotification('Backup enviado ao Firebase com sucesso!');
+        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
+        await setDoc(doc(db, 'backups', `backup_${new Date().toISOString()}`), data);
+        showNotification('Backup no Firebase realizado com sucesso!');
     } catch (error) {
         console.error('Erro ao fazer backup no Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao fazer backup no Firebase: ${error.message}`);
-        showNotification('Erro ao fazer backup: ' + error.message, true);
+        showNotification('Erro ao fazer backup no Firebase: ' + error.message, true);
     }
 }
 
 async function restoreFirebase() {
     try {
-        await syncLocalWithFirebase();
-        showNotification('Dados restaurados do Firebase com sucesso!');
+        const snapshot = await getDocs(collection(db, 'backups'));
+        if (snapshot.empty) {
+            showNotification('Nenhum backup encontrado no Firebase!', true);
+            return;
+        }
+        const latestBackup = snapshot.docs[snapshot.docs.length - 1].data();
+        appointments = latestBackup.appointments || [];
+        medicos = latestBackup.medicos || [];
+        users = latestBackup.users || [];
+        currentView = latestBackup.settings?.currentView || 'list';
+        deleteAllPassword = latestBackup.settings?.deleteAllPassword || '1234';
+        lastSync = latestBackup.settings?.lastSync || 0;
+        theme = latestBackup.settings?.theme || {};
+
+        await saveToIndexedDB('appointments', appointments);
+        await saveToIndexedDB('medicos', medicos);
+        await saveToIndexedDB('users', users);
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+
+        loadFormData();
+        updateMedicosList();
+        updateUsersList();
+        applyTheme();
+        renderAppointments();
+        showNotification('Backup restaurado do Firebase com sucesso!');
     } catch (error) {
         console.error('Erro ao restaurar do Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar do Firebase: ${error.message}`);
-        showNotification('Erro ao restaurar: ' + error.message, true);
+        showNotification('Erro ao restaurar do Firebase: ' + error.message, true);
     }
 }
 
-// Integração com Firebase
-async function saveToFirebase(collectionName, data) {
-    try {
-        const cleanedData = {};
-        for (const [key, value] of Object.entries(data)) {
-            cleanedData[key] = value !== undefined ? value : null;
-        }
-        const docId = Array.isArray(data) ? data.map(d => d.id || d.nome || d.username) : (data.id || data.nome || data.username || data.key);
-        if (Array.isArray(data)) {
-            for (const item of data) {
-                const docRef = doc(db, collectionName, item.id || item.nome || item.username);
-                await setDoc(docRef, item, { merge: true });
-            }
-        } else {
-            const docRef = doc(db, collectionName, docId);
-            await setDoc(docRef, cleanedData, { merge: true });
-        }
-        console.log(`Dados salvos em ${collectionName}:`, cleanedData);
-    } catch (error) {
-        console.error(`Erro ao salvar em ${collectionName}:`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar em ${collectionName}: ${error.message}`);
-        throw error;
-    }
+// Exclusão de Todos os Agendamentos
+function openDeleteAllModal() {
+    deleteAllModal.style.display = 'block';
 }
 
-async function deleteFromFirebase(collectionName, id) {
-    try {
-        const docRef = doc(db, collectionName, id);
-        await deleteDoc(docRef);
-        console.log(`Documento excluído de ${collectionName}: ${id}`);
-    } catch (error) {
-        console.error(`Erro ao excluir de ${collectionName}:`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir de ${collectionName}: ${error.message}`);
-        throw error;
-    }
+function closeDeleteAllModal() {
+    closeModal(deleteAllModal);
 }
 
-async function syncLocalWithFirebase() {
-    try {
-        console.log("Sincronizando com Firebase...");
-        const appointmentsSnapshot = await getDocs(collection(db, 'appointments'));
-        const firebaseAppointments = [];
-        appointmentsSnapshot.forEach(doc => firebaseAppointments.push({ id: doc.id, ...doc.data() }));
-        if (firebaseAppointments.length > 0) {
-            appointments = firebaseAppointments;
+async function confirmDeleteAll() {
+    const password = document.getElementById('deletePassword').value;
+    if (password === deleteAllPassword) {
+        try {
+            appointments = [];
+            await deleteFromFirebase('appointments');
             await saveToIndexedDB('appointments', appointments);
-        } else if (appointments.length > 0) {
-            for (const appointment of appointments) await saveToFirebase('appointments', appointment);
+            renderAppointments();
+            closeDeleteAllModal();
+            showNotification('Todos os agendamentos excluídos com sucesso!');
+        } catch (error) {
+            console.error('Erro ao excluir todos os agendamentos:', error);
+            errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir todos os agendamentos: ${error.message}`);
+            showNotification('Erro ao excluir todos: ' + error.message, true);
         }
-
-        const medicosSnapshot = await getDocs(collection(db, 'medicos'));
-        const firebaseMedicos = [];
-        medicosSnapshot.forEach(doc => firebaseMedicos.push({ nome: doc.id, ...doc.data() }));
-        if (firebaseMedicos.length > 0) {
-            medicos = firebaseMedicos;
-            await saveToIndexedDB('medicos', medicos);
-        } else if (medicos.length > 0) {
-            for (const medico of medicos) await saveToFirebase('medicos', medico);
-        }
-
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        const firebaseUsers = [];
-        usersSnapshot.forEach(doc => firebaseUsers.push({ username: doc.id, ...doc.data() }));
-        if (firebaseUsers.length > 0) {
-            users = firebaseUsers;
-            await saveToIndexedDB('users', users);
-        } else if (users.length > 0) {
-            for (const user of users) await saveToFirebase('users', user);
-        }
-
-        const settingsSnapshot = await getDocs(collection(db, 'settings'));
-        const firebaseSettings = {};
-        settingsSnapshot.forEach(doc => firebaseSettings[doc.id] = doc.data().value);
-        if (Object.keys(firebaseSettings).length > 0) {
-            currentView = firebaseSettings.currentView || 'list';
-            deleteAllPassword = firebaseSettings.deleteAllPassword || '1234';
-            theme = firebaseSettings.theme || {};
-            lastSync = Date.now();
-            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-        } else {
-            await saveToFirebase('settings', { key: 'currentView', value: currentView });
-            await saveToFirebase('settings', { key: 'deleteAllPassword', value: deleteAllPassword });
-            await saveToFirebase('settings', { key: 'theme', value: theme });
-        }
-
-        console.log("Sincronização concluída!");
-        renderAppointments();
-        lastSync = Date.now();
-        await saveToIndexedDB('settings', { key: 'lastSync', value: lastSync });
-    } catch (error) {
-        console.error('Erro ao sincronizar com Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao sincronizar com Firebase: ${error.message}`);
-        throw error;
+    } else {
+        showNotification('Senha incorreta!', true);
     }
 }
 
-// IndexedDB
-async function saveToIndexedDB(storeName, data) {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('ClinicDB', 1);
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'nome' });
-            if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
-            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
-        };
-        request.onsuccess = (event) => {
-            const db = event.target.result;
-            const transaction = db.transaction([storeName], 'readwrite');
-            const store = transaction.objectStore(storeName);
-            if (Array.isArray(data)) {
-                data.forEach(item => store.put(item));
-            } else {
-                store.put({ ...data, key: data.key || 'data' });
-            }
-            transaction.oncomplete = () => {
-                db.close();
-                resolve();
-            };
-            transaction.onerror = () => {
-                console.error('Erro ao salvar no IndexedDB:', transaction.error);
-                errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no IndexedDB: ${transaction.error}`);
-                reject(transaction.error);
-            };
-        };
-        request.onerror = () => {
-            console.error('Erro ao abrir IndexedDB:', request.error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao abrir IndexedDB: ${request.error}`);
-            reject(request.error);
-        };
+// Filtros Avançados
+function openSortFilterModal() {
+    sortFilterModal.style.display = 'block';
+}
+
+function closeSortFilterModal() {
+    closeModal(sortFilterModal);
+}
+
+function applySortFilter() {
+    const sortType = document.getElementById('sortType').value;
+    let sortedAppointments = [...appointments];
+
+    switch (sortType) {
+        case 'nameAZ':
+            sortedAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || ''));
+            break;
+        case 'recent':
+            sortedAppointments.sort((a, b) => new Date(b.dataConsulta + ' ' + b.horaConsulta) - new Date(a.dataConsulta + ' ' + a.horaConsulta));
+            break;
+        case 'oldest':
+            sortedAppointments.sort((a, b) => new Date(a.dataConsulta + ' ' + a.horaConsulta) - new Date(b.dataConsulta + ' ' + a.horaConsulta));
+            break;
+        case 'phone':
+            sortedAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || ''));
+            break;
+        case 'date':
+            sortedAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || ''));
+            break;
+        case 'doctor':
+            sortedAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || ''));
+            break;
+        case 'month':
+            sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth());
+            break;
+        case 'year':
+            sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear());
+            break;
+    }
+
+    appointments = sortedAppointments;
+    renderAppointments();
+    closeSortFilterModal();
+    showNotification('Filtro aplicado com sucesso!');
+}
+
+// Configurações de Tema
+function openSettingsModal() {
+    settingsModal.style.display = 'block';
+    document.getElementById('bodyBgColor').value = theme.bodyBgColor || '#f0f4f8';
+    document.getElementById('cardBgColor').value = theme.cardBgColor || '#ffffff';
+    document.getElementById('formBgColor').value = theme.formBgColor || '#ffffff';
+    document.getElementById('textColor').value = theme.textColor || '#343a40';
+    document.getElementById('borderColor').value = theme.borderColor || '#007bff';
+}
+
+function saveTheme() {
+    theme = {
+        bodyBgColor: document.getElementById('bodyBgColor').value,
+        cardBgColor: document.getElementById('cardBgColor').value,
+        formBgColor: document.getElementById('formBgColor').value,
+        textColor: document.getElementById('textColor').value,
+        borderColor: document.getElementById('borderColor').value
+    };
+    deleteAllPassword = document.getElementById('deleteAllPassword').value || deleteAllPassword;
+    applyTheme();
+    saveToFirebase('settings', { key: 'theme', value: theme });
+    saveToFirebase('settings', { key: 'deleteAllPassword', value: deleteAllPassword });
+    saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+    closeModal(settingsModal);
+    showNotification('Tema salvo com sucesso!');
+}
+
+function resetTheme() {
+    theme = {
+        bodyBgColor: '#f0f4f8',
+        cardBgColor: '#ffffff',
+        formBgColor: '#ffffff',
+        textColor: '#343a40',
+        borderColor: '#007bff'
+    };
+    document.getElementById('bodyBgColor').value = theme.bodyBgColor;
+    document.getElementById('cardBgColor').value = theme.cardBgColor;
+    document.getElementById('formBgColor').value = theme.formBgColor;
+    document.getElementById('textColor').value = theme.textColor;
+    document.getElementById('borderColor').value = theme.borderColor;
+    applyTheme();
+    saveToFirebase('settings', { key: 'theme', value: theme });
+    saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+    showNotification('Tema restaurado para padrão!');
+}
+
+function applyTheme() {
+    document.body.style.backgroundColor = theme.bodyBgColor || '#f0f4f8';
+    document.querySelectorAll('.card, .form-section, .appointments-section, .search-card, .modal-content, .login-box').forEach(el => {
+        el.style.backgroundColor = theme.cardBgColor || '#ffffff';
+    });
+    document.querySelector('.form-section').style.backgroundColor = theme.formBgColor || '#ffffff';
+    document.body.style.color = theme.textColor || '#343a40';
+    document.querySelectorAll('input, textarea, select, button').forEach(el => {
+        el.style.borderColor = theme.borderColor || '#007bff';
     });
 }
 
-async function loadFromIndexedDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('ClinicDB', 1);
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'nome' });
-            if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
-            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
-        };
-        request.onsuccess = (event) => {
-            const db = event.target.result;
-            const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readonly');
-            const appointmentsStore = transaction.objectStore('appointments');
-            const medicosStore = transaction.objectStore('medicos');
-            const usersStore = transaction.objectStore('users');
-            const settingsStore = transaction.objectStore('settings');
-
-            const data = { appointments: [], medicos: [], users: [], settings: {} };
-            appointmentsStore.getAll().onsuccess = (e) => data.appointments = e.target.result || [];
-            medicosStore.getAll().onsuccess = (e) => data.medicos = e.target.result || [];
-            usersStore.getAll().onsuccess = (e) => data.users = e.target.result || [];
-            settingsStore.getAll().onsuccess = (e) => e.target.result.forEach(s => data.settings[s.key] = s.value);
-
-            transaction.oncomplete = () => {
-                db.close();
-                resolve(data);
-            };
-            transaction.onerror = () => {
-                console.error('Erro ao carregar do IndexedDB:', transaction.error);
-                errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar do IndexedDB: ${transaction.error}`);
-                reject(transaction.error);
-            };
-        };
-        request.onerror = () => {
-            console.error('Erro ao abrir IndexedDB:', request.error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao abrir IndexedDB: ${request.error}`);
-            reject(request.error);
-        };
-    });
-}
-
-// Relatórios e Insights
-function generateReport() {
+// Relatórios
+async function generateReport() {
     const reportType = document.getElementById('reportType').value;
+    const reportMonth = document.getElementById('reportMonth').value;
+    const reportYear = document.getElementById('reportYear').value;
+    const reportDoctor = document.getElementById('reportDoctor').value;
+
+    let filteredAppointments = [...appointments];
+    if (reportMonth) {
+        const [year, month] = reportMonth.split('-');
+        filteredAppointments = filteredAppointments.filter(a => {
+            const date = new Date(a.dataConsulta);
+            return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1;
+        });
+    }
+    if (reportYear) {
+        filteredAppointments = filteredAppointments.filter(a => new Date(a.dataConsulta).getFullYear() === parseInt(reportYear));
+    }
+    if (reportDoctor) {
+        filteredAppointments = filteredAppointments.filter(a => a.nomeMedico === reportDoctor);
+    }
+
+    switch (reportType) {
+        case 'byName':
+            filteredAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || ''));
+            break;
+        case 'byRecent':
+            filteredAppointments.sort((a, b) => new Date(b.dataConsulta + ' ' + b.horaConsulta) - new Date(a.dataConsulta + ' ' + a.horaConsulta));
+            break;
+        case 'byOldest':
+            filteredAppointments.sort((a, b) => new Date(a.dataConsulta + ' ' + a.horaConsulta) - new Date(b.dataConsulta + ' ' + a.horaConsulta));
+            break;
+        case 'byPhone':
+            filteredAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || ''));
+            break;
+        case 'byDate':
+            filteredAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || ''));
+            break;
+        case 'byDoctor':
+            filteredAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || ''));
+            break;
+        case 'byMonth':
+            filteredAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth());
+            break;
+        case 'byYear':
+            filteredAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear());
+            break;
+    }
+
     const reportBody = document.getElementById('reportBody');
     const reportGrid = document.getElementById('reportGrid');
-    let filteredAppointments = [...appointments];
-
-    if (reportType === 'byName') filteredAppointments.sort((a, b) => a.nomePaciente.localeCompare(b.nomePaciente));
-    else if (reportType === 'byRecent') filteredAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta));
-    else if (reportType === 'byOldest') filteredAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta));
-    else if (reportType === 'byPhone') filteredAppointments.sort((a, b) => a.telefone.localeCompare(b.telefone));
-    else if (reportType === 'byDate') filteredAppointments.sort((a, b) => a.dataConsulta.localeCompare(b.dataConsulta));
-    else if (reportType === 'byDoctor') {
-        const doctor = document.getElementById('reportDoctor').value;
-        filteredAppointments = filteredAppointments.filter(a => a.nomeMedico === doctor);
-    } else if (reportType === 'byMonth') {
-        const month = document.getElementById('reportMonth').value;
-        filteredAppointments = filteredAppointments.filter(a => a.dataConsulta.startsWith(month));
-    } else if (reportType === 'byYear') {
-        const year = document.getElementById('reportYear').value;
-        filteredAppointments = filteredAppointments.filter(a => a.dataConsulta.startsWith(year));
-    }
-
     reportBody.innerHTML = '';
     reportGrid.innerHTML = '';
+
     filteredAppointments.forEach(app => {
         const row = document.createElement('tr');
         row.innerHTML = `
+            <td>${app.id || '-'}</td>
             <td>${app.nomePaciente || '-'}</td>
             <td>${app.telefone || '-'}</td>
             <td>${app.email || '-'}</td>
@@ -828,245 +971,240 @@ function generateReport() {
             <p>Telefone: ${app.telefone || '-'}</p>
             <p>Email: ${app.email || '-'}</p>
             <p>Médico: ${app.nomeMedico || '-'}</p>
+            <p>Local CRM: ${app.localCRM || '-'}</p>
             <p>Data: ${app.dataConsulta || '-'}</p>
             <p>Hora: ${app.horaConsulta || '-'}</p>
+            <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
+            <p>Procedimentos: ${app.procedimentos || '-'}</p>
+            <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
+            <p>Descrição: ${app.descricao || '-'}</p>
             <p>Status: ${app.status || '-'}</p>
         `;
         reportGrid.appendChild(card);
     });
+
+    showNotification('Relatório gerado com sucesso!');
 }
 
 function toggleReportView(view) {
-    document.querySelectorAll('#reportsTab .view-mode').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
     document.getElementById('reportResult').style.display = view === 'list' ? 'block' : 'none';
     document.getElementById('reportGrid').style.display = view === 'grid' ? 'grid' : 'none';
+    document.querySelectorAll('#reportsTab .view-mode').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
+    showNotification(`Visualização de relatório alterada para ${view === 'list' ? 'Lista' : 'Grid'}!`);
 }
 
+// Insights
 function generateInsights() {
     const insightsCards = document.getElementById('insightsCards');
     insightsCards.innerHTML = '';
 
     const totalAppointments = appointments.length;
-    const statusCount = { 'Aguardando Atendimento': 0, 'Atendido': 0, 'Reagendado': 0, 'Cancelado': 0 };
-    appointments.forEach(app => statusCount[app.status]++);
+    const byStatus = appointments.reduce((acc, app) => {
+        acc[app.status] = (acc[app.status] || 0) + 1;
+        return acc;
+    }, {});
+    const byDoctor = appointments.reduce((acc, app) => {
+        acc[app.nomeMedico] = (acc[app.nomeMedico] || 0) + 1;
+        return acc;
+    }, {});
+    const recentAppointments = appointments.filter(a => new Date(a.dataConsulta) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length;
 
-    const doctorCount = {};
-    appointments.forEach(app => doctorCount[app.nomeMedico] = (doctorCount[app.nomeMedico] || 0) + 1);
-    const topDoctors = Object.entries(doctorCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const totalCard = document.createElement('div');
+    totalCard.className = 'insights-card';
+    totalCard.innerHTML = `<h4><i class="fas fa-calendar-check"></i> Total de Agendamentos</h4><p>${totalAppointments} agendamentos registrados.</p>`;
+    insightsCards.appendChild(totalCard);
 
-    const insights = [
-        {
-            title: '<i class="fas fa-calendar-check"></i> Total de Agendamentos',
-            content: `<p>${totalAppointments} agendamentos registrados.</p>`
-        },
-        {
-            title: '<i class="fas fa-chart-pie"></i> Status dos Agendamentos',
-            content: `<canvas id="statusChart" height="150"></canvas>`
-        },
-        {
-            title: '<i class="fas fa-user-md"></i> Médicos Mais Ativos',
-            content: `<ul>${topDoctors.map(([name, count]) => `<li>${name}: ${count} agendamentos</li>`).join('')}</ul>`
-        },
-        {
-            title: '<i class="fas fa-database"></i> Dados do Firebase',
-            content: `
-                <p>Agendamentos: ${appointments.length}</p>
-                <p>Médicos: ${medicos.length}</p>
-                <p>Usuários: ${users.length}</p>
-                <p>Última sincronização: ${new Date(lastSync).toLocaleString()}</p>
-            `
-        },
-        {
-            title: '<i class="fas fa-hdd"></i> Dados do IndexedDB',
-            content: `<p>Tamanho estimado: ${JSON.stringify({ appointments, medicos, users }).length / 1024} KB</p>`
-        },
-        {
-            title: '<i class="fas fa-exclamation-triangle"></i> Logs de Erros',
-            content: `<div class="error-log-card">${errorLogs.length > 0 ? errorLogs.join('<br>') : 'Nenhum erro registrado.'}</div>`
-        }
-    ];
+    const statusCard = document.createElement('div');
+    statusCard.className = 'insights-card';
+    statusCard.innerHTML = `<h4><i class="fas fa-chart-pie"></i> Agendamentos por Status</h4><ul>${Object.entries(byStatus).map(([status, count]) => `<li>${status}: ${count}</li>`).join('')}</ul>`;
+    insightsCards.appendChild(statusCard);
 
-    insights.forEach(insight => {
-        const card = document.createElement('div');
-        card.className = 'insights-card';
-        card.innerHTML = `<h4>${insight.title}</h4>${insight.content}`;
-        insightsCards.appendChild(card);
-    });
+    const doctorCard = document.createElement('div');
+    doctorCard.className = 'insights-card';
+    doctorCard.innerHTML = `<h4><i class="fas fa-user-md"></i> Agendamentos por Médico</h4><ul>${Object.entries(byDoctor).map(([doctor, count]) => `<li>${doctor || 'Sem Médico'}: ${count}</li>`).join('')}</ul>`;
+    insightsCards.appendChild(doctorCard);
 
-    // Gráfico de Status
-    const ctx = document.getElementById('statusChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: Object.keys(statusCount),
-            datasets: [{
-                data: Object.values(statusCount),
-                backgroundColor: ['#fef9c3', '#dcfce7', '#dbeafe', '#fee2e2'],
-                borderColor: ['#facc15', '#22c55e', '#3b82f6', '#ef4444'],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: { position: 'bottom' }
-            }
-        }
-    });
+    const recentCard = document.createElement('div');
+    recentCard.className = 'insights-card';
+    recentCard.innerHTML = `<h4><i class="fas fa-clock"></i> Agendamentos Recentes</h4><p>${recentAppointments} agendamentos nos últimos 7 dias.</p>`;
+    insightsCards.appendChild(recentCard);
+
+    const errorCard = document.createElement('div');
+    errorCard.className = 'insights-card error-log-card';
+    errorCard.innerHTML = `<h4><i class="fas fa-exclamation-triangle"></i> Logs de Erros</h4><ul>${errorLogs.length ? errorLogs.map(log => `<li>${log}</li>`).join('') : '<li>Nenhum erro registrado.</li>'}</ul>`;
+    insightsCards.appendChild(errorCard);
+
+    showNotification('Insights gerados com sucesso!');
 }
 
 // Impressão
 function printAppointments() {
-    if (currentView === 'list') {
-        document.getElementById('appointmentsTable').classList.add('print');
-        document.getElementById('gridView').classList.remove('print');
-    } else if (currentView === 'grid') {
-        document.getElementById('gridView').classList.add('print');
-        document.getElementById('appointmentsTable').classList.remove('print');
-    }
+    document.getElementById('appointmentsTable').classList.add('print');
+    document.getElementById('gridView').classList.add('print');
     window.print();
     document.getElementById('appointmentsTable').classList.remove('print');
     document.getElementById('gridView').classList.remove('print');
+    showNotification('Impressão iniciada!');
 }
 
 // Exportação para Excel
 function exportToExcel() {
-    const data = appointments.map(app => ({
-        ID: app.id || '',
-        Paciente: app.nomePaciente || '',
-        Telefone: app.telefone || '',
-        Email: app.email || '',
-        Médico: app.nomeMedico || '',
-        'Local CRM': app.localCRM || '',
-        Data: app.dataConsulta || '',
-        Hora: app.horaConsulta || '',
-        'Tipo Cirurgia': app.tipoCirurgia || '',
-        Procedimentos: app.procedimentos || '',
-        'Feito Por': app.agendamentoFeitoPor || '',
-        Descrição: app.descricao || '',
-        Status: app.status || ''
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
+    const ws = XLSX.utils.json_to_sheet(appointments.map(app => ({
+        ID: app.id || '-',
+        Paciente: app.nomePaciente || '-',
+        Telefone: app.telefone || '-',
+        Email: app.email || '-',
+        Médico: app.nomeMedico || '-',
+        'Local CRM': app.localCRM || '-',
+        Data: app.dataConsulta || '-',
+        Hora: app.horaConsulta || '-',
+        'Tipo Cirurgia': app.tipoCirurgia || '-',
+        Procedimentos: app.procedimentos || '-',
+        'Feito Por': app.agendamentoFeitoPor || '-',
+        Descrição: app.descricao || '-',
+        Status: app.status || '-'
+    })));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
-    XLSX.writeFile(wb, `agendamentos_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, `agendamentos_${new Date().toISOString()}.xlsx`);
     showNotification('Exportação para Excel concluída!');
 }
 
-// Filtros Avançados
-function openSortFilterModal() {
-    sortFilterModal.style.display = 'block';
-}
-
-function closeSortFilterModal() {
-    closeModal(sortFilterModal);
-}
-
-function applySortFilter() {
-    const sortType = document.getElementById('sortType').value;
-    let sortedAppointments = [...appointments];
-    if (sortType === 'nameAZ') sortedAppointments.sort((a, b) => a.nomePaciente.localeCompare(b.nomePaciente));
-    else if (sortType === 'recent') sortedAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta));
-    else if (sortType === 'oldest') sortedAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta));
-    else if (sortType === 'phone') sortedAppointments.sort((a, b) => a.telefone.localeCompare(b.telefone));
-    else if (sortType === 'date') sortedAppointments.sort((a, b) => a.dataConsulta.localeCompare(b.dataConsulta));
-    else if (sortType === 'doctor') sortedAppointments.sort((a, b) => a.nomeMedico.localeCompare(b.nomeMedico));
-    else if (sortType === 'month') sortedAppointments.sort((a, b) => a.dataConsulta.slice(0, 7).localeCompare(b.dataConsulta.slice(0, 7)));
-    else if (sortType === 'year') sortedAppointments.sort((a, b) => a.dataConsulta.slice(0, 4).localeCompare(b.dataConsulta.slice(0, 4)));
-    appointments = sortedAppointments;
-    renderAppointments();
-    closeSortFilterModal();
-}
-
-// Configurações
-function openSettingsModal() {
-    document.getElementById('deleteAllPassword').value = deleteAllPassword;
-    settingsModal.style.display = 'block';
-}
-
-async function saveTheme() {
-    try {
-        theme = {
-            bodyBgColor: document.getElementById('bodyBgColor').value,
-            cardBgColor: document.getElementById('cardBgColor').value,
-            formBgColor: document.getElementById('formBgColor').value,
-            textColor: document.getElementById('textColor').value,
-            borderColor: document.getElementById('borderColor').value
+// IndexedDB
+async function saveToIndexedDB(storeName, data) {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('AgendaUnicaDB', 1);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            db.createObjectStore('appointments', { keyPath: 'id' });
+            db.createObjectStore('medicos', { keyPath: 'nome' });
+            db.createObjectStore('users', { keyPath: 'username' });
+            db.createObjectStore('settings', { keyPath: 'key' });
         };
-        applyTheme();
-        await saveToFirebase('settings', { key: 'theme', value: theme });
-        await saveToIndexedDB('settings', { key: 'theme', value: theme });
-        showNotification('Tema salvo com sucesso!');
-    } catch (error) {
-        console.error('Erro ao salvar tema:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar tema: ${error.message}`);
-        showNotification('Erro ao salvar tema: ' + error.message, true);
-    }
-}
-
-function applyTheme() {
-    document.body.style.backgroundColor = theme.bodyBgColor || '#f0f4f8';
-    document.querySelectorAll('.card, .search-card, .appointments-section, .form-section').forEach(el => {
-        el.style.backgroundColor = theme.cardBgColor || '#ffffff';
-        el.style.borderColor = theme.borderColor || '#1e40af';
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            const tx = db.transaction(storeName, 'readwrite');
+            const store = tx.objectStore(storeName);
+            if (Array.isArray(data)) {
+                data.forEach(item => store.put(item));
+            } else {
+                store.put({ key: storeName, value: data });
+            }
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            db.close();
+        };
+        request.onerror = () => reject(request.error);
     });
-    document.querySelector('.form-section').style.backgroundColor = theme.formBgColor || '#ffffff';
-    document.body.style.color = theme.textColor || '#1f2937';
 }
 
-async function resetTheme() {
-    try {
-        theme = {};
-        applyTheme();
-        await saveToFirebase('settings', { key: 'theme', value: theme });
-        await saveToIndexedDB('settings', { key: 'theme', value: theme });
-        showNotification('Tema restaurado para o padrão!');
-    } catch (error) {
-        console.error('Erro ao restaurar tema:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar tema: ${error.message}`);
-        showNotification('Erro ao restaurar tema: ' + error.message, true);
-    }
+async function loadFromIndexedDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('AgendaUnicaDB', 1);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            db.createObjectStore('appointments', { keyPath: 'id' });
+            db.createObjectStore('medicos', { keyPath: 'nome' });
+            db.createObjectStore('users', { keyPath: 'username' });
+            db.createObjectStore('settings', { keyPath: 'key' });
+        };
+        request.onsuccess = (event) => {
+            const db = event.target.result;
+            const tx = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readonly');
+            const data = {};
+            const stores = ['appointments', 'medicos', 'users', 'settings'];
+            let completed = 0;
+
+            stores.forEach(storeName => {
+                const store = tx.objectStore(storeName);
+                const getRequest = store.getAll();
+                getRequest.onsuccess = () => {
+                    if (storeName === 'settings') {
+                        data[storeName] = getRequest.result.reduce((acc, item) => {
+                            acc[item.key] = item.value;
+                            return acc;
+                        }, {});
+                    } else {
+                        data[storeName] = getRequest.result;
+                    }
+                    completed++;
+                    if (completed === stores.length) {
+                        db.close();
+                        resolve(data);
+                    }
+                };
+                getRequest.onerror = () => reject(getRequest.error);
+            });
+        };
+        request.onerror = () => reject(request.error);
+    });
 }
 
-// Exclusão de Todos
-function openDeleteAllModal() {
-    deleteAllModal.style.display = 'block';
-}
-
-function closeDeleteAllModal() {
-    closeModal(deleteAllModal);
-}
-
-async function confirmDeleteAll() {
-    const password = document.getElementById('deletePassword').value;
-    if (password === deleteAllPassword) {
-        try {
-            appointments = [];
-            await saveToFirebase('appointments', appointments);
-            await saveToIndexedDB('appointments', appointments);
-            const querySnapshot = await getDocs(collection(db, 'appointments'));
-            await Promise.all(querySnapshot.docs.map(doc => deleteDoc(doc.ref)));
-            renderAppointments();
-            closeDeleteAllModal();
-            showNotification('Todos os agendamentos foram excluídos!');
-        } catch (error) {
-            console.error('Erro ao excluir todos:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir todos: ${error.message}`);
-            showNotification('Erro ao excluir todos: ' + error.message, true);
-        }
+// Firebase
+async function saveToFirebase(collectionName, data) {
+    if (Array.isArray(data)) {
+        const batch = db.batch();
+        data.forEach(item => {
+            const ref = doc(db, collectionName, item.id || item.nome || item.username || item.key);
+            batch.set(ref, item);
+        });
+        await batch.commit();
     } else {
-        showNotification('Senha incorreta!', true);
+        await setDoc(doc(db, collectionName, data.id || data.nome || data.username || data.key), data);
     }
 }
 
-// Detalhes no Pipeline
+async function deleteFromFirebase(collectionName, id) {
+    if (id) {
+        await deleteDoc(doc(db, collectionName, id));
+    } else {
+        const snapshot = await getDocs(collection(db, collectionName));
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    }
+}
+
+async function syncLocalWithFirebase() {
+    if (Date.now() - lastSync < 60000) return; // Sincroniza a cada 1 minuto
+    try {
+        const snapshot = await getDocs(collection(db, 'appointments'));
+        const firebaseAppointments = snapshot.docs.map(doc => doc.data());
+        appointments = firebaseAppointments.length > appointments.length ? firebaseAppointments : appointments;
+
+        const medicosSnapshot = await getDocs(collection(db, 'medicos'));
+        const firebaseMedicos = medicosSnapshot.docs.map(doc => doc.data());
+        medicos = firebaseMedicos.length > medicos.length ? firebaseMedicos : medicos;
+
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const firebaseUsers = usersSnapshot.docs.map(doc => doc.data());
+        users = firebaseUsers.length > users.length ? firebaseUsers : users;
+
+        await saveToIndexedDB('appointments', appointments);
+        await saveToIndexedDB('medicos', medicos);
+        await saveToIndexedDB('users', users);
+        lastSync = Date.now();
+        await saveToFirebase('settings', { key: 'lastSync', value: lastSync });
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        console.log("Sincronização com Firebase concluída!");
+        showNotification('Sincronização com Firebase concluída!');
+    } catch (error) {
+        console.error('Erro ao sincronizar com Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao sincronizar com Firebase: ${error.message}`);
+        showNotification('Erro ao sincronizar com Firebase: ' + error.message, true);
+    }
+}
+
+// Função para toggle de detalhes no pipeline
 function toggleDetails(card) {
     const details = card.querySelector('.card-details');
-    details.style.display = details.style.display === 'none' ? 'block' : 'none';
+    if (details) {
+        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+    }
 }
 
-// Exportar Funções Globais
+// Tornar funções globais
 window.editAppointment = editAppointment;
 window.deleteAppointment = deleteAppointment;
 window.shareAppointment = shareAppointment;
@@ -1075,21 +1213,18 @@ window.openMedicoModal = openMedicoModal;
 window.closeMedicoModal = closeMedicoModal;
 window.saveMedico = saveMedico;
 window.deleteMedico = deleteMedico;
-window.addUser = addUser;
-window.deleteUser = deleteUser;
-window.generateReport = generateReport;
-window.toggleReportView = toggleReportView;
-window.backupLocal = backupLocal;
-window.restoreLocal = restoreLocal;
-window.backupFirebase = backupFirebase;
-window.restoreFirebase = restoreFirebase;
 window.openDeleteAllModal = openDeleteAllModal;
 window.closeDeleteAllModal = closeDeleteAllModal;
 window.confirmDeleteAll = confirmDeleteAll;
 window.openSortFilterModal = openSortFilterModal;
 window.closeSortFilterModal = closeSortFilterModal;
 window.applySortFilter = applySortFilter;
-window.openSettingsModal = openSettingsModal;
-window.saveTheme = saveTheme;
-window.resetTheme = resetTheme;
+window.generateReport = generateReport;
+window.toggleReportView = toggleReportView;
+window.backupLocal = backupLocal;
+window.restoreLocal = restoreLocal;
+window.backupFirebase = backupFirebase;
+window.restoreFirebase = restoreFirebase;
+window.addUser = addUser;
+window.deleteUser = deleteUser;
 window.toggleDetails = toggleDetails;
