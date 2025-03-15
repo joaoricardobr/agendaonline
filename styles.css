@@ -377,7 +377,7 @@ button:hover {
 /* Estilos para Cards */
 .card {
     background-color: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.05);
+    border: 1px solid #d9d9ec;
     border-radius: 15px;
     padding: 20px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
