@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agenda Consultório Dra Soraya</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -28,6 +28,7 @@
             </form>
         </div>
     </div>
+
     <!-- Conteúdo Principal -->
     <div id="mainContent" style="display: none;">
         <div class="container">
@@ -46,7 +47,7 @@
                         </div>
                         <div class="form-group">
                             <label for="telefone">Telefone</label>
-                            <input type="text" id="telefone" name="telefone" required>
+                            <input type="text" id="telefone" name="telefone" placeholder="Opcional: (xx) xxxxx-xxxx">
                         </div>
                         <div class="form-group">
                             <label for="email">Email</label>
@@ -55,7 +56,7 @@
                         <div class="form-group">
                             <label for="nomeMedico">Nome do Médico</label>
                             <div style="position: relative;">
-                                <input type="text" id="nomeMedico" name="nomeMedico" list="medicosList" required>
+                                <input type="text" id="nomeMedico" name="nomeMedico" list="medicosList" placeholder="Opcional: Nome do médico">
                                 <button type="button" class="add-medico-btn" onclick="openMedicoModal()">+</button>
                                 <datalist id="medicosList"></datalist>
                             </div>
@@ -66,11 +67,11 @@
                         </div>
                         <div class="form-group">
                             <label for="dataConsulta">Data da Consulta</label>
-                            <input type="date" id="dataConsulta" name="dataConsulta" required>
+                            <input type="date" id="dataConsulta" name="dataConsulta">
                         </div>
                         <div class="form-group">
                             <label for="horaConsulta">Hora da Consulta</label>
-                            <input type="time" id="horaConsulta" name="horaConsulta" required>
+                            <input type="time" id="horaConsulta" name="horaConsulta">
                         </div>
                         <div class="form-group">
                             <label for="tipoCirurgia">Tipo de Cirurgia</label>
@@ -130,6 +131,7 @@
                     </div>
                     <div class="form-actions">
                         <button type="submit" id="saveButton">Salvar</button>
+                                 <button class="control-btn" id="resetBtn" data-tooltip="Limp.Formulario"><i class="fas fa-sync-alt"></i>Limpar Formulario </button>
                     </div>
                 </form>
             </div>
@@ -142,12 +144,11 @@
                     <button class="control-btn" id="insightsBtn" data-tooltip="Insights"><i class="fas fa-lightbulb"></i> Insights</button>
                     <button class="control-btn" id="printBtn" data-tooltip="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
                     <button class="control-btn" id="statusFilterBtn" data-tooltip="Status"><i class="fas fa-filter"></i> Status</button>
-                  <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
+                    <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
                     <button class="control-btn" id="clearFiltersBtn" data-tooltip="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
                     <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Configurações</button>
-                    <button class="control-btn" id="resetBtn" data-tooltip="Restaurar"><i class="fas fa-sync-alt"></i> Restaurar Tabelas</button>
-                       <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
-                   
+         
+                    <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
                 </div>
             </div>
 
@@ -165,12 +166,14 @@
                                 <option value="Cancelado">Cancelado</option>
                             </select>
                         </div>
-                     <button class="view-mode active" data-view="list" data-tooltip="Lista"><i class="fas fa-list"></i> Lista</button>
+                        <button class="view-mode active" data-view="list" data-tooltip="Lista"><i class="fas fa-list"></i> Lista</button>
                         <button class="view-mode" data-view="grid" data-tooltip="Grid"><i class="fas fa-th"></i> Grid</button>
                         <button class="view-mode" data-view="pipeline" data-tooltip="Pipeline"><i class="fas fa-stream"></i> Pipeline</button>
-                       <button class="control-btn" id="exportExcelBtn" data-tooltip="Exportar Excel"><i class="fas fa-file-excel"></i>Baixar Excel</button>
-                        
+                        <button class="control-btn" id="exportExcelBtn" data-tooltip="Exportar Excel"><i class="fas fa-file-excel"></i> Baixar Excel</button>
+                        <button class="control-btn" id="selectAllBtn" data-tooltip="Selecionar Todos"><i class="fas fa-check-square"></i> Selecionar Todos</button>
                     </div>
+
+                    
 
                     <!-- Visualização em Tabela -->
                     <div id="appointmentsTable" class="table-view active">
@@ -197,8 +200,10 @@
                             <tbody id="appointmentsBody"></tbody>
                         </table>
                     </div>
+
                     <!-- Visualização em Grid -->
                     <div id="gridView" class="grid-view"></div>
+
                     <!-- Visualização em Pipeline -->
                     <div id="pipelineView" class="pipeline-view">
                         <div class="pipeline-column" data-status="Aguardando Atendimento">
@@ -219,7 +224,18 @@
                         </div>
                     </div>
                 </div>
-
+<!-- Paginação -->
+                    <div class="pagination-controls">
+                        <button id="prevPageBtn" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
+                        <span id="pageInfo">Página 1 de 1</span>
+                        <button id="nextPageBtn" disabled>Próxima <i class="fas fa-chevron-right"></i></button>
+                        <select id="itemsPerPage">
+                            <option value="5">5 por página</option>
+                            <option value="10" selected>10 por página</option>
+                            <option value="20">20 por página</option>
+                            <option value="50">50 por página</option>
+                        </select>
+                    </div>
                 <!-- Aba "Relatórios" -->
                 <div id="reportsTab" class="tab-content" style="display: none;">
                     <div class="form-grid">
@@ -296,10 +312,10 @@
                 <span class="modal-close">×</span>
                 <h4>Mover Card Para:</h4>
                 <div class="modal-buttons">
-                    <button data-status="Aguardando Atendimento">Aguardando Atendimento</button>
-                    <button data-status="Atendido">Atendido</button>
-                    <button data-status="Reagendado">Reagendado</button>
-                    <button data-status="Cancelado">Cancelado</button>
+                    <button data-status="Aguardando Atendimento" onclick="moveCard('Aguardando Atendimento')">Aguardando Atendimento</button>
+                    <button data-status="Atendido" onclick="moveCard('Atendido')">Atendido</button>
+                    <button data-status="Reagendado" onclick="moveCard('Reagendado')">Reagendado</button>
+                    <button data-status="Cancelado" onclick="moveCard('Cancelado')">Cancelado</button>
                 </div>
             </div>
         </div>
@@ -393,6 +409,9 @@
                         <label>Bordas: <input type="color" id="borderColor" value="#1e40af"></label>
                     </div>
                     <div class="form-group">
+                        <label>Borda dos Cards: <input type="color" id="cardBorderColor" value="#d9d9ec"></label>
+                    </div>
+                    <div class="form-group">
                         <label>Senha para Excluir Todos: <input type="password" id="deleteAllPassword" placeholder="Definir senha"></label>
                     </div>
                     <div class="modal-buttons">
@@ -436,7 +455,5 @@
 
     <!-- Scripts -->
     <script type="module" src="script.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
