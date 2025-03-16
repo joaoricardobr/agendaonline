@@ -66,13 +66,6 @@ header {
     margin-bottom: 20px;
 }
 
-.login-box .checkbox-group {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
-}
-
 .login-box label {
     display: block;
     color: #495057;
@@ -322,6 +315,31 @@ button:hover {
     border-radius: 10px;
     font-size: 15px;
     background-color: #f8f9fa;
+    color: #495057;
+}
+
+/* Paginação */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.pagination-controls button {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.pagination-controls select {
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+}
+
+#pageInfo {
+    font-size: 14px;
     color: #495057;
 }
 
@@ -648,15 +666,30 @@ footer a:hover {
 
 /* Estilos de Impressão */
 @media print {
-    .search-card, .table-controls, .form-section, header, .notification, .modal, footer, .card-actions, #pipelineView { display: none !important; }
-    .appointments-section { box-shadow: none; padding: 0; border: none; }
-    .no-print { display: none; }
-    #appointmentsTable.print { display: block !important; }
-    #gridView.print { display: grid !important; }
-    .table-view table { width: 100%; font-size: 10pt; border-collapse: collapse; }
-    .table-view th, .table-view td { padding: 5px; border: 1px solid #dee2e6; }
-    #appointmentsTable:not(.print), #gridView:not(.print) { display: none !important; }
-    .table-view th.hidden, .table-view td.hidden { display: none !important; }
+    .print-list {
+        width: 100% !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+    .print-list table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .print-list th, .print-list td {
+        max-width: none !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        font-size: 10pt;
+        padding: 5px;
+        border: 1px solid #000;
+    }
+    .no-print, .card-actions, .action-btn, .modal, .notification, nav, .form-section {
+        display: none !important;
+    }
+    .print-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    }
 }
 
 /* Adições e Ajustes */
@@ -748,4 +781,5 @@ footer a:hover {
     .table-controls { flex-direction: column; align-items: flex-start; }
     .filters { flex-direction: column; gap: 10px; }
     .modal-content { width: 90%; }
+    .pagination-controls { flex-direction: column; gap: 10px; }
 }
