@@ -1,6 +1,6 @@
 // Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 // Configuração do Firebase
@@ -13,7 +13,6 @@ const firebaseConfig = {
     appId: "1:1060358457274:web:99f18e2c7e1e889e547f83",
     measurementId: "G-L8C2KQZMH7"
 };
-// Substitua pelos valores reais do seu projeto Firebase!
 
 // Versão do IndexedDB
 const DB_VERSION = 2;
@@ -456,6 +455,7 @@ function changeView(e) {
     e.target.closest('.view-mode').classList.add('active');
     currentPage = 1;
     renderAppointments();
+    saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
     saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
     showNotification(`Modo de visualização alterado para ${currentView}!`);
 }
@@ -565,7 +565,7 @@ async function saveMedico() {
     const nome = document.getElementById('novoMedicoNome').value.trim();
     const crm = document.getElementById('novoMedicoCRM').value.trim();
     if (nome) {
-        const medico = { nome, crm: crm || '' };
+        const medico = { nome, crm: crm || '', id: Date.now().toString() };
         medicos.push(medico);
         try {
             await saveToFirebase('medicos', medico);
@@ -604,10 +604,11 @@ function updateMedicosList() {
 
 async function deleteMedico(index) {
     if (confirm('Tem certeza que deseja excluir este médico?')) {
+        const medico = medicos[index];
         medicos.splice(index, 1);
         try {
+            await deleteFromFirebase('medicos', medico.id);
             await saveToIndexedDB('medicos', medicos);
-            await syncLocalWithFirebase();
             updateMedicosList();
             showNotification('Médico excluído com sucesso!');
         } catch (error) {
@@ -684,7 +685,7 @@ function closeModal(modal) {
     modal.style.display = 'none';
 }
 
-function saveTheme() {
+async function saveTheme() {
     theme = {
         bodyBgColor: document.getElementById('bodyBgColor').value,
         cardBgColor: document.getElementById('cardBgColor').value,
@@ -695,9 +696,16 @@ function saveTheme() {
     };
     const newDeleteAllPassword = document.getElementById('deleteAllPassword').value;
     if (newDeleteAllPassword) deleteAllPassword = newDeleteAllPassword;
-    applyTheme();
-    saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-    showNotification('Configurações de tema salvas!');
+    try {
+        await saveToFirebase('settings', { theme, deleteAllPassword, currentView, lastSync });
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        applyTheme();
+        showNotification('Configurações de tema salvas!');
+    } catch (error) {
+        console.error('Erro ao salvar configurações:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar configurações: ${error.message}`);
+        showNotification('Erro ao salvar configurações: ' + error.message, true);
+    }
 }
 
 function resetTheme() {
@@ -709,6 +717,7 @@ function resetTheme() {
     document.getElementById('borderColor').value = '#1e40af';
     document.getElementById('cardBorderColor').value = '#d9d9ec';
     applyTheme();
+    saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
     saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
     showNotification('Tema restaurado para padrão!');
 }
@@ -734,16 +743,24 @@ function applyTheme() {
 }
 
 // Funções de Usuários
-function addUser() {
+async function addUser() {
     const username = document.getElementById('newUsername').value.trim();
     const password = document.getElementById('newPassword').value.trim();
     if (username && password) {
-        users.push({ username, password });
-        saveToIndexedDB('users', users);
-        updateUsersList();
-        document.getElementById('newUsername').value = '';
-        document.getElementById('newPassword').value = '';
-        showNotification('Usuário adicionado com sucesso!');
+        const user = { username, password, id: Date.now().toString() };
+        users.push(user);
+        try {
+            await saveToFirebase('users', user);
+            await saveToIndexedDB('users', users);
+            updateUsersList();
+            document.getElementById('newUsername').value = '';
+            document.getElementById('newPassword').value = '';
+            showNotification('Usuário adicionado com sucesso!');
+        } catch (error) {
+            console.error('Erro ao adicionar usuário:', error);
+            errorLogs.push(`[${new Date().toISOString()}] Erro ao adicionar usuário: ${error.message}`);
+            showNotification('Erro ao adicionar usuário: ' + error.message, true);
+        }
     } else {
         showNotification('Por favor, preencha usuário e senha!', true);
     }
@@ -759,12 +776,20 @@ function updateUsersList() {
     });
 }
 
-function deleteUser(index) {
+async function deleteUser(index) {
     if (confirm('Tem certeza que deseja excluir este usuário?')) {
+        const user = users[index];
         users.splice(index, 1);
-        saveToIndexedDB('users', users);
-        updateUsersList();
-        showNotification('Usuário excluído com sucesso!');
+        try {
+            await deleteFromFirebase('users', user.id);
+            await saveToIndexedDB('users', users);
+            updateUsersList();
+            showNotification('Usuário excluído com sucesso!');
+        } catch (error) {
+            console.error('Erro ao excluir usuário:', error);
+            errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir usuário: ${error.message}`);
+            showNotification('Erro ao excluir usuário: ' + error.message, true);
+        }
     }
 }
 
@@ -802,7 +827,6 @@ function clearFilters() {
 
 // Impressão Unificada
 function printAppointments() {
-    // Obtém os IDs dos itens selecionados
     const selectedIds = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
     if (selectedIds.length === 0) {
         showNotification('Nenhum item selecionado para impressão!', true);
@@ -812,14 +836,12 @@ function printAppointments() {
     const selectedAppointments = appointments.filter(app => selectedIds.includes(app.id));
     const printWindow = window.open('', '_blank');
 
-    // Verifica se a janela de impressão foi criada corretamente
     if (!printWindow) {
         showNotification('Erro ao abrir janela de impressão. Verifique bloqueadores de pop-up!', true);
         return;
     }
 
     try {
-        // Modo Lista
         if (currentView === 'list') {
             printWindow.document.write(`
                 <html>
@@ -879,8 +901,6 @@ function printAppointments() {
                 </body>
                 </html>
             `);
-
-        // Modo Grid
         } else if (currentView === 'grid') {
             printWindow.document.write(`
                 <html>
@@ -921,23 +941,17 @@ function printAppointments() {
                 </body>
                 </html>
             `);
-
-        // Modo Pipeline (não suportado)
         } else {
             printWindow.close();
             showNotification('Impressão não suportada no modo Pipeline!', true);
             return;
         }
 
-        // Fecha o documento e inicia a impressão
         printWindow.document.close();
         printWindow.focus();
         printWindow.print();
         showNotification(`Impressão iniciada no modo ${currentView === 'list' ? 'Lista' : 'Grid'}!`);
-
-        // Fecha a janela após a impressão
         setTimeout(() => printWindow.close(), 1000);
-
     } catch (error) {
         console.error('Erro ao gerar impressão:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar impressão: ${error.message}`);
@@ -945,8 +959,9 @@ function printAppointments() {
         printWindow.close();
     }
 }
+
 // Funções de Relatórios
-function generateReport() {
+async function generateReport() {
     const reportType = document.getElementById('reportType').value;
     const reportMonth = document.getElementById('reportMonth').value;
     const reportYear = document.getElementById('reportYear').value;
@@ -1022,7 +1037,14 @@ function generateReport() {
         reportGrid.appendChild(card);
     });
 
-    showNotification('Relatório gerado com sucesso!');
+    try {
+        await saveToFirebase('reports', { id: Date.now().toString(), type: reportType, data: filteredAppointments });
+        showNotification('Relatório gerado e salvo no Firebase com sucesso!');
+    } catch (error) {
+        console.error('Erro ao salvar relatório no Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar relatório no Firebase: ${error.message}`);
+        showNotification('Erro ao salvar relatório no Firebase: ' + error.message, true);
+    }
 }
 
 function toggleReportView(view) {
@@ -1034,7 +1056,7 @@ function toggleReportView(view) {
 }
 
 // Funções de Insights
-function generateInsights() {
+async function generateInsights() {
     const insightsCards = document.getElementById('insightsCards');
     insightsCards.innerHTML = '';
 
@@ -1073,7 +1095,14 @@ function generateInsights() {
         (errorLogs.length ? errorLogs.map(log => `<li>${log}</li>`).join('') : '<li>Nenhum erro registrado.</li>') + `</ul>`;
     insightsCards.appendChild(errorLogCard);
 
-    showNotification('Insights gerados com sucesso!');
+    try {
+        await saveToFirebase('insights', { id: 'default', totalAppointments, statusCount, doctorsCount, errorLogs });
+        showNotification('Insights gerados e salvos no Firebase com sucesso!');
+    } catch (error) {
+        console.error('Erro ao salvar insights no Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar insights no Firebase: ${error.message}`);
+        showNotification('Erro ao salvar insights no Firebase: ' + error.message, true);
+    }
 }
 
 // Funções de Backup
@@ -1106,6 +1135,10 @@ function restoreLocal() {
             deleteAllPassword = settings.deleteAllPassword || '1234';
             lastSync = settings.lastSync || 0;
             theme = settings.theme || {};
+            await saveToFirebase('appointments', appointments);
+            await saveToFirebase('medicos', medicos);
+            await saveToFirebase('users', users);
+            await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
             await saveToIndexedDB('appointments', appointments);
             await saveToIndexedDB('medicos', medicos);
             await saveToIndexedDB('users', users);
@@ -1145,6 +1178,10 @@ async function restoreFirebase() {
             deleteAllPassword = settings.deleteAllPassword || '1234';
             lastSync = settings.lastSync || 0;
             theme = settings.theme || {};
+            await saveToFirebase('appointments', appointments);
+            await saveToFirebase('medicos', medicos);
+            await saveToFirebase('users', users);
+            await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
             await saveToIndexedDB('appointments', appointments);
             await saveToIndexedDB('medicos', medicos);
             await saveToIndexedDB('users', users);
@@ -1179,8 +1216,23 @@ async function syncLocalWithFirebase() {
             medicos = mergeData(medicos, firebaseMedicos, 'nome');
             await saveToIndexedDB('medicos', medicos);
 
+            const usersSnapshot = await getDocs(collection(db, 'users'));
+            const firebaseUsers = usersSnapshot.docs.map(doc => doc.data());
+            users = mergeData(users, firebaseUsers, 'username');
+            await saveToIndexedDB('users', users);
+
+            const settingsDoc = await getDoc(doc(db, 'settings', 'default'));
+            if (settingsDoc.exists()) {
+                const firebaseSettings = settingsDoc.data();
+                currentView = firebaseSettings.currentView || 'list';
+                deleteAllPassword = firebaseSettings.deleteAllPassword || '1234';
+                theme = firebaseSettings.theme || {};
+                lastSync = firebaseSettings.lastSync || 0;
+                await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+            }
+
             lastSync = now;
-            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+            await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
             showNotification('Sincronização com Firebase realizada com sucesso!');
         } catch (error) {
             console.error('Erro ao sincronizar com Firebase:', error);
@@ -1202,7 +1254,8 @@ function mergeData(localData, firebaseData, key) {
 
 async function saveToFirebase(collectionName, data) {
     try {
-        await setDoc(doc(db, collectionName, data.id || Date.now().toString()), data);
+        const docId = data.id || (collectionName === 'settings' || collectionName === 'reports' || collectionName === 'insights' ? 'default' : Date.now().toString());
+        await setDoc(doc(db, collectionName, docId), data);
         console.log(`Dados salvos no Firebase (${collectionName}):`, data);
     } catch (error) {
         console.error(`Erro ao salvar no Firebase (${collectionName}):`, error);
@@ -1312,6 +1365,11 @@ function showNotification(message, isError = false) {
 // Navegação para Status
 function scrollToStatusSection() {
     pipelineView.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Função Placeholder para Exportação Excel
+function exportToExcel() {
+    showNotification('Funcionalidade de exportação para Excel ainda não implementada!');
 }
 
 // Declaração de Funções Globais para o HTML
