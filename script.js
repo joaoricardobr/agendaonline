@@ -1,6 +1,7 @@
+
 // Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, getDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 // Configuração do Firebase
@@ -95,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!notification || !appointmentForm || !appointmentsBody || !gridView || !pipelineView) {
         console.error("Elementos essenciais do DOM não encontrados!");
+        errorLogs.push(`[${new Date().toISOString()}] Elementos essenciais do DOM não encontrados`);
         alert("Erro: Interface não carregada corretamente. Verifique o HTML.");
         return;
     }
@@ -121,37 +123,42 @@ document.addEventListener('DOMContentLoaded', () => {
 // Configuração de Listeners
 function setupEventListeners() {
     console.log("Configurando eventos...");
-    if (loginForm) loginForm.addEventListener('submit', (e) => { e.preventDefault(); loginUser(); });
-    if (appointmentForm) appointmentForm.addEventListener('submit', saveAppointment);
-    if (statusFilter) statusFilter.addEventListener('change', () => { currentPage = 1; renderAppointments(); showNotification('Filtro de status aplicado!'); });
-    document.getElementById('selectAll')?.addEventListener('change', toggleSelectAll);
-    document.querySelectorAll('.view-mode').forEach(btn => btn.addEventListener('click', changeView));
-    document.getElementById('allBtn')?.addEventListener('click', () => { showTab('allTab'); showNotification('Aba "Todos" selecionada!'); });
-    document.getElementById('reportsBtn')?.addEventListener('click', () => { showTab('reportsTab'); showNotification('Aba "Relatórios" selecionada!'); });
-    document.getElementById('insightsBtn')?.addEventListener('click', () => { showTab('insightsTab'); showNotification('Aba "Insights" selecionada!'); });
-    document.getElementById('printBtn')?.addEventListener('click', printAppointments);
-    document.getElementById('deleteAllBtn')?.addEventListener('click', () => { openDeleteAllModal(); showNotification('Modal de exclusão aberto!'); });
-    document.getElementById('sortFilterBtn')?.addEventListener('click', () => { openSortFilterModal(); showNotification('Modal de filtros aberto!'); });
-    document.getElementById('settingsBtn')?.addEventListener('click', () => { openSettingsModal(); showNotification('Modal de configurações aberto!'); });
-    document.getElementById('resetBtn')?.addEventListener('click', () => { resetForm(); showNotification('Formulário resetado!'); });
-    document.getElementById('exportExcelBtn')?.addEventListener('click', () => { exportToExcel(); });
-    document.getElementById('clearFiltersBtn')?.addEventListener('click', () => { clearFilters(); showNotification('Filtros limpos!'); });
-    document.getElementById('logoutBtn')?.addEventListener('click', () => { logoutUser(); showNotification('Logout solicitado!'); });
-    document.getElementById('statusFilterBtn')?.addEventListener('click', () => { scrollToStatusSection(); showNotification('Navegando para seção de status!'); });
-    if (prevPageBtn) prevPageBtn.addEventListener('click', () => { changePage(-1); showNotification('Página anterior!'); });
-    if (nextPageBtn) nextPageBtn.addEventListener('click', () => { changePage(1); showNotification('Próxima página!'); });
-    if (itemsPerPageSelect) itemsPerPageSelect.addEventListener('change', () => { itemsPerPage = parseInt(itemsPerPageSelect.value); currentPage = 1; renderAppointments(); showNotification(`Itens por página alterados para ${itemsPerPage}!`); });
-    if (selectAllBtn) selectAllBtn.addEventListener('click', toggleSelectAllItems);
+    try {
+        if (loginForm) loginForm.addEventListener('submit', (e) => { e.preventDefault(); loginUser(); });
+        if (appointmentForm) appointmentForm.addEventListener('submit', saveAppointment);
+        if (statusFilter) statusFilter.addEventListener('change', () => { currentPage = 1; renderAppointments(); showNotification('Filtro de status aplicado!'); });
+        document.getElementById('selectAll')?.addEventListener('change', toggleSelectAll);
+        document.querySelectorAll('.view-mode').forEach(btn => btn.addEventListener('click', changeView));
+        document.getElementById('allBtn')?.addEventListener('click', () => { showTab('allTab'); showNotification('Aba "Todos" selecionada!'); });
+        document.getElementById('reportsBtn')?.addEventListener('click', () => { showTab('reportsTab'); showNotification('Aba "Relatórios" selecionada!'); });
+        document.getElementById('insightsBtn')?.addEventListener('click', () => { showTab('insightsTab'); showNotification('Aba "Insights" selecionada!'); });
+        document.getElementById('printBtn')?.addEventListener('click', printAppointments);
+        document.getElementById('deleteAllBtn')?.addEventListener('click', () => { openDeleteAllModal(); showNotification('Modal de exclusão aberto!'); });
+        document.getElementById('sortFilterBtn')?.addEventListener('click', () => { openSortFilterModal(); showNotification('Modal de filtros aberto!'); });
+        document.getElementById('settingsBtn')?.addEventListener('click', () => { openSettingsModal(); showNotification('Modal de configurações aberto!'); });
+        document.getElementById('resetBtn')?.addEventListener('click', () => { resetForm(); showNotification('Formulário resetado!'); });
+        document.getElementById('exportExcelBtn')?.addEventListener('click', () => { exportToExcel(); });
+        document.getElementById('clearFiltersBtn')?.addEventListener('click', () => { clearFilters(); showNotification('Filtros limpos!'); });
+        document.getElementById('logoutBtn')?.addEventListener('click', () => { logoutUser(); showNotification('Logout solicitado!'); });
+        document.getElementById('statusFilterBtn')?.addEventListener('click', () => { scrollToStatusSection(); showNotification('Navegando para seção de status!'); });
+        if (prevPageBtn) prevPageBtn.addEventListener('click', () => { changePage(-1); showNotification('Página anterior!'); });
+        if (nextPageBtn) nextPageBtn.addEventListener('click', () => { changePage(1); showNotification('Próxima página!'); });
+        if (itemsPerPageSelect) itemsPerPageSelect.addEventListener('change', () => { itemsPerPage = parseInt(itemsPerPageSelect.value); currentPage = 1; renderAppointments(); showNotification(`Itens por página alterados para ${itemsPerPage}!`); });
+        if (selectAllBtn) selectAllBtn.addEventListener('click', toggleSelectAllItems);
 
-    document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => { closeModal(btn.closest('.modal')); showNotification('Modal fechado!'); }));
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) { closeModal(modal); showNotification('Modal fechado ao clicar fora!'); }
+        document.querySelectorAll('.modal-close').forEach(btn => btn.addEventListener('click', () => { closeModal(btn.closest('.modal')); showNotification('Modal fechado!'); }));
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) { closeModal(modal); showNotification('Modal fechado ao clicar fora!'); }
+            });
         });
-    });
 
-    document.getElementById('saveTheme')?.addEventListener('click', () => { saveTheme(); showNotification('Tema salvo!'); });
-    document.getElementById('resetTheme')?.addEventListener('click', () => { resetTheme(); showNotification('Tema resetado!'); });
+        document.getElementById('saveTheme')?.addEventListener('click', () => { saveTheme(); showNotification('Tema salvo!'); });
+        document.getElementById('resetTheme')?.addEventListener('click', () => { resetTheme(); showNotification('Tema resetado!'); });
+    } catch (error) {
+        console.error("Erro ao configurar eventos:", error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao configurar eventos: ${error.message}`);
+    }
 }
 
 // Funções de Autenticação
@@ -169,17 +176,22 @@ async function loginUser() {
         console.log("Login bem-sucedido:", user);
         showNotification(`Login realizado com sucesso! Bem-vindo, ${user.email}!`);
     } catch (error) {
-        console.error('Erro ao fazer login:', error.code, error.message);
+        console.error('Erro ao fazer login:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao fazer login: ${error.message}`);
         showNotification('Erro ao fazer login: ' + error.message, true);
     }
 }
 
 function loadSavedCredentials() {
-    const savedEmail = localStorage.getItem('savedEmail');
-    if (savedEmail) {
-        loginEmail.value = savedEmail;
-        console.log("Email carregado do localStorage:", savedEmail);
+    try {
+        const savedEmail = localStorage.getItem('savedEmail');
+        if (savedEmail) {
+            loginEmail.value = savedEmail;
+            console.log("Email carregado do localStorage:", savedEmail);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar credenciais salvas:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar credenciais salvas: ${error.message}`);
     }
 }
 
@@ -224,32 +236,32 @@ async function loadInitialData() {
 // Funções de CRUD
 async function saveAppointment(e) {
     e.preventDefault();
-    const appointment = {
-        id: appointmentForm.dataset.id || Date.now().toString(),
-        nomePaciente: document.getElementById('nomePaciente').value || 'Paciente Sem Nome',
-        telefone: document.getElementById('telefone').value || '',
-        email: document.getElementById('email').value || '',
-        nomeMedico: document.getElementById('nomeMedico').value || '',
-        localCRM: document.getElementById('localCRM').value || '',
-        dataConsulta: document.getElementById('dataConsulta').value || '',
-        horaConsulta: document.getElementById('horaConsulta').value || '',
-        tipoCirurgia: document.getElementById('tipoCirurgia').value || '',
-        procedimentos: document.getElementById('procedimentos').value || '',
-        agendamentoFeitoPor: document.getElementById('agendamentoFeitoPor').value || '',
-        descricao: document.getElementById('descricao').value || '',
-        status: document.getElementById('status').value || 'Aguardando Atendimento'
-    };
-
-    const index = appointments.findIndex(a => a.id === appointment.id);
-    if (index !== -1) {
-        appointments[index] = appointment;
-        showNotification('Agendamento atualizado com sucesso!');
-    } else {
-        appointments.push(appointment);
-        showNotification('Novo agendamento salvo com sucesso!');
-    }
-
     try {
+        const appointment = {
+            id: appointmentForm.dataset.id || Date.now().toString(),
+            nomePaciente: document.getElementById('nomePaciente').value || 'Paciente Sem Nome',
+            telefone: document.getElementById('telefone').value || '',
+            email: document.getElementById('email').value || '',
+            nomeMedico: document.getElementById('nomeMedico').value || '',
+            localCRM: document.getElementById('localCRM').value || '',
+            dataConsulta: document.getElementById('dataConsulta').value || '',
+            horaConsulta: document.getElementById('horaConsulta').value || '',
+            tipoCirurgia: document.getElementById('tipoCirurgia').value || '',
+            procedimentos: document.getElementById('procedimentos').value || '',
+            agendamentoFeitoPor: document.getElementById('agendamentoFeitoPor').value || '',
+            descricao: document.getElementById('descricao').value || '',
+            status: document.getElementById('status').value || 'Aguardando Atendimento'
+        };
+
+        const index = appointments.findIndex(a => a.id === appointment.id);
+        if (index !== -1) {
+            appointments[index] = appointment;
+            showNotification('Agendamento atualizado com sucesso!');
+        } else {
+            appointments.push(appointment);
+            showNotification('Novo agendamento salvo com sucesso!');
+        }
+
         await saveToFirebase('appointments', appointment);
         await saveToIndexedDB('appointments', appointments);
         resetForm();
@@ -262,312 +274,402 @@ async function saveAppointment(e) {
 }
 
 async function deleteAppointment(id) {
-    if (confirm('Tem certeza que deseja excluir este agendamento?')) {
-        try {
+    try {
+        if (confirm('Tem certeza que deseja excluir este agendamento?')) {
             appointments = appointments.filter(a => a.id !== id);
             await deleteFromFirebase('appointments', id);
             await saveToIndexedDB('appointments', appointments);
             renderAppointments();
             showNotification('Agendamento excluído com sucesso!');
-        } catch (error) {
-            console.error('Erro ao excluir:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir agendamento: ${error.message}`);
-            showNotification('Erro ao excluir: ' + error.message, true);
         }
+    } catch (error) {
+        console.error('Erro ao excluir agendamento:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir agendamento: ${error.message}`);
+        showNotification('Erro ao excluir: ' + error.message, true);
     }
 }
 
 function editAppointment(id) {
-    const appointment = appointments.find(a => a.id === id);
-    if (appointment) {
-        loadFormData(appointment);
-        document.getElementById('statusGroup').style.display = 'block';
-        showNotification('Agendamento carregado para edição!');
+    try {
+        const appointment = appointments.find(a => a.id === id);
+        if (appointment) {
+            loadFormData(appointment);
+            document.getElementById('statusGroup').style.display = 'block';
+            showNotification('Agendamento carregado para edição!');
+        }
+    } catch (error) {
+        console.error('Erro ao editar agendamento:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao editar agendamento: ${error.message}`);
+        showNotification('Erro ao editar: ' + error.message, true);
     }
 }
 
 function viewAppointment(id) {
-    const appointment = appointments.find(a => a.id === id);
-    if (appointment) {
-        alert(JSON.stringify(appointment, null, 2));
-        showNotification('Detalhes do agendamento exibidos!');
+    try {
+        const appointment = appointments.find(a => a.id === id);
+        if (appointment) {
+            alert(JSON.stringify(appointment, null, 2));
+            showNotification('Detalhes do agendamento exibidos!');
+        }
+    } catch (error) {
+        console.error('Erro ao visualizar agendamento:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao visualizar agendamento: ${error.message}`);
+        showNotification('Erro ao visualizar: ' + error.message, true);
     }
 }
 
 function shareAppointment(id) {
-    const appointment = appointments.find(a => a.id === id);
-    if (appointment) {
-        const message = `Agendamento:\nPaciente: ${appointment.nomePaciente}\nTelefone: ${appointment.telefone}\nMédico: ${appointment.nomeMedico}\nData: ${appointment.dataConsulta} às ${appointment.horaConsulta}\nStatus: ${appointment.status}`;
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, '_blank');
-        showNotification('Agendamento compartilhado via WhatsApp!');
+    try {
+        const appointment = appointments.find(a => a.id === id);
+        if (appointment) {
+            const message = `Agendamento:\nPaciente: ${appointment.nomePaciente}\nTelefone: ${appointment.telefone}\nMédico: ${appointment.nomeMedico}\nData: ${appointment.dataConsulta} às ${appointment.horaConsulta}\nStatus: ${appointment.status}`;
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+            showNotification('Agendamento compartilhado via WhatsApp!');
+        }
+    } catch (error) {
+        console.error('Erro ao compartilhar agendamento:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao compartilhar agendamento: ${error.message}`);
+        showNotification('Erro ao compartilhar: ' + error.message, true);
     }
 }
 
 // Renderização com Paginação
 function renderAppointments() {
     console.log("Renderizando agendamentos...");
-    if (!appointmentsBody || !gridView || !pipelineView || !statusFilter) {
-        console.error("Elementos do DOM não encontrados!");
-        showNotification("Erro: Interface não carregada corretamente!", true);
-        return;
-    }
+    try {
+        if (!appointmentsBody || !gridView || !pipelineView || !statusFilter) {
+            console.error("Elementos do DOM não encontrados!");
+            errorLogs.push(`[${new Date().toISOString()}] Elementos do DOM não encontrados em renderAppointments`);
+            showNotification("Erro: Interface não carregada corretamente!", true);
+            return;
+        }
 
-    let filteredAppointments = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
+        let filteredAppointments = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
 
-    totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
-    currentPage = Math.min(currentPage, totalPages) || 1;
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
-    const paginatedAppointments = filteredAppointments.slice(start, end);
+        totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
+        currentPage = Math.min(currentPage, totalPages) || 1;
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const paginatedAppointments = filteredAppointments.slice(start, end);
 
-    prevPageBtn.disabled = currentPage === 1;
-    nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
-    pageInfo.textContent = `Página ${currentPage} de ${totalPages || 1}`;
+        prevPageBtn.disabled = currentPage === 1;
+        nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        pageInfo.textContent = `Página ${currentPage} de ${totalPages || 1}`;
 
-    appointmentsBody.innerHTML = '';
-    gridView.innerHTML = '';
-    pipelineView.querySelectorAll('.column-content').forEach(col => col.innerHTML = '');
+        appointmentsBody.innerHTML = '';
+        gridView.innerHTML = '';
+        pipelineView.querySelectorAll('.column-content').forEach(col => col.innerHTML = '');
 
-    if (currentView === 'pipeline') {
-        filteredAppointments.forEach(app => {
-            const column = pipelineView.querySelector(`.pipeline-column[data-status="${app.status}"] .column-content`);
-            if (column) {
-                const miniCard = document.createElement('div');
-                miniCard.className = 'mini-card';
-                miniCard.draggable = true;
-                miniCard.dataset.id = app.id;
-                miniCard.dataset.status = app.status;
-                miniCard.innerHTML = `
+        if (currentView === 'pipeline') {
+            filteredAppointments.forEach(app => {
+                const column = pipelineView.querySelector(`.pipeline-column[data-status="${app.status}"] .column-content`);
+                if (column) {
+                    const miniCard = document.createElement('div');
+                    miniCard.className = 'mini-card';
+                    miniCard.draggable = true;
+                    miniCard.dataset.id = app.id;
+                    miniCard.dataset.status = app.status;
+                    miniCard.innerHTML = `
+                        <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                        <p>ID: ${app.id || '-'}</p>
+                        <p>Médico: ${app.nomeMedico || '-'}</p>
+                        <p>Data: ${app.dataConsulta || '-'} às ${app.horaConsulta || '-'}</p>
+                        <button class="action-btn view-btn" onclick="toggleDetails(this.parentElement)">Mais Detalhes</button>
+                        <div class="card-details" style="display: none;">
+                            <p>ID: ${app.id || '-'}</p>
+                            <p>Nome: ${app.nomePaciente || '-'}</p>
+                            <p>Telefone: ${app.telefone || '-'}</p>
+                            <p>Email: ${app.email || '-'}</p>
+                            <p>Médico: ${app.nomeMedico || '-'}</p>
+                            <p>Local CRM: ${app.localCRM || '-'}</p>
+                            <p>Data: ${app.dataConsulta || '-'}</p>
+                            <p>Hora: ${app.horaConsulta || '-'}</p>
+                            <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
+                            <p>Procedimentos: ${app.procedimentos || '-'}</p>
+                            <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
+                            <p>Descrição: ${app.descricao || '-'}</p>
+                            <p>Status: ${app.status || '-'}</p>
+                            <div class="card-actions">
+                                <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
+                                <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
+                                <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
+                                <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
+                            </div>
+                        </div>
+                    `;
+                    column.appendChild(miniCard);
+                }
+            });
+        } else {
+            paginatedAppointments.forEach(app => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><input type="checkbox" class="select-row" data-id="${app.id}"></td>
+                    <td>${app.id || '-'}</td>
+                    <td>${app.nomePaciente || '-'}</td>
+                    <td>${app.telefone || '-'}</td>
+                    <td>${app.email || '-'}</td>
+                    <td>${app.nomeMedico || '-'}</td>
+                    <td>${app.localCRM || '-'}</td>
+                    <td>${app.dataConsulta || '-'}</td>
+                    <td>${app.horaConsulta || '-'}</td>
+                    <td>${app.tipoCirurgia || '-'}</td>
+                    <td>${app.procedimentos || '-'}</td>
+                    <td>${app.agendamentoFeitoPor || '-'}</td>
+                    <td>${app.descricao || '-'}</td>
+                    <td>${app.status || '-'}</td>
+                    <td class="no-print">
+                        <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
+                        <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
+                        <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
+                        <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
+                    </td>
+                `;
+                appointmentsBody.appendChild(row);
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <input type="checkbox" class="select-row" data-id="${app.id}">
                     <h4>${app.nomePaciente || 'Sem Nome'}</h4>
                     <p>ID: ${app.id || '-'}</p>
+                    <p>Telefone: ${app.telefone || '-'}</p>
+                    <p>Email: ${app.email || '-'}</p>
                     <p>Médico: ${app.nomeMedico || '-'}</p>
-                    <p>Data: ${app.dataConsulta || '-'} às ${app.horaConsulta || '-'}</p>
-                    <button class="action-btn view-btn" onclick="toggleDetails(this.parentElement)">Mais Detalhes</button>
-                    <div class="card-details" style="display: none;">
-                        <p>ID: ${app.id || '-'}</p>
-                        <p>Nome: ${app.nomePaciente || '-'}</p>
-                        <p>Telefone: ${app.telefone || '-'}</p>
-                        <p>Email: ${app.email || '-'}</p>
-                        <p>Médico: ${app.nomeMedico || '-'}</p>
-                        <p>Local CRM: ${app.localCRM || '-'}</p>
-                        <p>Data: ${app.dataConsulta || '-'}</p>
-                        <p>Hora: ${app.horaConsulta || '-'}</p>
-                        <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
-                        <p>Procedimentos: ${app.procedimentos || '-'}</p>
-                        <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
-                        <p>Descrição: ${app.descricao || '-'}</p>
-                        <p>Status: ${app.status || '-'}</p>
-                        <div class="card-actions">
-                            <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
-                            <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
-                            <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
-                            <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
-                        </div>
+                    <p>Local CRM: ${app.localCRM || '-'}</p>
+                    <p>Data: ${app.dataConsulta || '-'}</p>
+                    <p>Hora: ${app.horaConsulta || '-'}</p>
+                    <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
+                    <p>Procedimentos: ${app.procedimentos || '-'}</p>
+                    <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
+                    <p>Descrição: ${app.descricao || '-'}</p>
+                    <p>Status: ${app.status || '-'}</p>
+                    <div class="card-actions">
+                        <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
+                        <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
+                        <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
+                        <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
                     </div>
                 `;
-                column.appendChild(miniCard);
-            }
-        });
-    } else {
-        paginatedAppointments.forEach(app => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td><input type="checkbox" class="select-row" data-id="${app.id}"></td>
-                <td>${app.id || '-'}</td>
-                <td>${app.nomePaciente || '-'}</td>
-                <td>${app.telefone || '-'}</td>
-                <td>${app.email || '-'}</td>
-                <td>${app.nomeMedico || '-'}</td>
-                <td>${app.localCRM || '-'}</td>
-                <td>${app.dataConsulta || '-'}</td>
-                <td>${app.horaConsulta || '-'}</td>
-                <td>${app.tipoCirurgia || '-'}</td>
-                <td>${app.procedimentos || '-'}</td>
-                <td>${app.agendamentoFeitoPor || '-'}</td>
-                <td>${app.descricao || '-'}</td>
-                <td>${app.status || '-'}</td>
-                <td class="no-print">
-                    <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
-                    <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
-                    <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
-                    <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
-                </td>
-            `;
-            appointmentsBody.appendChild(row);
+                gridView.appendChild(card);
+            });
+        }
 
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <input type="checkbox" class="select-row" data-id="${app.id}">
-                <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-                <p>ID: ${app.id || '-'}</p>
-                <p>Telefone: ${app.telefone || '-'}</p>
-                <p>Email: ${app.email || '-'}</p>
-                <p>Médico: ${app.nomeMedico || '-'}</p>
-                <p>Local CRM: ${app.localCRM || '-'}</p>
-                <p>Data: ${app.dataConsulta || '-'}</p>
-                <p>Hora: ${app.horaConsulta || '-'}</p>
-                <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
-                <p>Procedimentos: ${app.procedimentos || '-'}</p>
-                <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
-                <p>Descrição: ${app.descricao || '-'}</p>
-                <p>Status: ${app.status || '-'}</p>
-                <div class="card-actions">
-                    <button class="action-btn edit-btn" onclick="editAppointment('${app.id}')">Editar</button>
-                    <button class="action-btn share-btn" onclick="shareAppointment('${app.id}')">WhatsApp</button>
-                    <button class="action-btn view-btn" onclick="viewAppointment('${app.id}')">Visualizar</button>
-                    <button class="action-btn delete-btn" onclick="deleteAppointment('${app.id}')">Excluir</button>
-                </div>
-            `;
-            gridView.appendChild(card);
+        document.getElementById('appointmentsTable').classList.toggle('active', currentView === 'list');
+        gridView.classList.toggle('active', currentView === 'grid');
+        pipelineView.classList.toggle('active', currentView === 'pipeline');
+
+        pipelineView.querySelectorAll('.mini-card').forEach(card => {
+            card.addEventListener('dragstart', handleDragStart);
+            card.addEventListener('dragend', handleDragEnd);
+            card.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('action-btn')) {
+                    actionBox.style.display = 'block';
+                    actionBox.dataset.id = card.dataset.id;
+                    showNotification('Ações do card abertas!');
+                }
+            });
         });
+
+        pipelineView.querySelectorAll('.pipeline-column').forEach(column => {
+            column.addEventListener('dragover', handleDragOver);
+            column.addEventListener('drop', handleDrop);
+        });
+
+        showNotification('Agendamentos renderizados!');
+    } catch (error) {
+        console.error('Erro ao renderizar agendamentos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao renderizar agendamentos: ${error.message}`);
+        showNotification('Erro ao renderizar: ' + error.message, true);
     }
-
-    document.getElementById('appointmentsTable').classList.toggle('active', currentView === 'list');
-    gridView.classList.toggle('active', currentView === 'grid');
-    pipelineView.classList.toggle('active', currentView === 'pipeline');
-
-    pipelineView.querySelectorAll('.mini-card').forEach(card => {
-        card.addEventListener('dragstart', handleDragStart);
-        card.addEventListener('dragend', handleDragEnd);
-        card.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('action-btn')) {
-                actionBox.style.display = 'block';
-                actionBox.dataset.id = card.dataset.id;
-                showNotification('Ações do card abertas!');
-            }
-        });
-    });
-
-    pipelineView.querySelectorAll('.pipeline-column').forEach(column => {
-        column.addEventListener('dragover', handleDragOver);
-        column.addEventListener('drop', handleDrop);
-    });
-
-    showNotification('Agendamentos renderizados!');
 }
 
 // Funções de Visualização
 function changeView(e) {
-    currentView = e.target.closest('.view-mode').dataset.view;
-    document.querySelectorAll('.view-mode').forEach(btn => btn.classList.remove('active'));
-    e.target.closest('.view-mode').classList.add('active');
-    currentPage = 1;
-    renderAppointments();
-    saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
-    saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-    showNotification(`Modo de visualização alterado para ${currentView}!`);
+    try {
+        currentView = e.target.closest('.view-mode').dataset.view;
+        document.querySelectorAll('.view-mode').forEach(btn => btn.classList.remove('active'));
+        e.target.closest('.view-mode').classList.add('active');
+        currentPage = 1;
+        renderAppointments();
+        saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
+        saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        showNotification(`Modo de visualização alterado para ${currentView}!`);
+    } catch (error) {
+        console.error('Erro ao mudar visualização:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao mudar visualização: ${error.message}`);
+        showNotification('Erro ao mudar visualização: ' + error.message, true);
+    }
 }
 
 function showTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
-    document.getElementById(tabId).style.display = 'block';
-    if (tabId === 'allTab') renderAppointments();
-    else if (tabId === 'insightsTab') generateInsights();
+    try {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+        document.getElementById(tabId).style.display = 'block';
+        if (tabId === 'allTab') renderAppointments();
+        else if (tabId === 'insightsTab') generateInsights();
+    } catch (error) {
+        console.error('Erro ao mostrar aba:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao mostrar aba: ${error.message}`);
+        showNotification('Erro ao mostrar aba: ' + error.message, true);
+    }
 }
 
 // Paginação
 function changePage(direction) {
-    currentPage += direction;
-    renderAppointments();
+    try {
+        currentPage += direction;
+        renderAppointments();
+    } catch (error) {
+        console.error('Erro ao mudar página:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao mudar página: ${error.message}`);
+        showNotification('Erro ao mudar página: ' + error.message, true);
+    }
 }
 
 // Selecionar/Desmarcar Todos
 function toggleSelectAllItems() {
-    const allChecked = document.querySelectorAll('.select-row').length === document.querySelectorAll('.select-row:checked').length;
-    document.querySelectorAll('.select-row').forEach(checkbox => checkbox.checked = !allChecked);
-    selectAllBtn.innerHTML = allChecked ? '<i class="fas fa-check-square"></i> Selecionar Todos' : '<i class="fas fa-times-square"></i> Desmarcar Todos';
-    showNotification(allChecked ? 'Todos os itens desmarcados!' : 'Todos os itens selecionados!');
+    try {
+        const allChecked = document.querySelectorAll('.select-row').length === document.querySelectorAll('.select-row:checked').length;
+        document.querySelectorAll('.select-row').forEach(checkbox => checkbox.checked = !allChecked);
+        selectAllBtn.innerHTML = allChecked ? '<i class="fas fa-check-square"></i> Selecionar Todos' : '<i class="fas fa-times-square"></i> Desmarcar Todos';
+        showNotification(allChecked ? 'Todos os itens desmarcados!' : 'Todos os itens selecionados!');
+    } catch (error) {
+        console.error('Erro ao alternar seleção de itens:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao alternar seleção de itens: ${error.message}`);
+        showNotification('Erro ao alternar seleção: ' + error.message, true);
+    }
 }
 
 function toggleSelectAll(e) {
-    document.querySelectorAll('.select-row').forEach(checkbox => checkbox.checked = e.target.checked);
-    showNotification(e.target.checked ? 'Todos os itens selecionados!' : 'Seleção removida!');
+    try {
+        document.querySelectorAll('.select-row').forEach(checkbox => checkbox.checked = e.target.checked);
+        showNotification(e.target.checked ? 'Todos os itens selecionados!' : 'Seleção removida!');
+    } catch (error) {
+        console.error('Erro ao alternar seleção total:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao alternar seleção total: ${error.message}`);
+        showNotification('Erro ao alternar seleção: ' + error.message, true);
+    }
 }
 
 // Drag and Drop
 function handleDragStart(e) {
-    draggedCard = e.target;
-    e.dataTransfer.setData('text/plain', draggedCard.dataset.id);
-    setTimeout(() => draggedCard.classList.add('dragging'), 0);
-    showNotification('Arrastando card...');
+    try {
+        draggedCard = e.target;
+        e.dataTransfer.setData('text/plain', draggedCard.dataset.id);
+        setTimeout(() => draggedCard.classList.add('dragging'), 0);
+        showNotification('Arrastando card...');
+    } catch (error) {
+        console.error('Erro ao iniciar arrastar:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao iniciar arrastar: ${error.message}`);
+        showNotification('Erro ao iniciar arrastar: ' + error.message, true);
+    }
 }
 
 function handleDragEnd(e) {
-    draggedCard.classList.remove('dragging');
-    draggedCard = null;
-    showNotification('Arrastar concluído!');
+    try {
+        draggedCard.classList.remove('dragging');
+        draggedCard = null;
+        showNotification('Arrastar concluído!');
+    } catch (error) {
+        console.error('Erro ao finalizar arrastar:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao finalizar arrastar: ${error.message}`);
+        showNotification('Erro ao finalizar arrastar: ' + error.message, true);
+    }
 }
 
 function handleDragOver(e) {
-    e.preventDefault();
+    try {
+        e.preventDefault();
+    } catch (error) {
+        console.error('Erro ao passar sobre arrastar:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao passar sobre arrastar: ${error.message}`);
+    }
 }
 
 async function handleDrop(e) {
     e.preventDefault();
-    const id = e.dataTransfer.getData('text/plain');
-    const newStatus = e.currentTarget.dataset.status;
-    const appointment = appointments.find(app => app.id === id);
-    if (appointment && appointment.status !== newStatus) {
-        appointment.status = newStatus;
-        try {
+    try {
+        const id = e.dataTransfer.getData('text/plain');
+        const newStatus = e.currentTarget.dataset.status;
+        const appointment = appointments.find(app => app.id === id);
+        if (appointment && appointment.status !== newStatus) {
+            appointment.status = newStatus;
             await saveToFirebase('appointments', appointment);
             await saveToIndexedDB('appointments', appointments);
             renderAppointments();
             showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
-        } catch (error) {
-            console.error('Erro ao mover agendamento:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao mover agendamento: ${error.message}`);
-            showNotification('Erro ao mover agendamento: ' + error.message, true);
         }
+    } catch (error) {
+        console.error('Erro ao soltar card:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao soltar card: ${error.message}`);
+        showNotification('Erro ao mover agendamento: ' + error.message, true);
     }
 }
 
 async function moveCard(newStatus) {
-    const id = actionBox.dataset.id;
-    const appointment = appointments.find(app => app.id === id);
-    if (appointment && appointment.status !== newStatus) {
-        appointment.status = newStatus;
-        try {
+    try {
+        const id = actionBox.dataset.id;
+        const appointment = appointments.find(app => app.id === id);
+        if (appointment && appointment.status !== newStatus) {
+            appointment.status = newStatus;
             await saveToFirebase('appointments', appointment);
             await saveToIndexedDB('appointments', appointments);
             renderAppointments();
             actionBox.style.display = 'none';
             showNotification(`Agendamento movido para "${newStatus}" com sucesso!`);
-        } catch (error) {
-            console.error('Erro ao mover agendamento:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao mover agendamento: ${error.message}`);
-            showNotification('Erro ao mover agendamento: ' + error.message, true);
         }
+    } catch (error) {
+        console.error('Erro ao mover card:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao mover card: ${error.message}`);
+        showNotification('Erro ao mover agendamento: ' + error.message, true);
     }
 }
 
 function toggleDetails(card) {
-    const details = card.querySelector('.card-details');
-    details.style.display = details.style.display === 'none' ? 'block' : 'none';
-    showNotification(details.style.display === 'block' ? 'Detalhes exibidos!' : 'Detalhes ocultados!');
+    try {
+        const details = card.querySelector('.card-details');
+        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+        showNotification(details.style.display === 'block' ? 'Detalhes exibidos!' : 'Detalhes ocultados!');
+    } catch (error) {
+        console.error('Erro ao alternar detalhes:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao alternar detalhes: ${error.message}`);
+        showNotification('Erro ao alternar detalhes: ' + error.message, true);
+    }
 }
 
 // Funções de Modal
 function openMedicoModal() {
-    medicoModal.style.display = 'block';
-    updateMedicosList();
-    showNotification('Modal de médicos aberto!');
+    try {
+        medicoModal.style.display = 'block';
+        updateMedicosList();
+        showNotification('Modal de médicos aberto!');
+    } catch (error) {
+        console.error('Erro ao abrir modal de médicos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao abrir modal de médicos: ${error.message}`);
+        showNotification('Erro ao abrir modal: ' + error.message, true);
+    }
 }
 
 function closeMedicoModal() {
-    medicoModal.style.display = 'none';
-    showNotification('Modal de médicos fechado!');
+    try {
+        medicoModal.style.display = 'none';
+        showNotification('Modal de médicos fechado!');
+    } catch (error) {
+        console.error('Erro ao fechar modal de médicos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao fechar modal de médicos: ${error.message}`);
+        showNotification('Erro ao fechar modal: ' + error.message, true);
+    }
 }
 
 async function saveMedico() {
-    const nome = document.getElementById('novoMedicoNome').value.trim();
-    const crm = document.getElementById('novoMedicoCRM').value.trim();
-    if (nome) {
-        const medico = { nome, crm: crm || '', id: Date.now().toString() };
-        medicos.push(medico);
-        try {
+    try {
+        const nome = document.getElementById('novoMedicoNome').value.trim();
+        const crm = document.getElementById('novoMedicoCRM').value.trim();
+        if (nome) {
+            const medico = { nome, crm: crm || '', id: Date.now().toString() };
+            medicos.push(medico);
             await saveToFirebase('medicos', medico);
             await saveToIndexedDB('medicos', medicos);
             updateMedicosList();
@@ -575,274 +677,377 @@ async function saveMedico() {
             document.getElementById('novoMedicoCRM').value = '';
             closeMedicoModal();
             showNotification('Médico cadastrado com sucesso!');
-        } catch (error) {
-            console.error('Erro ao salvar médico:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar médico: ${error.message}`);
-            showNotification('Erro ao salvar médico: ' + error.message, true);
+        } else {
+            showNotification('Por favor, insira o nome do médico!', true);
         }
-    } else {
-        showNotification('Por favor, insira o nome do médico!', true);
+    } catch (error) {
+        console.error('Erro ao salvar médico:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar médico: ${error.message}`);
+        showNotification('Erro ao salvar médico: ' + error.message, true);
     }
 }
 
 function updateMedicosList() {
-    const medicoList = document.getElementById('medicosList');
-    if (!medicoList || !medicosListDisplay) return;
-    medicosListDisplay.innerHTML = '';
-    medicoList.innerHTML = '';
-    medicos.forEach((medico, index) => {
-        const option = document.createElement('option');
-        option.value = medico.nome;
-        medicoList.appendChild(option);
+    try {
+        const medicoList = document.getElementById('medicosList');
+        if (!medicoList || !medicosListDisplay) return;
+        medicosListDisplay.innerHTML = '';
+        medicoList.innerHTML = '';
+        medicos.forEach((medico, index) => {
+            const option = document.createElement('option');
+            option.value = medico.nome;
+            medicoList.appendChild(option);
 
-        const li = document.createElement('li');
-        li.innerHTML = `${medico.nome} ${medico.crm ? `(${medico.crm})` : ''} 
-            <button class="delete-medico-btn" onclick="deleteMedico(${index})">Excluir</button>`;
-        medicosListDisplay.appendChild(li);
-    });
+            const li = document.createElement('li');
+            li.innerHTML = `${medico.nome} ${medico.crm ? `(${medico.crm})` : ''} 
+                <button class="delete-medico-btn" onclick="deleteMedico(${index})">Excluir</button>`;
+            medicosListDisplay.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar lista de médicos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao atualizar lista de médicos: ${error.message}`);
+        showNotification('Erro ao atualizar lista: ' + error.message, true);
+    }
 }
 
 async function deleteMedico(index) {
-    if (confirm('Tem certeza que deseja excluir este médico?')) {
-        const medico = medicos[index];
-        medicos.splice(index, 1);
-        try {
+    try {
+        if (confirm('Tem certeza que deseja excluir este médico?')) {
+            const medico = medicos[index];
+            medicos.splice(index, 1);
             await deleteFromFirebase('medicos', medico.id);
             await saveToIndexedDB('medicos', medicos);
             updateMedicosList();
             showNotification('Médico excluído com sucesso!');
-        } catch (error) {
-            console.error('Erro ao excluir médico:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir médico: ${error.message}`);
-            showNotification('Erro ao excluir médico: ' + error.message, true);
         }
+    } catch (error) {
+        console.error('Erro ao excluir médico:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir médico: ${error.message}`);
+        showNotification('Erro ao excluir médico: ' + error.message, true);
     }
 }
 
 function openDeleteAllModal() {
-    deleteAllModal.style.display = 'block';
+    try {
+        deleteAllModal.style.display = 'block';
+        showNotification('Modal de exclusão aberto!');
+    } catch (error) {
+        console.error('Erro ao abrir modal de exclusão:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao abrir modal de exclusão: ${error.message}`);
+        showNotification('Erro ao abrir modal: ' + error.message, true);
+    }
 }
 
 function closeDeleteAllModal() {
-    deleteAllModal.style.display = 'none';
+    try {
+        deleteAllModal.style.display = 'none';
+        showNotification('Modal de exclusão fechado!');
+    } catch (error) {
+        console.error('Erro ao fechar modal de exclusão:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao fechar modal de exclusão: ${error.message}`);
+        showNotification('Erro ao fechar modal: ' + error.message, true);
+    }
 }
 
 async function confirmDeleteAll() {
-    const password = document.getElementById('deletePassword').value;
-    if (password === deleteAllPassword) {
-        try {
+    try {
+        const password = document.getElementById('deletePassword').value;
+        if (password === deleteAllPassword) {
             appointments = [];
             await deleteAllFromFirebase('appointments');
             await saveToIndexedDB('appointments', appointments);
             renderAppointments();
             closeDeleteAllModal();
             showNotification('Todos os agendamentos foram excluídos!');
-        } catch (error) {
-            console.error('Erro ao excluir todos os agendamentos:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir todos os agendamentos: ${error.message}`);
-            showNotification('Erro ao excluir todos: ' + error.message, true);
+        } else {
+            showNotification('Senha incorreta!', true);
         }
-    } else {
-        showNotification('Senha incorreta!', true);
+    } catch (error) {
+        console.error('Erro ao confirmar exclusão de todos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao confirmar exclusão de todos: ${error.message}`);
+        showNotification('Erro ao excluir todos: ' + error.message, true);
     }
 }
 
 function openSortFilterModal() {
-    sortFilterModal.style.display = 'block';
+    try {
+        sortFilterModal.style.display = 'block';
+        showNotification('Modal de filtros aberto!');
+    } catch (error) {
+        console.error('Erro ao abrir modal de filtros:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao abrir modal de filtros: ${error.message}`);
+        showNotification('Erro ao abrir modal: ' + error.message, true);
+    }
 }
 
 function closeSortFilterModal() {
-    sortFilterModal.style.display = 'none';
+    try {
+        sortFilterModal.style.display = 'none';
+        showNotification('Modal de filtros fechado!');
+    } catch (error) {
+        console.error('Erro ao fechar modal de filtros:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao fechar modal de filtros: ${error.message}`);
+        showNotification('Erro ao fechar modal: ' + error.message, true);
+    }
 }
 
 function applySortFilter() {
-    const sortType = document.getElementById('sortType').value;
-    let sortedAppointments = [...appointments];
-    switch (sortType) {
-        case 'nameAZ': sortedAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
-        case 'recent': sortedAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta)); break;
-        case 'oldest': sortedAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta)); break;
-        case 'phone': sortedAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
-        case 'date': sortedAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
-        case 'doctor': sortedAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || '')); break;
-        case 'month': sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth()); break;
-        case 'year': sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear()); break;
+    try {
+        const sortType = document.getElementById('sortType').value;
+        let sortedAppointments = [...appointments];
+        switch (sortType) {
+            case 'nameAZ': sortedAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
+            case 'recent': sortedAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta)); break;
+            case 'oldest': sortedAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta)); break;
+            case 'phone': sortedAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
+            case 'date': sortedAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
+            case 'doctor': sortedAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || '')); break;
+            case 'month': sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth()); break;
+            case 'year': sortedAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear()); break;
+        }
+        appointments = sortedAppointments;
+        currentPage = 1;
+        renderAppointments();
+        closeSortFilterModal();
+        showNotification('Filtro de ordenação aplicado!');
+    } catch (error) {
+        console.error('Erro ao aplicar filtro de ordenação:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao aplicar filtro de ordenação: ${error.message}`);
+        showNotification('Erro ao aplicar filtro: ' + error.message, true);
     }
-    appointments = sortedAppointments;
-    currentPage = 1;
-    renderAppointments();
-    closeSortFilterModal();
-    showNotification('Filtro de ordenação aplicado!');
 }
 
 function openSettingsModal() {
-    settingsModal.style.display = 'block';
-    loadThemeSettings();
-    updateUsersList();
+    try {
+        settingsModal.style.display = 'block';
+        loadThemeSettings();
+        updateUsersList();
+        showNotification('Modal de configurações aberto!');
+    } catch (error) {
+        console.error('Erro ao abrir modal de configurações:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao abrir modal de configurações: ${error.message}`);
+        showNotification('Erro ao abrir modal: ' + error.message, true);
+    }
 }
 
 function closeModal(modal) {
-    modal.style.display = 'none';
+    try {
+        modal.style.display = 'none';
+        showNotification('Modal fechado!');
+    } catch (error) {
+        console.error('Erro ao fechar modal:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao fechar modal: ${error.message}`);
+        showNotification('Erro ao fechar modal: ' + error.message, true);
+    }
 }
 
 async function saveTheme() {
-    theme = {
-        bodyBgColor: document.getElementById('bodyBgColor').value,
-        cardBgColor: document.getElementById('cardBgColor').value,
-        formBgColor: document.getElementById('formBgColor').value,
-        textColor: document.getElementById('textColor').value,
-        borderColor: document.getElementById('borderColor').value,
-        cardBorderColor: document.getElementById('cardBorderColor').value
-    };
-    const newDeleteAllPassword = document.getElementById('deleteAllPassword').value;
-    if (newDeleteAllPassword) deleteAllPassword = newDeleteAllPassword;
     try {
+        theme = {
+            bodyBgColor: document.getElementById('bodyBgColor').value,
+            cardBgColor: document.getElementById('cardBgColor').value,
+            formBgColor: document.getElementById('formBgColor').value,
+            textColor: document.getElementById('textColor').value,
+            borderColor: document.getElementById('borderColor').value,
+            cardBorderColor: document.getElementById('cardBorderColor').value
+        };
+        const newDeleteAllPassword = document.getElementById('deleteAllPassword').value;
+        if (newDeleteAllPassword) deleteAllPassword = newDeleteAllPassword;
         await saveToFirebase('settings', { theme, deleteAllPassword, currentView, lastSync });
         await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
         applyTheme();
         closeModal(settingsModal);
         showNotification('Configurações de tema salvas!');
     } catch (error) {
-        console.error('Erro ao salvar configurações:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar configurações: ${error.message}`);
+        console.error('Erro ao salvar tema:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar tema: ${error.message}`);
         showNotification('Erro ao salvar configurações: ' + error.message, true);
     }
 }
 
 function resetTheme() {
-    theme = {};
-    document.getElementById('bodyBgColor').value = '#f0f4f8';
-    document.getElementById('cardBgColor').value = '#ffffff';
-    document.getElementById('formBgColor').value = '#ffffff';
-    document.getElementById('textColor').value = '#1f2937';
-    document.getElementById('borderColor').value = '#1e40af';
-    document.getElementById('cardBorderColor').value = '#d9d9ec';
-    applyTheme();
-    saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
-    saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-    showNotification('Tema restaurado para padrão!');
+    try {
+        theme = {};
+        document.getElementById('bodyBgColor').value = '#f0f4f8';
+        document.getElementById('cardBgColor').value = '#ffffff';
+        document.getElementById('formBgColor').value = '#ffffff';
+        document.getElementById('textColor').value = '#1f2937';
+        document.getElementById('borderColor').value = '#1e40af';
+        document.getElementById('cardBorderColor').value = '#d9d9ec';
+        applyTheme();
+        saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
+        saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        showNotification('Tema restaurado para padrão!');
+    } catch (error) {
+        console.error('Erro ao resetar tema:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao resetar tema: ${error.message}`);
+        showNotification('Erro ao resetar tema: ' + error.message, true);
+    }
 }
 
 function loadThemeSettings() {
-    document.getElementById('bodyBgColor').value = theme.bodyBgColor || '#f0f4f8';
-    document.getElementById('cardBgColor').value = theme.cardBgColor || '#ffffff';
-    document.getElementById('formBgColor').value = theme.formBgColor || '#ffffff';
-    document.getElementById('textColor').value = theme.textColor || '#1f2937';
-    document.getElementById('borderColor').value = theme.borderColor || '#1e40af';
-    document.getElementById('cardBorderColor').value = theme.cardBorderColor || '#d9d9ec';
+    try {
+        const bodyBgColor = document.getElementById('bodyBgColor');
+        const cardBgColor = document.getElementById('cardBgColor');
+        const formBgColor = document.getElementById('formBgColor');
+        const textColor = document.getElementById('textColor');
+        const borderColor = document.getElementById('borderColor');
+        const cardBorderColor = document.getElementById('cardBorderColor');
+
+        if (bodyBgColor) bodyBgColor.value = theme.bodyBgColor || '#f0f4f8';
+        if (cardBgColor) cardBgColor.value = theme.cardBgColor || '#ffffff';
+        if (formBgColor) formBgColor.value = theme.formBgColor || '#ffffff';
+        if (textColor) textColor.value = theme.textColor || '#1f2937';
+        if (borderColor) borderColor.value = theme.borderColor || '#1e40af';
+        if (cardBorderColor) cardBorderColor.value = theme.cardBorderColor || '#d9d9ec';
+    } catch (error) {
+        console.error('Erro ao carregar configurações de tema:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar configurações de tema: ${error.message}`);
+        showNotification('Erro ao carregar tema: ' + error.message, true);
+    }
 }
 
 function applyTheme() {
-    document.body.style.backgroundColor = theme.bodyBgColor || '#f0f4f8';
-    document.querySelectorAll('.card').forEach(card => {
-        card.style.backgroundColor = theme.cardBgColor || '#ffffff';
-        card.style.borderColor = theme.cardBorderColor || '#d9d9ec';
-    });
-    document.querySelector('.form-section').style.backgroundColor = theme.formBgColor || '#ffffff';
-    document.body.style.color = theme.textColor || '#1f2937';
-    document.querySelectorAll('button').forEach(btn => btn.style.borderColor = theme.borderColor || '#1e40af');
+    try {
+        document.body.style.backgroundColor = theme.bodyBgColor || '#f0f4f8';
+        document.querySelectorAll('.card').forEach(card => {
+            card.style.backgroundColor = theme.cardBgColor || '#ffffff';
+            card.style.borderColor = theme.cardBorderColor || '#d9d9ec';
+        });
+        document.querySelector('.form-section').style.backgroundColor = theme.formBgColor || '#ffffff';
+        document.body.style.color = theme.textColor || '#1f2937';
+        document.querySelectorAll('button').forEach(btn => btn.style.borderColor = theme.borderColor || '#1e40af');
+    } catch (error) {
+        console.error('Erro ao aplicar tema:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao aplicar tema: ${error.message}`);
+        showNotification('Erro ao aplicar tema: ' + error.message, true);
+    }
 }
 
 // Funções de Usuários
 async function addUser() {
-    const username = document.getElementById('newUsername').value.trim();
-    const password = document.getElementById('newPassword').value.trim();
-    if (username && password) {
-        const user = { username, password, id: Date.now().toString() };
-        users.push(user);
-        try {
+    try {
+        const username = document.getElementById('newUsername').value.trim();
+        const password = document.getElementById('newPassword').value.trim();
+        if (username && password) {
+            const user = { username, password, id: Date.now().toString() };
+            users.push(user);
             await saveToFirebase('users', user);
             await saveToIndexedDB('users', users);
             updateUsersList();
             document.getElementById('newUsername').value = '';
             document.getElementById('newPassword').value = '';
             showNotification('Usuário adicionado com sucesso!');
-        } catch (error) {
-            console.error('Erro ao adicionar usuário:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao adicionar usuário: ${error.message}`);
-            showNotification('Erro ao adicionar usuário: ' + error.message, true);
+        } else {
+            showNotification('Por favor, preencha usuário e senha!', true);
         }
-    } else {
-        showNotification('Por favor, preencha usuário e senha!', true);
+    } catch (error) {
+        console.error('Erro ao adicionar usuário:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao adicionar usuário: ${error.message}`);
+        showNotification('Erro ao adicionar usuário: ' + error.message, true);
     }
 }
 
 function updateUsersList() {
-    if (!usersList) return;
-    usersList.innerHTML = '';
-    users.forEach((user, index) => {
-        const li = document.createElement('li');
-        li.innerHTML = `${user.username} <button onclick="deleteUser(${index})">Excluir</button>`;
-        usersList.appendChild(li);
-    });
+    try {
+        if (!usersList) return;
+        usersList.innerHTML = '';
+        users.forEach((user, index) => {
+            const li = document.createElement('li');
+            li.innerHTML = `${user.username} <button onclick="deleteUser(${index})">Excluir</button>`;
+            usersList.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Erro ao atualizar lista de usuários:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao atualizar lista de usuários: ${error.message}`);
+        showNotification('Erro ao atualizar lista: ' + error.message, true);
+    }
 }
 
 async function deleteUser(index) {
-    if (confirm('Tem certeza que deseja excluir este usuário?')) {
-        const user = users[index];
-        users.splice(index, 1);
-        try {
+    try {
+        if (confirm('Tem certeza que deseja excluir este usuário?')) {
+            const user = users[index];
+            users.splice(index, 1);
             await deleteFromFirebase('users', user.id);
             await saveToIndexedDB('users', users);
             updateUsersList();
             showNotification('Usuário excluído com sucesso!');
-        } catch (error) {
-            console.error('Erro ao excluir usuário:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir usuário: ${error.message}`);
-            showNotification('Erro ao excluir usuário: ' + error.message, true);
         }
+    } catch (error) {
+        console.error('Erro ao excluir usuário:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir usuário: ${error.message}`);
+        showNotification('Erro ao excluir usuário: ' + error.message, true);
     }
 }
 
 // Funções de Formulário
 function loadFormData(appointment = {}) {
-    document.getElementById('nomePaciente').value = appointment.nomePaciente || '';
-    document.getElementById('telefone').value = appointment.telefone || '';
-    document.getElementById('email').value = appointment.email || '';
-    document.getElementById('nomeMedico').value = appointment.nomeMedico || '';
-    document.getElementById('localCRM').value = appointment.localCRM || '';
-    document.getElementById('dataConsulta').value = appointment.dataConsulta || '';
-    document.getElementById('horaConsulta').value = appointment.horaConsulta || '';
-    document.getElementById('tipoCirurgia').value = appointment.tipoCirurgia || '';
-    document.getElementById('procedimentos').value = appointment.procedimentos || '';
-    document.getElementById('agendamentoFeitoPor').value = appointment.agendamentoFeitoPor || '';
-    document.getElementById('descricao').value = appointment.descricao || '';
-    document.getElementById('status').value = appointment.status || 'Aguardando Atendimento';
-    appointmentForm.dataset.id = appointment.id || '';
+    try {
+        document.getElementById('nomePaciente').value = appointment.nomePaciente || '';
+        document.getElementById('telefone').value = appointment.telefone || '';
+        document.getElementById('email').value = appointment.email || '';
+        document.getElementById('nomeMedico').value = appointment.nomeMedico || '';
+        document.getElementById('localCRM').value = appointment.localCRM || '';
+        document.getElementById('dataConsulta').value = appointment.dataConsulta || '';
+        document.getElementById('horaConsulta').value = appointment.horaConsulta || '';
+        document.getElementById('tipoCirurgia').value = appointment.tipoCirurgia || '';
+        document.getElementById('procedimentos').value = appointment.procedimentos || '';
+        document.getElementById('agendamentoFeitoPor').value = appointment.agendamentoFeitoPor || '';
+        document.getElementById('descricao').value = appointment.descricao || '';
+        document.getElementById('status').value = appointment.status || 'Aguardando Atendimento';
+        appointmentForm.dataset.id = appointment.id || '';
+    } catch (error) {
+        console.error('Erro ao carregar dados do formulário:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar dados do formulário: ${error.message}`);
+        showNotification('Erro ao carregar formulário: ' + error.message, true);
+    }
 }
 
 function resetForm() {
-    appointmentForm.reset();
-    delete appointmentForm.dataset.id;
-    document.getElementById('statusGroup').style.display = 'none';
-    showNotification('Formulário limpo!');
+    try {
+        appointmentForm.reset();
+        delete appointmentForm.dataset.id;
+        document.getElementById('statusGroup').style.display = 'none';
+        showNotification('Formulário limpo!');
+    } catch (error) {
+        console.error('Erro ao resetar formulário:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao resetar formulário: ${error.message}`);
+        showNotification('Erro ao resetar formulário: ' + error.message, true);
+    }
 }
 
 function clearFilters() {
-    statusFilter.value = 'all';
-    document.getElementById('sortType') && (document.getElementById('sortType').value = 'nameAZ');
-    currentPage = 1;
-    renderAppointments();
-    showNotification('Filtros limpos!');
+    try {
+        statusFilter.value = 'all';
+        document.getElementById('sortType') && (document.getElementById('sortType').value = 'nameAZ');
+        currentPage = 1;
+        renderAppointments();
+        showNotification('Filtros limpos!');
+    } catch (error) {
+        console.error('Erro ao limpar filtros:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar filtros: ${error.message}`);
+        showNotification('Erro ao limpar filtros: ' + error.message, true);
+    }
 }
 
-// Impressão Unificada
+// Impressão Unificada (mantida como estava)
 function printAppointments() {
-    const selectedIds = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
-    if (selectedIds.length === 0) {
-        showNotification('Nenhum item selecionado para impressão!', true);
-        return;
-    }
-
-    const selectedAppointments = appointments.filter(app => selectedIds.includes(app.id));
-    const printWindow = window.open('', '_blank');
-
-    if (!printWindow) {
-        showNotification('Erro ao abrir janela de impressão. Verifique bloqueadores de pop-up!', true);
-        return;
-    }
-
     try {
+        const selectedIds = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
+        if (selectedIds.length === 0) {
+            showNotification('Nenhum item selecionado para impressão!', true);
+            return;
+        }
+
+        const selectedAppointments = appointments.filter(app => selectedIds.includes(app.id));
+        const printWindow = window.open('', '_blank');
+
+        if (!printWindow) {
+            showNotification('Erro ao abrir janela de impressão. Verifique bloqueadores de pop-up!', true);
+            return;
+        }
+
         if (currentView === 'list') {
             printWindow.document.write(`
                 <html>
@@ -957,20 +1162,20 @@ function printAppointments() {
         console.error('Erro ao gerar impressão:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar impressão: ${error.message}`);
         showNotification('Erro ao gerar impressão: ' + error.message, true);
-        printWindow.close();
     }
 }
 
 // Função de Exportação para Excel
 function exportToExcel() {
     try {
-        // Verifica se a biblioteca SheetJS está carregada
+        console.log("Função exportToExcel chamada!");
         if (typeof XLSX === 'undefined') {
+            console.error('Biblioteca SheetJS não carregada!');
+            errorLogs.push(`[${new Date().toISOString()}] Biblioteca SheetJS não carregada`);
             showNotification('Erro: Biblioteca SheetJS não carregada. Verifique o script no HTML!', true);
             return;
         }
 
-        // Obtém os agendamentos a serem exportados
         const selectedIds = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
         let exportData;
 
@@ -987,13 +1192,11 @@ function exportToExcel() {
             return;
         }
 
-        // Define os cabeçalhos da planilha
         const headers = [
             'ID', 'Paciente', 'Telefone', 'Email', 'Médico', 'Local CRM',
             'Data', 'Hora', 'Tipo Cirurgia', 'Procedimentos', 'Feito Por', 'Descrição', 'Status'
         ];
 
-        // Converte os dados para o formato de planilha
         const data = [headers, ...exportData.map(app => [
             app.id || '-',
             app.nomePaciente || '-',
@@ -1010,10 +1213,7 @@ function exportToExcel() {
             app.status || '-'
         ])];
 
-        // Cria a planilha
         const ws = XLSX.utils.aoa_to_sheet(data);
-        
-        // Ajusta a largura das colunas automaticamente
         const colWidths = headers.map((header, i) => ({
             wch: Math.max(
                 header.length,
@@ -1025,11 +1225,9 @@ function exportToExcel() {
         }));
         ws['!cols'] = colWidths;
 
-        // Cria o workbook
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
 
-        // Gera o arquivo e faz o download
         const fileName = `agendamentos_${new Date().toISOString().slice(0,10)}.xlsx`;
         XLSX.writeFile(wb, fileName);
 
@@ -1043,246 +1241,261 @@ function exportToExcel() {
 
 // Funções de Relatórios
 async function generateReport() {
-    const reportType = document.getElementById('reportType').value;
-    const reportMonth = document.getElementById('reportMonth').value;
-    const reportYear = document.getElementById('reportYear').value;
-    const reportDoctor = document.getElementById('reportDoctor').value;
-
-    let filteredAppointments = [...appointments];
-    if (reportMonth) {
-        const [year, month] = reportMonth.split('-');
-        filteredAppointments = filteredAppointments.filter(app => {
-            const date = new Date(app.dataConsulta);
-            return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1;
-        });
-    }
-    if (reportYear) {
-        filteredAppointments = filteredAppointments.filter(app => new Date(app.dataConsulta).getFullYear() === parseInt(reportYear));
-    }
-    if (reportDoctor) {
-        filteredAppointments = filteredAppointments.filter(app => app.nomeMedico === reportDoctor);
-    }
-
-    switch (reportType) {
-        case 'byName': filteredAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
-        case 'byRecent': filteredAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta)); break;
-        case 'byOldest': filteredAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta)); break;
-        case 'byPhone': filteredAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
-        case 'byDate': filteredAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
-        case 'byDoctor': filteredAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || '')); break;
-        case 'byMonth': filteredAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth()); break;
-        case 'byYear': filteredAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear()); break;
-    }
-
-    const reportBody = document.getElementById('reportBody');
-    const reportGrid = document.getElementById('reportGrid');
-    reportBody.innerHTML = '';
-    reportGrid.innerHTML = '';
-
-    filteredAppointments.forEach(app => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${app.id || '-'}</td>
-            <td>${app.nomePaciente || '-'}</td>
-            <td>${app.telefone || '-'}</td>
-            <td>${app.email || '-'}</td>
-            <td>${app.nomeMedico || '-'}</td>
-            <td>${app.localCRM || '-'}</td>
-            <td>${app.dataConsulta || '-'}</td>
-            <td>${app.horaConsulta || '-'}</td>
-            <td>${app.tipoCirurgia || '-'}</td>
-            <td>${app.procedimentos || '-'}</td>
-            <td>${app.agendamentoFeitoPor || '-'}</td>
-            <td>${app.descricao || '-'}</td>
-            <td>${app.status || '-'}</td>
-        `;
-        reportBody.appendChild(row);
-
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-            <p>ID: ${app.id || '-'}</p>
-            <p>Telefone: ${app.telefone || '-'}</p>
-            <p>Email: ${app.email || '-'}</p>
-            <p>Médico: ${app.nomeMedico || '-'}</p>
-            <p>Local CRM: ${app.localCRM || '-'}</p>
-            <p>Data: ${app.dataConsulta || '-'}</p>
-            <p>Hora: ${app.horaConsulta || '-'}</p>
-            <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
-            <p>Procedimentos: ${app.procedimentos || '-'}</p>
-            <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
-            <p>Descrição: ${app.descricao || '-'}</p>
-            <p>Status: ${app.status || '-'}</p>
-        `;
-        reportGrid.appendChild(card);
-    });
-
     try {
+        const reportType = document.getElementById('reportType').value;
+        const reportMonth = document.getElementById('reportMonth').value;
+        const reportYear = document.getElementById('reportYear').value;
+        const reportDoctor = document.getElementById('reportDoctor').value;
+
+        let filteredAppointments = [...appointments];
+        if (reportMonth) {
+            const [year, month] = reportMonth.split('-');
+            filteredAppointments = filteredAppointments.filter(app => {
+                const date = new Date(app.dataConsulta);
+                return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1;
+            });
+        }
+        if (reportYear) {
+            filteredAppointments = filteredAppointments.filter(app => new Date(app.dataConsulta).getFullYear() === parseInt(reportYear));
+        }
+        if (reportDoctor) {
+            filteredAppointments = filteredAppointments.filter(app => app.nomeMedico === reportDoctor);
+        }
+
+        switch (reportType) {
+            case 'byName': filteredAppointments.sort((a, b) => (a.nomePaciente || '').localeCompare(b.nomePaciente || '')); break;
+            case 'byRecent': filteredAppointments.sort((a, b) => new Date(b.dataConsulta) - new Date(a.dataConsulta)); break;
+            case 'byOldest': filteredAppointments.sort((a, b) => new Date(a.dataConsulta) - new Date(b.dataConsulta)); break;
+            case 'byPhone': filteredAppointments.sort((a, b) => (a.telefone || '').localeCompare(b.telefone || '')); break;
+            case 'byDate': filteredAppointments.sort((a, b) => (a.dataConsulta || '').localeCompare(b.dataConsulta || '')); break;
+            case 'byDoctor': filteredAppointments.sort((a, b) => (a.nomeMedico || '').localeCompare(b.nomeMedico || '')); break;
+            case 'byMonth': filteredAppointments.sort((a, b) => new Date(a.dataConsulta).getMonth() - new Date(b.dataConsulta).getMonth()); break;
+            case 'byYear': filteredAppointments.sort((a, b) => new Date(a.dataConsulta).getFullYear() - new Date(b.dataConsulta).getFullYear()); break;
+        }
+
+        const reportBody = document.getElementById('reportBody');
+        const reportGrid = document.getElementById('reportGrid');
+        reportBody.innerHTML = '';
+        reportGrid.innerHTML = '';
+
+        filteredAppointments.forEach(app => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${app.id || '-'}</td>
+                <td>${app.nomePaciente || '-'}</td>
+                <td>${app.telefone || '-'}</td>
+                <td>${app.email || '-'}</td>
+                <td>${app.nomeMedico || '-'}</td>
+                <td>${app.localCRM || '-'}</td>
+                <td>${app.dataConsulta || '-'}</td>
+                <td>${app.horaConsulta || '-'}</td>
+                <td>${app.tipoCirurgia || '-'}</td>
+                <td>${app.procedimentos || '-'}</td>
+                <td>${app.agendamentoFeitoPor || '-'}</td>
+                <td>${app.descricao || '-'}</td>
+                <td>${app.status || '-'}</td>
+            `;
+            reportBody.appendChild(row);
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                <p>ID: ${app.id || '-'}</p>
+                <p>Telefone: ${app.telefone || '-'}</p>
+                <p>Email: ${app.email || '-'}</p>
+                <p>Médico: ${app.nomeMedico || '-'}</p>
+                <p>Local CRM: ${app.localCRM || '-'}</p>
+                <p>Data: ${app.dataConsulta || '-'}</p>
+                <p>Hora: ${app.horaConsulta || '-'}</p>
+                <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
+                <p>Procedimentos: ${app.procedimentos || '-'}</p>
+                <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
+                <p>Descrição: ${app.descricao || '-'}</p>
+                <p>Status: ${app.status || '-'}</p>
+            `;
+            reportGrid.appendChild(card);
+        });
+
         await saveToFirebase('reports', { id: Date.now().toString(), type: reportType, data: filteredAppointments });
         showNotification('Relatório gerado e salvo no Firebase com sucesso!');
     } catch (error) {
-        console.error('Erro ao salvar relatório no Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar relatório no Firebase: ${error.message}`);
-        showNotification('Erro ao salvar relatório no Firebase: ' + error.message, true);
+        console.error('Erro ao gerar relatório:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar relatório: ${error.message}`);
+        showNotification('Erro ao gerar relatório: ' + error.message, true);
     }
 }
 
 function toggleReportView(view) {
-    document.getElementById('reportResult').style.display = view === 'list' ? 'block' : 'none';
-    document.getElementById('reportGrid').style.display = view === 'grid' ? 'grid' : 'none';
-    document.querySelectorAll('#reportsTab .view-mode').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
-    showNotification(`Visualização de relatório alterada para ${view}!`);
+    try {
+        document.getElementById('reportResult').style.display = view === 'list' ? 'block' : 'none';
+        document.getElementById('reportGrid').style.display = view === 'grid' ? 'grid' : 'none';
+        document.querySelectorAll('#reportsTab .view-mode').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
+        showNotification(`Visualização de relatório alterada para ${view}!`);
+    } catch (error) {
+        console.error('Erro ao alternar visualização de relatório:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao alternar visualização de relatório: ${error.message}`);
+        showNotification('Erro ao alternar visualização: ' + error.message, true);
+    }
 }
 
 // Funções de Insights
 async function generateInsights() {
-    const insightsCards = document.getElementById('insightsCards');
-    insightsCards.innerHTML = '';
-
-    const totalAppointments = appointments.length;
-    const statusCount = {
-        'Aguardando Atendimento': 0,
-        'Atendido': 0,
-        'Reagendado': 0,
-        'Cancelado': 0
-    };
-    appointments.forEach(app => statusCount[app.status]++);
-
-    const doctorsCount = {};
-    appointments.forEach(app => doctorsCount[app.nomeMedico] = (doctorsCount[app.nomeMedico] || 0) + 1);
-
-    const totalCard = document.createElement('div');
-    totalCard.className = 'insights-card';
-    totalCard.innerHTML = `<h4><i class="fas fa-calendar-check"></i> Total de Agendamentos</h4><p>${totalAppointments} agendamentos registrados.</p>`;
-    insightsCards.appendChild(totalCard);
-
-    const statusCard = document.createElement('div');
-    statusCard.className = 'insights-card';
-    statusCard.innerHTML = `<h4><i class="fas fa-chart-pie"></i> Status dos Agendamentos</h4><ul>` +
-        Object.entries(statusCount).map(([status, count]) => `<li>${status}: ${count}</li>`).join('') + `</ul>`;
-    insightsCards.appendChild(statusCard);
-
-    const doctorsCard = document.createElement('div');
-    doctorsCard.className = 'insights-card';
-    doctorsCard.innerHTML = `<h4><i class="fas fa-user-md"></i> Agendamentos por Médico</h4><ul>` +
-        Object.entries(doctorsCount).map(([doctor, count]) => `<li>${doctor || 'Não especificado'}: ${count}</li>`).join('') + `</ul>`;
-    insightsCards.appendChild(doctorsCard);
-
-    const errorLogCard = document.createElement('div');
-    errorLogCard.className = 'insights-card error-log-card';
-    errorLogCard.innerHTML = `<h4><i class="fas fa-exclamation-triangle"></i> Logs de Erros</h4><ul>` +
-        (errorLogs.length ? errorLogs.map(log => `<li>${log}</li>`).join('') : '<li>Nenhum erro registrado.</li>') + `</ul>`;
-    insightsCards.appendChild(errorLogCard);
-
     try {
+        const insightsCards = document.getElementById('insightsCards');
+        insightsCards.innerHTML = '';
+
+        const totalAppointments = appointments.length;
+        const statusCount = {
+            'Aguardando Atendimento': 0,
+            'Atendido': 0,
+            'Reagendado': 0,
+            'Cancelado': 0
+        };
+        appointments.forEach(app => statusCount[app.status]++);
+
+        const doctorsCount = {};
+        appointments.forEach(app => doctorsCount[app.nomeMedico] = (doctorsCount[app.nomeMedico] || 0) + 1);
+
+        const totalCard = document.createElement('div');
+        totalCard.className = 'insights-card';
+        totalCard.innerHTML = `<h4><i class="fas fa-calendar-check"></i> Total de Agendamentos</h4><p>${totalAppointments} agendamentos registrados.</p>`;
+        insightsCards.appendChild(totalCard);
+
+        const statusCard = document.createElement('div');
+        statusCard.className = 'insights-card';
+        statusCard.innerHTML = `<h4><i class="fas fa-chart-pie"></i> Status dos Agendamentos</h4><ul>` +
+            Object.entries(statusCount).map(([status, count]) => `<li>${status}: ${count}</li>`).join('') + `</ul>`;
+        insightsCards.appendChild(statusCard);
+
+        const doctorsCard = document.createElement('div');
+        doctorsCard.className = 'insights-card';
+        doctorsCard.innerHTML = `<h4><i class="fas fa-user-md"></i> Agendamentos por Médico</h4><ul>` +
+            Object.entries(doctorsCount).map(([doctor, count]) => `<li>${doctor || 'Não especificado'}: ${count}</li>`).join('') + `</ul>`;
+        insightsCards.appendChild(doctorsCard);
+
+        const errorLogCard = document.createElement('div');
+        errorLogCard.className = 'insights-card error-log-card';
+        errorLogCard.innerHTML = `<h4><i class="fas fa-exclamation-triangle"></i> Logs de Erros</h4><ul>` +
+            (errorLogs.length ? errorLogs.map(log => `<li>${log}</li>`).join('') : '<li>Nenhum erro registrado.</li>') + `</ul>`;
+        insightsCards.appendChild(errorLogCard);
+
         await saveToFirebase('insights', { id: 'default', totalAppointments, statusCount, doctorsCount, errorLogs });
         showNotification('Insights gerados e salvos no Firebase com sucesso!');
     } catch (error) {
-        console.error('Erro ao salvar insights no Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar insights no Firebase: ${error.message}`);
-        showNotification('Erro ao salvar insights no Firebase: ' + error.message, true);
+        console.error('Erro ao gerar insights:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar insights: ${error.message}`);
+        showNotification('Erro ao gerar insights: ' + error.message, true);
     }
 }
 
 // Funções de Backup
 function backupLocal() {
-    const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup_${new Date().toISOString()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showNotification('Backup local salvo com sucesso!');
+    try {
+        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_${new Date().toISOString()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('Backup local salvo com sucesso!');
+    } catch (error) {
+        console.error('Erro ao salvar backup local:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar backup local: ${error.message}`);
+        showNotification('Erro ao salvar backup local: ' + error.message, true);
+    }
 }
 
 function restoreLocal() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    input.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (file) {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                showNotification('Nenhum arquivo selecionado!', true);
+                return;
+            }
+
+            const progressModal = document.getElementById('progressModal');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressModal.style.display = 'block';
+            let progress = 0;
+
+            // Etapa 1: Ler o arquivo
+            progressFill.style.width = '10%';
+            progressText.textContent = '10% - Lendo arquivo...';
             const text = await file.text();
             const data = JSON.parse(text);
-            appointments = data.appointments || [];
-            medicos = data.medicos || [];
-            users = data.users || [];
+            console.log("Dados lidos do arquivo JSON:", data);
+
+            if (!data || typeof data !== 'object') {
+                showNotification('Arquivo JSON inválido!', true);
+                progressModal.style.display = 'none';
+                return;
+            }
+
+            // Etapa 2: Atribuir dados
+            progress += 20;
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `${progress}% - Atribuindo dados...`;
+            appointments = Array.isArray(data.appointments) ? data.appointments : [];
+            medicos = Array.isArray(data.medicos) ? data.medicos : [];
+            users = Array.isArray(data.users) ? data.users : [];
             const settings = data.settings || {};
             currentView = settings.currentView || 'list';
             deleteAllPassword = settings.deleteAllPassword || '1234';
             lastSync = settings.lastSync || 0;
             theme = settings.theme || {};
+
+            // Etapa 3: Salvar no Firebase
+            progress += 30;
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `${progress}% - Salvando no Firebase...`;
             await saveToFirebase('appointments', appointments);
             await saveToFirebase('medicos', medicos);
             await saveToFirebase('users', users);
             await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
+
+            // Etapa 4: Salvar no IndexedDB
+            progress += 30;
+            progressFill.style.width = `${progress}%`;
+            progressText.textContent = `${progress}% - Salvando no IndexedDB...`;
             await saveToIndexedDB('appointments', appointments);
             await saveToIndexedDB('medicos', medicos);
             await saveToIndexedDB('users', users);
             await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+
+            // Etapa 5: Renderizar
+            progress = 100;
+            progressFill.style.width = '100%';
+            progressText.textContent = '100% - Finalizando...';
             renderAppointments();
             updateMedicosList();
             updateUsersList();
             applyTheme();
-            showNotification('Backup local restaurado com sucesso!');
-        }
-    };
-    input.click();
-}
 
-async function backupFirebase() {
-    try {
-        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
-        await setDoc(doc(db, 'backups', `backup_${new Date().toISOString()}`), data);
-        showNotification('Backup salvo no Firebase com sucesso!');
+            setTimeout(() => {
+                progressModal.style.display = 'none';
+                showNotification('Backup local restaurado com sucesso!');
+            }, 500);
+        };
+        input.click();
     } catch (error) {
-        console.error('Erro ao salvar backup no Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar backup no Firebase: ${error.message}`);
-        showNotification('Erro ao salvar backup no Firebase: ' + error.message, true);
+        console.error('Erro ao restaurar backup local:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar backup local: ${error.message}`);
+        document.getElementById('progressModal').style.display = 'none';
+        showNotification('Erro ao restaurar backup local: ' + error.message, true);
     }
 }
 
-async function restoreFirebase() {
-    try {
-        const snapshot = await getDocs(collection(db, 'backups'));
-        if (!snapshot.empty) {
-            const latestBackup = snapshot.docs[snapshot.docs.length - 1].data();
-            appointments = latestBackup.appointments || [];
-            medicos = latestBackup.medicos || [];
-            users = latestBackup.users || [];
-            const settings = latestBackup.settings || {};
-            currentView = settings.currentView || 'list';
-            deleteAllPassword = settings.deleteAllPassword || '1234';
-            lastSync = settings.lastSync || 0;
-            theme = settings.theme || {};
-            await saveToFirebase('appointments', appointments);
-            await saveToFirebase('medicos', medicos);
-            await saveToFirebase('users', users);
-            await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
-            await saveToIndexedDB('appointments', appointments);
-            await saveToIndexedDB('medicos', medicos);
-            await saveToIndexedDB('users', users);
-            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-            renderAppointments();
-            updateMedicosList();
-            updateUsersList();
-            applyTheme();
-            showNotification('Backup restaurado do Firebase com sucesso!');
-        } else {
-            showNotification('Nenhum backup encontrado no Firebase!', true);
-        }
-    } catch (error) {
-        console.error('Erro ao restaurar backup do Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar backup do Firebase: ${error.message}`);
-        showNotification('Erro ao restaurar backup do Firebase: ' + error.message, true);
-    }
-}
 
-// Funções de Sincronização com Firebase
+// Continuação da função syncLocalWithFirebase
 async function syncLocalWithFirebase() {
     const now = Date.now();
     if (now - lastSync > 60000) {
@@ -1314,7 +1527,7 @@ async function syncLocalWithFirebase() {
 
             lastSync = now;
             await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
-            showNotification('Sincronização com Firebase realizada com sucesso!');
+            showNotification('Dados sincronizados com o Firebase com sucesso!');
         } catch (error) {
             console.error('Erro ao sincronizar com Firebase:', error);
             errorLogs.push(`[${new Date().toISOString()}] Erro ao sincronizar com Firebase: ${error.message}`);
@@ -1323,21 +1536,43 @@ async function syncLocalWithFirebase() {
     }
 }
 
-function mergeData(localData, firebaseData, key) {
-    const merged = [...localData];
-    firebaseData.forEach(fbItem => {
-        const index = merged.findIndex(item => item[key] === fbItem[key]);
-        if (index === -1) merged.push(fbItem);
-        else merged[index] = { ...merged[index], ...fbItem };
-    });
-    return merged;
+// Função de Mesclagem de Dados
+function mergeData(localData, remoteData, key) {
+    try {
+        const merged = [...localData];
+        remoteData.forEach(remoteItem => {
+            const localIndex = merged.findIndex(localItem => localItem[key] === remoteItem[key]);
+            if (localIndex === -1) {
+                merged.push(remoteItem);
+            } else {
+                merged[localIndex] = { ...merged[localIndex], ...remoteItem };
+            }
+        });
+        return merged;
+    } catch (error) {
+        console.error('Erro ao mesclar dados:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao mesclar dados: ${error.message}`);
+        return localData; // Retorna dados locais em caso de erro
+    }
 }
 
+// Funções de Armazenamento no Firebase
 async function saveToFirebase(collectionName, data) {
     try {
-        const docId = data.id || (collectionName === 'settings' || collectionName === 'reports' || collectionName === 'insights' ? 'default' : Date.now().toString());
-        await setDoc(doc(db, collectionName, docId), data);
-        console.log(`Dados salvos no Firebase (${collectionName}):`, data);
+        if (Array.isArray(data)) {
+            const batch = writeBatch(db);
+            data.forEach(item => {
+                const docId = item.id || Date.now().toString();
+                const docRef = doc(db, collectionName, docId);
+                batch.set(docRef, item);
+            });
+            await batch.commit();
+            console.log(`Array de dados salvos no Firebase (${collectionName}):`, data);
+        } else {
+            const docId = data.id || (collectionName === 'settings' || collectionName === 'reports' || collectionName === 'insights' ? 'default' : Date.now().toString());
+            await setDoc(doc(db, collectionName, docId), data);
+            console.log(`Dados salvos no Firebase (${collectionName}):`, data);
+        }
     } catch (error) {
         console.error(`Erro ao salvar no Firebase (${collectionName}):`, error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no Firebase (${collectionName}): ${error.message}`);
@@ -1348,111 +1583,123 @@ async function saveToFirebase(collectionName, data) {
 async function deleteFromFirebase(collectionName, id) {
     try {
         await deleteDoc(doc(db, collectionName, id));
-        console.log(`Item excluído do Firebase (${collectionName}):`, id);
+        console.log(`Documento excluído do Firebase (${collectionName}/${id})`);
     } catch (error) {
-        console.error(`Erro ao excluir do Firebase (${collectionName}):`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir do Firebase (${collectionName}): ${error.message}`);
+        console.error(`Erro ao excluir do Firebase (${collectionName}/${id}):`, error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir do Firebase (${collectionName}/${id}): ${error.message}`);
         throw error;
     }
 }
 
 async function deleteAllFromFirebase(collectionName) {
-    const snapshot = await getDocs(collection(db, collectionName));
-    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
-    console.log(`Todos os itens excluídos do Firebase (${collectionName})`);
+    try {
+        const snapshot = await getDocs(collection(db, collectionName));
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        console.log(`Todos os documentos excluídos do Firebase (${collectionName})`);
+    } catch (error) {
+        console.error(`Erro ao excluir todos do Firebase (${collectionName}):`, error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir todos do Firebase (${collectionName}): ${error.message}`);
+        throw error;
+    }
 }
 
-// Funções de IndexedDB
+// Funções de Armazenamento no IndexedDB
 async function saveToIndexedDB(storeName, data) {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('AgendaDB', DB_VERSION);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-            const db = request.result;
-            const tx = db.transaction(storeName, 'readwrite');
-            const store = tx.objectStore(storeName);
-
-            if (storeName === 'settings') {
-                store.put({ key: 'settings', ...data });
-            } else if (Array.isArray(data)) {
-                data.forEach(item => {
-                    if (storeName === 'appointments' && !item.id) item.id = Date.now().toString();
-                    if (storeName === 'medicos' && !item.nome) item.nome = `Medico_${Date.now()}`;
-                    if (storeName === 'users' && !item.username) item.username = `User_${Date.now()}`;
-                    store.put(item);
-                });
-            } else {
-                store.put(data);
-            }
-
-            tx.oncomplete = () => resolve();
-            tx.onerror = () => reject(tx.error);
-            db.close();
-        };
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'nome' });
-            if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
-            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
-        };
-    });
+    try {
+        const dbRequest = indexedDB.open('AgendaUnicaDB', DB_VERSION);
+        return new Promise((resolve, reject) => {
+            dbRequest.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
+            };
+            dbRequest.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                if (Array.isArray(data)) {
+                    data.forEach(item => {
+                        if (!item.id) item.id = Date.now().toString(); // Garante que cada item tenha um id
+                        store.put(item);
+                    });
+                } else {
+                    store.put({ id: 'default', ...data }); // Adiciona id: 'default' para objetos únicos como settings
+                }
+                transaction.oncomplete = () => {
+                    console.log(`Dados salvos no IndexedDB (${storeName}):`, data);
+                    resolve();
+                };
+                transaction.onerror = (e) => reject(e.target.error);
+                db.close();
+            };
+            dbRequest.onerror = (e) => reject(e.target.error);
+        });
+    } catch (error) {
+        console.error(`Erro ao salvar no IndexedDB (${storeName}):`, error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no IndexedDB (${storeName}): ${error.message}`);
+        throw error;
+    }
 }
 
-async function loadFromIndexedDB() {
-    return new Promise((resolve, reject) => {
-        const request = indexedDB.open('AgendaDB', DB_VERSION);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-            const db = request.result;
-            const tx = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readonly');
-            const data = {};
-            tx.objectStore('appointments').getAll().onsuccess = (e) => data.appointments = e.target.result;
-            tx.objectStore('medicos').getAll().onsuccess = (e) => data.medicos = e.target.result;
-            tx.objectStore('users').getAll().onsuccess = (e) => data.users = e.target.result;
-            tx.objectStore('settings').get('settings').onsuccess = (e) => {
-                const settings = e.target.result || {};
-                delete settings.key;
-                data.settings = settings;
-            };
-            tx.oncomplete = () => resolve(data);
-            tx.onerror = () => reject(tx.error);
-            db.close();
-        };
-        request.onupgradeneeded = () => {
-            const db = request.result;
-            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
-            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'nome' });
-            if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
-            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
-        };
-    });
+// Função de Navegação
+function scrollToStatusSection() {
+    try {
+        document.getElementById('statusFilterSection').scrollIntoView({ behavior: 'smooth' });
+        showNotification('Rolando para seção de status!');
+    } catch (error) {
+        console.error('Erro ao rolar para seção de status:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao rolar para seção de status: ${error.message}`);
+        showNotification('Erro ao rolar para seção: ' + error.message, true);
+    }
 }
 
 // Função de Notificação
 function showNotification(message, isError = false) {
-    if (!notification) return;
-    notification.textContent = message;
-    notification.className = 'notification' + (isError ? ' error' : '');
-    notification.style.display = 'block';
-    notification.style.opacity = '1';
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        setTimeout(() => notification.style.display = 'none', 500);
-    }, 3000);
+    try {
+        if (!notification) return;
+        notification.textContent = message;
+        notification.className = isError ? 'notification error' : 'notification';
+        notification.style.display = 'block';
+        setTimeout(() => notification.style.display = 'none', 3000);
+    } catch (error) {
+        console.error('Erro ao exibir notificação:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao exibir notificação: ${error.message}`);
+    }
 }
 
-// Navegação para Status
-function scrollToStatusSection() {
-    pipelineView.scrollIntoView({ behavior: 'smooth' });
-}
+// Console de Erros no Final
+window.addEventListener('beforeunload', () => {
+    console.log("===== Console de Erros =====");
+    if (errorLogs.length > 0) {
+        console.log("Erros registrados durante a sessão:");
+        errorLogs.forEach((log, index) => console.log(`${index + 1}. ${log}`));
+    } else {
+        console.log("Nenhum erro registrado nesta sessão.");
+    }
+    console.log("===========================");
+});
 
-// Declaração de Funções Globais para o HTML
-window.editAppointment = editAppointment;
+// Expor funções ao escopo global para uso no HTML
+window.saveAppointment = saveAppointment;
 window.deleteAppointment = deleteAppointment;
+window.editAppointment = editAppointment;
 window.viewAppointment = viewAppointment;
 window.shareAppointment = shareAppointment;
+window.changeView = changeView;
+window.showTab = showTab;
+window.changePage = changePage;
+window.toggleSelectAll = toggleSelectAll;
+window.toggleSelectAllItems = toggleSelectAllItems;
+window.handleDragStart = handleDragStart;
+window.handleDragEnd = handleDragEnd;
+window.handleDragOver = handleDragOver;
+window.handleDrop = handleDrop;
+window.moveCard = moveCard;
+window.toggleDetails = toggleDetails;
 window.openMedicoModal = openMedicoModal;
 window.closeMedicoModal = closeMedicoModal;
 window.saveMedico = saveMedico;
@@ -1463,17 +1710,23 @@ window.confirmDeleteAll = confirmDeleteAll;
 window.openSortFilterModal = openSortFilterModal;
 window.closeSortFilterModal = closeSortFilterModal;
 window.applySortFilter = applySortFilter;
+window.openSettingsModal = openSettingsModal;
+window.closeModal = closeModal;
+window.saveTheme = saveTheme;
+window.resetTheme = resetTheme;
+window.addUser = addUser;
+window.deleteUser = deleteUser;
+window.resetForm = resetForm;
+window.clearFilters = clearFilters;
+window.printAppointments = printAppointments;
+window.exportToExcel = exportToExcel;
 window.generateReport = generateReport;
 window.toggleReportView = toggleReportView;
-window.toggleDetails = toggleDetails;
+window.generateInsights = generateInsights;
 window.backupLocal = backupLocal;
 window.restoreLocal = restoreLocal;
 window.backupFirebase = backupFirebase;
 window.restoreFirebase = restoreFirebase;
-window.addUser = addUser;
-window.deleteUser = deleteUser;
-window.saveTheme = saveTheme;
-window.resetTheme = resetTheme;
-window.moveCard = moveCard;
+window.scrollToStatusSection = scrollToStatusSection;
 
 console.log("Script carregado com sucesso!");
