@@ -1,8 +1,9 @@
+// Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
- // Configuração do Firebase
+// Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBxPLohS2xOErPb8FH0cFRnNzxy699KHUM",
     authDomain: "agendaunica-fb0ea.firebaseapp.com",
@@ -11,7 +12,8 @@ const firebaseConfig = {
     messagingSenderId: "1060358457274",
     appId: "1:1060358457274:web:99f18e2c7e1e889e547f83",
     measurementId: "G-L8C2KQZMH7"
-// Importações do Firebase
+};
+// Substitua pelos valores reais do seu projeto Firebase!
 
 // Versão do IndexedDB
 const DB_VERSION = 2;
