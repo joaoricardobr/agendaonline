@@ -28,12 +28,11 @@
             </form>
         </div>
     </div>
-
-    <!-- Conteúdo Principal -->
+<!-- Conteúdo Principal -->
     <div id="mainContent" style="display: none;">
         <div class="container">
             <header>
-                <h1>Agendamento de Consultas</h1>
+                <h1>Agenda Consultório</h1>
                 <button class="control-btn" id="logoutBtn" data-tooltip="Sair"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </header>
 
@@ -42,19 +41,19 @@
                 <form id="appointmentForm">
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="nomePaciente">Nome do Paciente</label>
+                            <label for="nomePaciente"><i class="fas fa-user"></i> Nome do Paciente</label>
                             <input type="text" id="nomePaciente" name="nomePaciente" required>
                         </div>
                         <div class="form-group">
-                            <label for="telefone">Telefone</label>
+                            <label for="telefone"><i class="fas fa-phone"></i> Telefone</label>
                             <input type="text" id="telefone" name="telefone" placeholder="Opcional: (xx) xxxxx-xxxx">
                         </div>
                         <div class="form-group">
-                            <label for="email">Email</label>
+                            <label for="email"><i class="fas fa-envelope"></i> Email</label>
                             <input type="email" id="email" name="email">
                         </div>
                         <div class="form-group">
-                            <label for="nomeMedico">Nome do Médico</label>
+                            <label for="nomeMedico"><i class="fas fa-user-md"></i> Nome do Médico</label>
                             <div style="position: relative;">
                                 <input type="text" id="nomeMedico" name="nomeMedico" list="medicosList" placeholder="Opcional: Nome do médico">
                                 <button type="button" class="add-medico-btn" onclick="openMedicoModal()">+</button>
@@ -62,19 +61,19 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="localCRM">Local do CRM</label>
+                            <label for="localCRM"><i class="fas fa-id-card"></i> Local do CRM</label>
                             <input type="text" id="localCRM" name="localCRM">
                         </div>
                         <div class="form-group">
-                            <label for="dataConsulta">Data da Consulta</label>
+                            <label for="dataConsulta"><i class="fas fa-calendar"></i> Data da Consulta</label>
                             <input type="date" id="dataConsulta" name="dataConsulta">
                         </div>
                         <div class="form-group">
-                            <label for="horaConsulta">Hora da Consulta</label>
+                            <label for="horaConsulta"><i class="fas fa-clock"></i> Hora da Consulta</label>
                             <input type="time" id="horaConsulta" name="horaConsulta">
                         </div>
                         <div class="form-group">
-                            <label for="tipoCirurgia">Tipo de Cirurgia</label>
+                            <label for="tipoCirurgia"><i class="fas fa-syringe"></i> Tipo de Cirurgia</label>
                             <input type="text" id="tipoCirurgia" name="tipoCirurgia" list="cirurgiasList">
                             <datalist id="cirurgiasList">
                                 <option value="Prótese de Mamas">
@@ -88,7 +87,7 @@
                             </datalist>
                         </div>
                         <div class="form-group">
-                            <label for="procedimentos">Procedimentos</label>
+                            <label for="procedimentos"><i class="fas fa-tools"></i> Procedimentos</label>
                             <input type="text" id="procedimentos" name="procedimentos" list="procedimentosList">
                             <datalist id="procedimentosList">
                                 <option value="Toxina Botulínica">
@@ -112,11 +111,11 @@
                             </datalist>
                         </div>
                         <div class="form-group">
-                            <label for="agendamentoFeitoPor">Agendamento Feito Por</label>
+                            <label for="agendamentoFeitoPor"><i class="fas fa-user-tie"></i> Agendamento Feito Por</label>
                             <input type="text" id="agendamentoFeitoPor" name="agendamentoFeitoPor">
                         </div>
                         <div class="form-group" id="statusGroup" style="display: none;">
-                            <label for="status">Status de Atendimento</label>
+                            <label for="status"><i class="fas fa-info-circle"></i> Status de Atendimento</label>
                             <select id="status" name="status">
                                 <option value="Aguardando Atendimento">Aguardando Atendimento</option>
                                 <option value="Atendido">Atendido</option>
@@ -126,12 +125,12 @@
                         </div>
                     </div>
                     <div class="form-group full-width">
-                        <label for="descricao">Descrição</label>
+                        <label for="descricao"><i class="fas fa-notes-medical"></i> Descrição</label>
                         <textarea id="descricao" name="descricao" placeholder="⚕️ Histórico Médico | 💉 Diabetes | 🩺 Hipertensão | 🤧 Alergias | 🌬️ Asma | ❤️ Doenças Cardíacas | 🧠 Epilepsia | ✅ Nenhuma Doença"></textarea>
                     </div>
                     <div class="form-actions">
                         <button type="submit" id="saveButton">Salvar</button>
-                                 <button class="control-btn" id="resetBtn" data-tooltip="Limp.Formulario"><i class="fas fa-sync-alt"></i>Limpar Formulario </button>
+                        <button type="button" class="control-btn" id="resetBtn" data-tooltip="Limpar Formulário"><i class="fas fa-sync-alt"></i> Limpar Formulário</button>
                     </div>
                 </form>
             </div>
@@ -147,8 +146,8 @@
                     <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
                     <button class="control-btn" id="clearFiltersBtn" data-tooltip="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
                     <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Configurações</button>
-         
                     <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
+                    <button class="control-btn" id="clearIndexedDBBtn" data-tooltip="Limpar IndexedDB"><i class="fas fa-trash-restore"></i> Limpar IndexedDB</button>
                 </div>
             </div>
 
@@ -172,8 +171,6 @@
                         <button class="control-btn" id="exportExcelBtn" data-tooltip="Exportar Excel"><i class="fas fa-file-excel"></i> Baixar Excel</button>
                         <button class="control-btn" id="selectAllBtn" data-tooltip="Selecionar Todos"><i class="fas fa-check-square"></i> Selecionar Todos</button>
                     </div>
-
-                    
 
                     <!-- Visualização em Tabela -->
                     <div id="appointmentsTable" class="table-view active">
@@ -223,8 +220,8 @@
                             <div class="column-content"></div>
                         </div>
                     </div>
-                </div>
-<!-- Paginação -->
+
+                    <!-- Paginação -->
                     <div class="pagination-controls">
                         <button id="prevPageBtn" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
                         <span id="pageInfo">Página 1 de 1</span>
@@ -236,6 +233,8 @@
                             <option value="50">50 por página</option>
                         </select>
                     </div>
+                </div>
+
                 <!-- Aba "Relatórios" -->
                 <div id="reportsTab" class="tab-content" style="display: none;">
                     <div class="form-grid">
@@ -304,156 +303,142 @@
                     <div id="insightsCards" class="grid-view" style="display: grid;"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Modais -->
-        <div class="modal" id="actionBox">
-            <div class="modal-content">
-                <span class="modal-close">×</span>
-                <h4>Mover Card Para:</h4>
-                <div class="modal-buttons">
-                    <button data-status="Aguardando Atendimento" onclick="moveCard('Aguardando Atendimento')">Aguardando Atendimento</button>
-                    <button data-status="Atendido" onclick="moveCard('Atendido')">Atendido</button>
-                    <button data-status="Reagendado" onclick="moveCard('Reagendado')">Reagendado</button>
-                    <button data-status="Cancelado" onclick="moveCard('Cancelado')">Cancelado</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal" id="medicoModal">
-            <div class="modal-content">
-                <span class="modal-close">×</span>
-                <h4>Cadastrar Novo Médico</h4>
-                <div class="modal-form">
-                    <div class="form-group">
-                        <label for="novoMedicoNome">Nome</label>
-                        <input type="text" id="novoMedicoNome">
-                    </div>
-                    <div class="form-group">
-                        <label for="novoMedicoCRM">CRM</label>
-                        <input type="text" id="novoMedicoCRM">
-                    </div>
+            <!-- Modais -->
+            <div class="modal" id="actionBox">
+                <div class="modal-content">
+                    <span class="modal-close">×</span>
+                    <h4>Mover Card Para:</h4>
                     <div class="modal-buttons">
-                        <button onclick="saveMedico()">Salvar</button>
-                        <button onclick="closeMedicoModal()">Cancelar</button>
-                    </div>
-                </div>
-                <div class="medicos-list">
-                    <h4>Médicos Cadastrados</h4>
-                    <ul id="medicosListDisplay"></ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal" id="deleteAllModal">
-            <div class="modal-content">
-                <span class="modal-close">×</span>
-                <h4>Excluir Todos os Agendamentos</h4>
-                <div class="modal-form">
-                    <div class="form-group">
-                        <label for="deletePassword">Senha</label>
-                        <input type="password" id="deletePassword">
-                    </div>
-                    <div class="modal-buttons">
-                        <button onclick="confirmDeleteAll()">Confirmar</button>
-                        <button onclick="closeDeleteAllModal()">Cancelar</button>
+                        <button data-status="Aguardando Atendimento" onclick="moveCard('Aguardando Atendimento')">Aguardando Atendimento</button>
+                        <button data-status="Atendido" onclick="moveCard('Atendido')">Atendido</button>
+                        <button data-status="Reagendado" onclick="moveCard('Reagendado')">Reagendado</button>
+                        <button data-status="Cancelado" onclick="moveCard('Cancelado')">Cancelado</button>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="modal" id="sortFilterModal">
-            <div class="modal-content">
-                <span class="modal-close">×</span>
-                <h4>Filtros Avançados</h4>
-                <div class="modal-form">
-                    <div class="form-group">
-                        <label for="sortType">Ordenar Por</label>
-                        <select id="sortType">
-                            <option value="nameAZ">Nome (A-Z)</option>
-                            <option value="recent">Mais Recentes</option>
-                            <option value="oldest">Mais Antigos</option>
-                            <option value="phone">Telefone</option>
-                            <option value="date">Data</option>
-                            <option value="doctor">Médico</option>
-                            <option value="month">Mês</option>
-                            <option value="year">Ano</option>
-                        </select>
+            <div class="modal" id="medicoModal">
+                <div class="modal-content">
+                    <span class="modal-close">×</span>
+                    <h4><i class="fas fa-user-md"></i> Gerenciar Médicos</h4>
+                    <div class="modal-form">
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" id="novoMedicoNome">
+                        </div>
+                        <div class="form-group">
+                            <label>CRM</label>
+                            <input type="text" id="novoMedicoCRM">
+                        </div>
+                        <div class="modal-buttons">
+                            <button onclick="saveMedico()">Salvar</button>
+                            <button onclick="closeMedicoModal()">Cancelar</button>
+                        </div>
                     </div>
-                    <div class="modal-buttons">
-                        <button onclick="applySortFilter()">Aplicar</button>
-                        <button onclick="closeSortFilterModal()">Cancelar</button>
+                    <div class="medicos-list">
+                        <ul id="medicosListDisplay"></ul>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="modal" id="settingsModal">
-            <div class="modal-content">
-                <span class="modal-close">×</span>
-                <h4>Configurações</h4>
-                <div class="modal-form">
-                    <div class="form-group">
-                        <label>Fundo do Site: <input type="color" id="bodyBgColor" value="#f0f4f8"></label>
-                    </div>
-                    <div class="form-group">
-                        <label>Fundo dos Cards: <input type="color" id="cardBgColor" value="#ffffff"></label>
-                    </div>
-                    <div class="form-group">
-                        <label>Fundo do Formulário: <input type="color" id="formBgColor" value="#ffffff"></label>
-                    </div>
-                    <div class="form-group">
-                        <label>Texto: <input type="color" id="textColor" value="#1f2937"></label>
-                    </div>
-                    <div class="form-group">
-                        <label>Bordas: <input type="color" id="borderColor" value="#1e40af"></label>
-                    </div>
-                    <div class="form-group">
-                        <label>Borda dos Cards: <input type="color" id="cardBorderColor" value="#d9d9ec"></label>
-                    </div>
-                    <div class="form-group">
-                        <label>Senha para Excluir Todos: <input type="password" id="deleteAllPassword" placeholder="Definir senha"></label>
-                    </div>
-                    <div class="modal-buttons">
-                        <button id="saveTheme">Salvar Tema</button>
-                        <button id="resetTheme">Restaurar Tema</button>
-                        <button onclick="backupLocal()">Backup em JSON</button>
-                        <button onclick="restoreLocal()">Restaurar Backup</button>
-                        <button onclick="backupFirebase()">Backup no Firebase</button>
-                        <button onclick="restoreFirebase()">Restaurar do Firebase</button>
-                    </div>
-                    <h4>Cadastro de Usuários</h4>
-                    <div class="form-group">
-                        <label for="newUsername">Novo Usuário</label>
-                        <input type="text" id="newUsername">
-                    </div>
-                    <div class="form-group">
-                        <label for="newPassword">Nova Senha</label>
-                        <input type="password" id="newPassword">
-                    </div>
-                    <div class="modal-buttons">
-                        <button onclick="addUser()">Adicionar Usuário</button>
-                    </div>
-                    <div class="users-list">
-                        <h4>Usuários Cadastrados</h4>
-                        <ul id="usersList"></ul>
+            <div class="modal" id="deleteAllModal">
+                <div class="modal-content">
+                    <span class="modal-close">×</span>
+                    <h4><i class="fas fa-trash-alt"></i> Excluir Tudo</h4>
+                    <div class="modal-form">
+                        <div class="form-group">
+                            <label>Senha</label>
+                            <input type="password" id="deletePassword">
+                        </div>
+                        <div class="modal-buttons">
+                            <button onclick="confirmDeleteAll()">Confirmar</button>
+                            <button onclick="closeDeleteAllModal()">Cancelar</button>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <div class="modal" id="sortFilterModal">
+                <div class="modal-content">
+                    <span class="modal-close">×</span>
+                    <h4><i class="fas fa-sliders-h"></i> Filtros Avançados</h4>
+                    <div class="modal-form">
+                        <div class="form-group">
+                            <label>Ordenar Por</label>
+                            <select id="sortType">
+                                <option value="nameAZ">Nome (A-Z)</option>
+                                <option value="recent">Mais Recentes</option>
+                                <option value="oldest">Mais Antigos</option>
+                                <option value="phone">Telefone</option>
+                                <option value="date">Data</option>
+                                <option value="doctor">Médico</option>
+                                <option value="month">Mês</option>
+                                <option value="year">Ano</option>
+                            </select>
+                        </div>
+                        <div class="modal-buttons">
+                            <button onclick="applySortFilter()">Aplicar</button>
+                            <button onclick="closeSortFilterModal()">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal" id="settingsModal">
+                <div class="modal-content">
+                    <span class="modal-close">×</span>
+                    <h4><i class="fas fa-cog"></i> Configurações</h4>
+                    <div class="modal-form">
+                        <div class="form-group">
+                            <label>Fundo do Site</label>
+                            <input type="color" id="bodyBgColor" value="#f9f9fb">
+                            <input type="text" id="bodyBgHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="form-group">
+                            <label>Fundo dos Cards</label>
+                            <input type="color" id="cardBgColor" value="#ffffff">
+                            <input type="text" id="cardBgHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="form-group">
+                            <label>Texto</label>
+                            <input type="color" id="textColor" value="#343a40">
+                            <input type="text" id="textHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="form-group">
+                            <label>Bordas</label>
+                            <input type="color" id="borderColor" value="#007bff">
+                            <input type="text" id="borderHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="modal-buttons">
+                            <button id="saveTheme">Salvar Tema</button>
+                            <button id="resetTheme">Restaurar Tema</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha para Excluir</label>
+                            <input type="password" id="deleteAllPassword">
+                            <button id="saveDeletePasswordBtn" onclick="saveDeletePassword()">Salvar</button>
+                        </div>
+                        <div class="modal-buttons">
+                            <button onclick="backupLocal()">Backup JSON</button>
+                            <button onclick="restoreLocal()">Restaurar JSON</button>
+                            <button onclick="backupFirebase()">Backup Firebase</button>
+                            <button onclick="restoreFirebase()">Restaurar Firebase</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notificação -->
+            <div class="notification" id="notification"></div>
+
+            <!-- Footer -->
+            <footer>
+                <p>🌟 Desenvolvido por João Ricardo | 📸 <a href="https://instagram.com/joaoricardo.pe" target="_blank">@joaoricardo.pe</a> | 💬 <a href="https://wa.me/5587988063327" target="_blank">WhatsApp</a></p>
+            </footer>
         </div>
-
-        <!-- Notificação -->
-        <div class="notification" id="notification"></div>
-
-        <!-- Rodapé -->
-        <footer>
-            🌟 Este site foi desenvolvido por João Ricardo | Engenheiro da Computação |
-            📸 Instagram: <a href="https://instagram.com/joaoricardo.pe" target="_blank">@joaoricardo.pe</a> |
-            💬 <a href="https://wa.me/5587988063327" target="_blank">WhatsApp</a>
-        </footer>
     </div>
 
-    <!-- Scripts -->
     <script type="module" src="script.js"></script>
 </body>
 </html>
