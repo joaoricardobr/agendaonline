@@ -134,7 +134,7 @@ function setupEventListeners() {
     document.getElementById('sortFilterBtn')?.addEventListener('click', () => { openSortFilterModal(); showNotification('Modal de filtros aberto!'); });
     document.getElementById('settingsBtn')?.addEventListener('click', () => { openSettingsModal(); showNotification('Modal de configurações aberto!'); });
     document.getElementById('resetBtn')?.addEventListener('click', () => { resetForm(); showNotification('Formulário resetado!'); });
-    document.getElementById('exportExcelBtn')?.addEventListener('click', () => { exportToExcel(); showNotification('Exportação para Excel iniciada!'); });
+    document.getElementById('exportExcelBtn')?.addEventListener('click', () => { exportToExcel(); });
     document.getElementById('clearFiltersBtn')?.addEventListener('click', () => { clearFilters(); showNotification('Filtros limpos!'); });
     document.getElementById('logoutBtn')?.addEventListener('click', () => { logoutUser(); showNotification('Logout solicitado!'); });
     document.getElementById('statusFilterBtn')?.addEventListener('click', () => { scrollToStatusSection(); showNotification('Navegando para seção de status!'); });
@@ -700,6 +700,7 @@ async function saveTheme() {
         await saveToFirebase('settings', { theme, deleteAllPassword, currentView, lastSync });
         await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
         applyTheme();
+        closeModal(settingsModal);
         showNotification('Configurações de tema salvas!');
     } catch (error) {
         console.error('Erro ao salvar configurações:', error);
@@ -957,6 +958,86 @@ function printAppointments() {
         errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar impressão: ${error.message}`);
         showNotification('Erro ao gerar impressão: ' + error.message, true);
         printWindow.close();
+    }
+}
+
+// Função de Exportação para Excel
+function exportToExcel() {
+    try {
+        // Verifica se a biblioteca SheetJS está carregada
+        if (typeof XLSX === 'undefined') {
+            showNotification('Erro: Biblioteca SheetJS não carregada. Verifique o script no HTML!', true);
+            return;
+        }
+
+        // Obtém os agendamentos a serem exportados
+        const selectedIds = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
+        let exportData;
+
+        if (selectedIds.length > 0) {
+            exportData = appointments.filter(app => selectedIds.includes(app.id));
+            showNotification(`Exportando ${selectedIds.length} agendamentos selecionados...`);
+        } else {
+            exportData = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
+            showNotification(`Exportando todos os agendamentos visíveis (${exportData.length})...`);
+        }
+
+        if (exportData.length === 0) {
+            showNotification('Nenhum agendamento disponível para exportar!', true);
+            return;
+        }
+
+        // Define os cabeçalhos da planilha
+        const headers = [
+            'ID', 'Paciente', 'Telefone', 'Email', 'Médico', 'Local CRM',
+            'Data', 'Hora', 'Tipo Cirurgia', 'Procedimentos', 'Feito Por', 'Descrição', 'Status'
+        ];
+
+        // Converte os dados para o formato de planilha
+        const data = [headers, ...exportData.map(app => [
+            app.id || '-',
+            app.nomePaciente || '-',
+            app.telefone || '-',
+            app.email || '-',
+            app.nomeMedico || '-',
+            app.localCRM || '-',
+            app.dataConsulta || '-',
+            app.horaConsulta || '-',
+            app.tipoCirurgia || '-',
+            app.procedimentos || '-',
+            app.agendamentoFeitoPor || '-',
+            app.descricao || '-',
+            app.status || '-'
+        ])];
+
+        // Cria a planilha
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        // Ajusta a largura das colunas automaticamente
+        const colWidths = headers.map((header, i) => ({
+            wch: Math.max(
+                header.length,
+                ...exportData.map(app => {
+                    const value = data[1 + exportData.indexOf(app)][i] || '';
+                    return value.toString().length;
+                })
+            ) + 2
+        }));
+        ws['!cols'] = colWidths;
+
+        // Cria o workbook
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
+
+        // Gera o arquivo e faz o download
+        const fileName = `agendamentos_${new Date().toISOString().slice(0,10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+
+        showNotification('Planilha Excel exportada com sucesso!');
+    } catch (error) {
+        console.error('Erro ao exportar para Excel:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao exportar para Excel: ${error.message}`);
+        showNotification('Erro ao exportar para Excel: ' + error.message, true);
     }
 }
 
@@ -1365,11 +1446,6 @@ function showNotification(message, isError = false) {
 // Navegação para Status
 function scrollToStatusSection() {
     pipelineView.scrollIntoView({ behavior: 'smooth' });
-}
-
-// Função Placeholder para Exportação Excel
-function exportToExcel() {
-    showNotification('Funcionalidade de exportação para Excel ainda não implementada!');
 }
 
 // Declaração de Funções Globais para o HTML
