@@ -1,4 +1,3 @@
-
 // Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, getDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -1031,7 +1030,7 @@ function clearFilters() {
     }
 }
 
-// Impressão Unificada (mantida como estava)
+// Impressão Unificada
 function printAppointments() {
     try {
         const selectedIds = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
@@ -1425,11 +1424,18 @@ function restoreLocal() {
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
             progressModal.style.display = 'block';
-            let progress = 0;
 
-            // Etapa 1: Ler o arquivo
-            progressFill.style.width = '10%';
-            progressText.textContent = '10% - Lendo arquivo...';
+            // Função auxiliar para atualizar a barra de progresso em tempo real
+            const updateProgress = (percentage, message) => {
+                return new Promise(resolve => {
+                    progressFill.style.width = `${percentage}%`;
+                    progressText.textContent = `${percentage}% - ${message}`;
+                    requestAnimationFrame(() => setTimeout(resolve, 100)); // Garante atualização visual
+                });
+            };
+
+            // Etapa 1: Ler o arquivo JSON
+            await updateProgress(10, 'Lendo arquivo...');
             const text = await file.text();
             const data = JSON.parse(text);
             console.log("Dados lidos do arquivo JSON:", data);
@@ -1440,10 +1446,8 @@ function restoreLocal() {
                 return;
             }
 
-            // Etapa 2: Atribuir dados
-            progress += 20;
-            progressFill.style.width = `${progress}%`;
-            progressText.textContent = `${progress}% - Atribuindo dados...`;
+            // Etapa 2: Atribuir dados às variáveis globais
+            await updateProgress(30, 'Atribuindo dados...');
             appointments = Array.isArray(data.appointments) ? data.appointments : [];
             medicos = Array.isArray(data.medicos) ? data.medicos : [];
             users = Array.isArray(data.users) ? data.users : [];
@@ -1454,27 +1458,25 @@ function restoreLocal() {
             theme = settings.theme || {};
 
             // Etapa 3: Salvar no Firebase
-            progress += 30;
-            progressFill.style.width = `${progress}%`;
-            progressText.textContent = `${progress}% - Salvando no Firebase...`;
-            await saveToFirebase('appointments', appointments);
-            await saveToFirebase('medicos', medicos);
-            await saveToFirebase('users', users);
-            await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
+            await updateProgress(60, 'Salvando no Firebase...');
+            await Promise.all([
+                saveToFirebase('appointments', appointments),
+                saveToFirebase('medicos', medicos),
+                saveToFirebase('users', users),
+                saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme })
+            ]);
 
             // Etapa 4: Salvar no IndexedDB
-            progress += 30;
-            progressFill.style.width = `${progress}%`;
-            progressText.textContent = `${progress}% - Salvando no IndexedDB...`;
-            await saveToIndexedDB('appointments', appointments);
-            await saveToIndexedDB('medicos', medicos);
-            await saveToIndexedDB('users', users);
-            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+            await updateProgress(90, 'Salvando no IndexedDB...');
+            await Promise.all([
+                saveToIndexedDB('appointments', appointments),
+                saveToIndexedDB('medicos', medicos),
+                saveToIndexedDB('users', users),
+                saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme })
+            ]);
 
-            // Etapa 5: Renderizar
-            progress = 100;
-            progressFill.style.width = '100%';
-            progressText.textContent = '100% - Finalizando...';
+            // Etapa 5: Renderizar automaticamente
+            await updateProgress(100, 'Renderizando dados...');
             renderAppointments();
             updateMedicosList();
             updateUsersList();
@@ -1482,7 +1484,7 @@ function restoreLocal() {
 
             setTimeout(() => {
                 progressModal.style.display = 'none';
-                showNotification('Backup local restaurado com sucesso!');
+                showNotification('Backup local restaurado e exibido com sucesso!');
             }, 500);
         };
         input.click();
@@ -1494,8 +1496,178 @@ function restoreLocal() {
     }
 }
 
+async function backupFirebase() {
+    try {
+        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
+        await setDoc(doc(db, 'backups', `backup_${new Date().toISOString()}`), data);
+        showNotification('Backup salvo no Firebase com sucesso!');
+    } catch (error) {
+        console.error('Erro ao salvar backup no Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar backup no Firebase: ${error.message}`);
+        showNotification('Erro ao salvar backup no Firebase: ' + error.message, true);
+    }
+}
 
-// Continuação da função syncLocalWithFirebase
+async function restoreFirebase() {
+    try {
+        const progressModal = document.getElementById('progressModal');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        progressModal.style.display = 'block';
+
+        const updateProgress = (percentage, message) => {
+            return new Promise(resolve => {
+                progressFill.style.width = `${percentage}%`;
+                progressText.textContent = `${percentage}% - ${message}`;
+                requestAnimationFrame(() => setTimeout(resolve, 100));
+            });
+        };
+
+        // Etapa 1: Buscar dados do Firebase
+        await updateProgress(10, 'Buscando backup no Firebase...');
+        const snapshot = await getDocs(collection(db, 'backups'));
+        if (!snapshot.empty) {
+            const latestBackup = snapshot.docs[snapshot.docs.length - 1].data();
+
+            // Etapa 2: Atribuir dados
+            await updateProgress(30, 'Atribuindo dados...');
+            appointments = Array.isArray(latestBackup.appointments) ? latestBackup.appointments : [];
+            medicos = Array.isArray(latestBackup.medicos) ? latestBackup.medicos : [];
+            users = Array.isArray(latestBackup.users) ? latestBackup.users : [];
+            const settings = latestBackup.settings || {};
+            currentView = settings.currentView || 'list';
+            deleteAllPassword = settings.deleteAllPassword || '1234';
+            lastSync = settings.lastSync || 0
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+                        theme = settings.theme || {};
+
+            // Etapa 3: Salvar no Firebase
+            await updateProgress(60, 'Salvando no Firebase...');
+            await Promise.all([
+                saveToFirebase('appointments', appointments),
+                saveToFirebase('medicos', medicos),
+                saveToFirebase('users', users),
+                saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme })
+            ]);
+
+            // Etapa 4: Salvar no IndexedDB
+            await updateProgress(90, 'Salvando no IndexedDB...');
+            await Promise.all([
+                saveToIndexedDB('appointments', appointments),
+                saveToIndexedDB('medicos', medicos),
+                saveToIndexedDB('users', users),
+                saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme })
+            ]);
+
+            // Etapa 5: Renderizar
+            await updateProgress(100, 'Renderizando dados...');
+            renderAppointments();
+            updateMedicosList();
+            updateUsersList();
+            applyTheme();
+
+            setTimeout(() => {
+                progressModal.style.display = 'none';
+                showNotification('Backup restaurado do Firebase com sucesso!');
+            }, 500);
+        } else {
+            progressModal.style.display = 'none';
+            showNotification('Nenhum backup encontrado no Firebase!', true);
+        }
+    } catch (error) {
+        console.error('Erro ao restaurar backup do Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar backup do Firebase: ${error.message}`);
+        document.getElementById('progressModal').style.display = 'none';
+        showNotification('Erro ao restaurar backup do Firebase: ' + error.message, true);
+    }
+}
+
+async function importJsonToFirebase() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                showNotification('Nenhum arquivo selecionado!', true);
+                return;
+            }
+
+            const progressModal = document.getElementById('progressModal');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressModal.style.display = 'block';
+
+            const updateProgress = (percentage, message) => {
+                return new Promise(resolve => {
+                    progressFill.style.width = `${percentage}%`;
+                    progressText.textContent = `${percentage}% - ${message}`;
+                    requestAnimationFrame(() => setTimeout(resolve, 100));
+                });
+            };
+
+            // Etapa 1: Ler o arquivo JSON
+            await updateProgress(20, 'Lendo arquivo...');
+            const text = await file.text();
+            const data = JSON.parse(text);
+            console.log("Dados lidos do arquivo JSON para importação:", data);
+
+            if (!data || typeof data !== 'object') {
+                showNotification('Arquivo JSON inválido!', true);
+                progressModal.style.display = 'none';
+                return;
+            }
+
+            // Etapa 2: Salvar no Firebase como backup
+            await updateProgress(80, 'Importando para o Firebase...');
+            const backupData = {
+                appointments: Array.isArray(data.appointments) ? data.appointments : [],
+                medicos: Array.isArray(data.medicos) ? data.medicos : [],
+                users: Array.isArray(data.users) ? data.users : [],
+                settings: data.settings || { currentView: 'list', deleteAllPassword: '1234', lastSync: 0, theme: {} },
+                timestamp: new Date().toISOString()
+            };
+            await setDoc(doc(db, 'backups', `backup_${Date.now()}`), backupData);
+
+            // Etapa 3: Finalizar
+            await updateProgress(100, 'Importação concluída...');
+            setTimeout(() => {
+                progressModal.style.display = 'none';
+                showNotification('Arquivo JSON importado para o Firebase com sucesso!');
+            }, 500);
+        };
+        input.click();
+    } catch (error) {
+        console.error('Erro ao importar JSON para o Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao importar JSON para o Firebase: ${error.message}`);
+        document.getElementById('progressModal').style.display = 'none';
+        showNotification('Erro ao importar JSON para o Firebase: ' + error.message, true);
+    }
+}
+
+// Função de Sincronização
 async function syncLocalWithFirebase() {
     const now = Date.now();
     if (now - lastSync > 60000) {
@@ -1645,6 +1817,41 @@ async function saveToIndexedDB(storeName, data) {
     }
 }
 
+async function loadFromIndexedDB() {
+    try {
+        const dbRequest = indexedDB.open('AgendaUnicaDB', DB_VERSION);
+        return new Promise((resolve, reject) => {
+            dbRequest.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
+            };
+            dbRequest.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readonly');
+                const data = {};
+                transaction.objectStore('appointments').getAll().onsuccess = (e) => data.appointments = e.target.result;
+                transaction.objectStore('medicos').getAll().onsuccess = (e) => data.medicos = e.target.result;
+                transaction.objectStore('users').getAll().onsuccess = (e) => data.users = e.target.result;
+                transaction.objectStore('settings').get('default').onsuccess = (e) => data.settings = e.target.result || {};
+                transaction.oncomplete = () => {
+                    console.log("Dados carregados do IndexedDB:", data);
+                    resolve(data);
+                };
+                transaction.onerror = (e) => reject(e.target.error);
+                db.close();
+            };
+            dbRequest.onerror = (e) => reject(e.target.error);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar do IndexedDB:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar do IndexedDB: ${error.message}`);
+        throw error;
+    }
+}
+
 // Função de Navegação
 function scrollToStatusSection() {
     try {
@@ -1727,6 +1934,7 @@ window.backupLocal = backupLocal;
 window.restoreLocal = restoreLocal;
 window.backupFirebase = backupFirebase;
 window.restoreFirebase = restoreFirebase;
+window.importJsonToFirebase = importJsonToFirebase;
 window.scrollToStatusSection = scrollToStatusSection;
 
 console.log("Script carregado com sucesso!");
