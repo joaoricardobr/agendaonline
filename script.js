@@ -1,7 +1,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-// Configuração do Firebase
+
+ // Configuração do Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBxPLohS2xOErPb8FH0cFRnNzxy699KHUM",
     authDomain: "agendaunica-fb0ea.firebaseapp.com",
