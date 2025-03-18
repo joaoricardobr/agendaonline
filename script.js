@@ -1,4 +1,4 @@
-// Importações do Firebase
+        // Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, getDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
@@ -510,7 +510,7 @@ function showTab(tabId) {
     }
 }
 
-// Função para Carregar a Aba de Configurações
+// Função ajustada para carregar a aba de configurações com cards separados
 function loadSettingsTab() {
     try {
         settingsCards.innerHTML = '';
@@ -535,6 +535,8 @@ function loadSettingsTab() {
                 <input type="color" id="textColor" value="${theme.textColor || '#343a40'}">
                 <input type="text" id="textColorHex" value="${theme.textColor || '#343a40'}" placeholder="Código HEX" maxlength="7">
             </div>
+            ...
+
             <div class="form-group">
                 <label>Bordas</label>
                 <input type="color" id="borderColor" value="${theme.borderColor || '#007bff'}">
@@ -615,21 +617,82 @@ function loadSettingsTab() {
         `;
         settingsCards.appendChild(logsCard);
 
-        // Card de Backup e Restauração
-        const backupCard = document.createElement('div');
-        backupCard.className = 'card';
-        backupCard.innerHTML = `
-            <h4><i class="fas fa-database"></i> Backup e Restauração</h4>
+        // Card de Backup Local
+        const backupLocalCard = document.createElement('div');
+        backupLocalCard.className = 'card';
+        backupLocalCard.innerHTML = `
+            <h4><i class="fas fa-download"></i> Backup Local</h4>
             <div class="card-actions">
-                <button class="action-btn view-btn" onclick="importJsonToFirebase()">Importar JSON para Firebase</button>
-                <button class="action-btn view-btn" onclick="importExcelToFirebase()">Importar Excel para Firebase</button>
-                <button class="action-btn view-btn" onclick="backupLocal()">Backup Local</button>
-                <button class="action-btn view-btn" onclick="restoreLocal()">Restaurar Local</button>
-                <button class="action-btn view-btn" onclick="backupFirebase()">Backup Firebase</button>
-                <button class="action-btn view-btn" onclick="restoreFirebase()">Restaurar Firebase</button>
+                <button class="action-btn view-btn" onclick="backupLocal()">Gerar Backup Local</button>
             </div>
         `;
-        settingsCards.appendChild(backupCard);
+        settingsCards.appendChild(backupLocalCard);
+
+        // Card de Restauração Local
+        const restoreLocalCard = document.createElement('div');
+        restoreLocalCard.className = 'card';
+        restoreLocalCard.innerHTML = `
+            <h4><i class="fas fa-upload"></i> Restaurar Local</h4>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="restoreLocal()">Importar JSON Local</button>
+            </div>
+        `;
+        settingsCards.appendChild(restoreLocalCard);
+
+        // Card de Backup Firebase
+        const backupFirebaseCard = document.createElement('div');
+        backupFirebaseCard.className = 'card';
+        backupFirebaseCard.innerHTML = `
+            <h4><i class="fas fa-cloud-download-alt"></i> Backup Firebase</h4>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="backupFirebase()">Gerar Backup Firebase</button>
+            </div>
+        `;
+        settingsCards.appendChild(backupFirebaseCard);
+
+        // Card de Restauração Firebase
+        const restoreFirebaseCard = document.createElement('div');
+        restoreFirebaseCard.className = 'card';
+        restoreFirebaseCard.innerHTML = `
+            <h4><i class="fas fa-cloud-upload-alt"></i> Restaurar Firebase</h4>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="restoreFirebase()">Restaurar do Firebase</button>
+            </div>
+        `;
+        settingsCards.appendChild(restoreFirebaseCard);
+
+        // Card de Importação JSON
+        const importJsonCard = document.createElement('div');
+        importJsonCard.className = 'card';
+        importJsonCard.innerHTML = `
+            <h4><i class="fas fa-file-import"></i> Importar JSON</h4>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="importJsonToFirebase()">Importar JSON para Firebase</button>
+            </div>
+        `;
+        settingsCards.appendChild(importJsonCard);
+
+        // Card de Importação Excel
+        const importExcelCard = document.createElement('div');
+        importExcelCard.className = 'card';
+        importExcelCard.innerHTML = `
+            <h4><i class="fas fa-file-excel"></i> Importar Excel</h4>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="importExcelToFirebase()">Importar Excel para Firebase</button>
+            </div>
+        `;
+        settingsCards.appendChild(importExcelCard);
+
+        // Card de Importação TXT
+        const importTxtCard = document.createElement('div');
+        importTxtCard.className = 'card';
+        importTxtCard.innerHTML = `
+            <h4><i class="fas fa-file-alt"></i> Importar TXT</h4>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="importTxtToFirebase()">Importar TXT para Firebase</button>
+            </div>
+        `;
+        settingsCards.appendChild(importTxtCard);
 
         showNotification('Aba de configurações carregada com sucesso!');
     } catch (error) {
@@ -1026,16 +1089,33 @@ async function saveDeletePassword() {
 
 function applyTheme() {
     try {
+        // Aplicar tema ao body
         document.body.style.backgroundColor = theme.bodyBgColor || '#f9f9fb';
-        document.querySelectorAll('.card').forEach(card => {
+        document.body.style.color = theme.textColor || '#343a40';
+
+        // Aplicar tema aos cards
+        document.querySelectorAll('.card, .login-box, .modal-content, .search-card, .form-section, .appointments-section, .insights-card').forEach(card => {
             card.style.backgroundColor = theme.cardBgColor || '#ffffff';
             card.style.borderColor = theme.cardBorderColor || '#d1d3e2';
+            card.style.color = theme.textColor || '#343a40';
         });
-        document.body.style.color = theme.textColor || '#343a40';
-        document.querySelectorAll('button').forEach(btn => btn.style.borderColor = theme.borderColor || '#007bff');
-        document.querySelectorAll('.form-section, .form-group input, .form-group textarea, .form-group select').forEach(form => {
+
+        // Aplicar tema aos botões
+        document.querySelectorAll('button, .control-btn, .view-mode, .action-btn').forEach(btn => {
+            if (!btn.classList.contains('delete-btn') && !btn.classList.contains('share-btn') && 
+                !btn.classList.contains('edit-btn') && !btn.classList.contains('view-btn')) {
+                btn.style.borderColor = theme.borderColor || '#007bff';
+            }
+        });
+
+        // Aplicar tema aos formulários e inputs
+        document.querySelectorAll('.form-group input, .form-group textarea, .form-group select').forEach(form => {
             form.style.borderColor = theme.formBorderColor || '#ced4da';
+            form.style.backgroundColor = theme.cardBgColor || '#f8f9fa';
+            form.style.color = theme.textColor || '#495057';
         });
+
+        showNotification('Tema aplicado com sucesso!');
     } catch (error) {
         console.error('Erro ao aplicar tema:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao aplicar tema: ${error.message}`);
@@ -1425,63 +1505,210 @@ function generateInsights() {
             insightsCards.appendChild(doctorCard);
         }
 
-        showNotification('Insights gerados com sucesso!');
-    } catch (error) {
-        console.error('Erro ao gerar insights:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar insights: ${error.message}`);
-        showNotification('Erro ao gerar insights: ' + error.message, true);
-    }
+       showNotification('Insights gerados com sucesso!');
+} catch (error) {
+    console.error('Erro ao gerar insights:', error);
+    errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar insights: ${error.message}`);
+    showNotification(`Erro ao gerar insights: ${error.message}`, true);
 }
-
-// Função para Limpar IndexedDB
-async function clearIndexedDB() {
-    try {
-        if (confirm('Tem certeza que deseja limpar o IndexedDB? Isso removerá todos os dados locais.')) {
-            const dbRequest = indexedDB.open('AgendaDB', DB_VERSION);
-            dbRequest.onsuccess = (event) => {
-                const db = event.target.result;
-                const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readwrite');
-                transaction.objectStore('appointments').clear();
-                transaction.objectStore('medicos').clear();
-                transaction.objectStore('users').clear();
-                transaction.objectStore('settings').clear();
-                transaction.oncomplete = () => {
-                    appointments = [];
-                    medicos = [];
-                    users = [];
-                    theme = {};
-                    deleteAllPassword = '1234';
-                    currentView = 'list';
-                    lastSync = 0;
-                    renderAppointments();
-                    updateMedicosList();
-                    applyTheme();
-                    showNotification('IndexedDB limpo com sucesso!');
-                    db.close();
-                };
-            };
-        }
-    } catch (error) {
-        console.error('Erro ao limpar IndexedDB:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar IndexedDB: ${error.message}`);
-        showNotification('Erro ao limpar IndexedDB: ' + error.message, true);
-    }
-}
-
-// Função para Limpar Logs de Erros
-function clearErrorLogs() {
-    try {
-        errorLogs = [];
-        document.getElementById('errorLogsList').innerHTML = '<li>Nenhum erro registrado.</li>';
-        showNotification('Logs de erros limpos!');
-    } catch (error) {
-        console.error('Erro ao limpar logs:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar logs: ${error.message}`);
-        showNotification('Erro ao limpar logs: ' + error.message, true);
-    }
 }
 
 // Backup e Restauração
+function backupLocal() {
+    try {
+        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('Backup local gerado com sucesso!');
+    } catch (error) {
+        console.error('Erro ao gerar backup local:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar backup local: ${error.message}`);
+        showNotification('Erro ao gerar backup local: ' + error.message, true);
+    }
+}
+
+function restoreLocal() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    appointments = data.appointments || [];
+                    medicos = data.medicos || [];
+                    users = data.users || [];
+                    const settings = data.settings || {};
+                    currentView = settings.currentView || 'list';
+                    deleteAllPassword = settings.deleteAllPassword || '1234';
+                    lastSync = settings.lastSync || 0;
+                    theme = settings.theme || {};
+
+                    await saveToIndexedDB('appointments', appointments);
+                    await saveToIndexedDB('medicos', medicos);
+                    await saveToIndexedDB('users', users);
+                    await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+
+                    renderAppointments();
+                    updateMedicosList();
+                    applyTheme();
+                    showNotification('Dados restaurados localmente com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao restaurar backup local:', error);
+                    errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar backup local: ${error.message}`);
+                    showNotification('Erro ao restaurar backup local: ' + error.message, true);
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    } catch (error) {
+        console.error('Erro ao iniciar restauração local:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao iniciar restauração local: ${error.message}`);
+        showNotification('Erro ao iniciar restauração: ' + error.message, true);
+    }
+}
+
+async function backupFirebase() {
+    try {
+        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
+        await saveToFirebase('backup', { data, timestamp: new Date().toISOString() });
+        showNotification('Backup enviado ao Firebase com sucesso!');
+    } catch (error) {
+        console.error('Erro ao gerar backup no Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar backup no Firebase: ${error.message}`);
+        showNotification('Erro ao gerar backup no Firebase: ' + error.message, true);
+    }
+}
+
+async function restoreFirebase() {
+    try {
+        const docRef = doc(db, 'backup', 'data');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data().data;
+            appointments = data.appointments || [];
+            medicos = data.medicos || [];
+            users = data.users || [];
+            const settings = data.settings || {};
+            currentView = settings.currentView || 'list';
+            deleteAllPassword = settings.deleteAllPassword || '1234';
+            lastSync = settings.lastSync || 0;
+            theme = settings.theme || {};
+
+            await saveToIndexedDB('appointments', appointments);
+            await saveToIndexedDB('medicos', medicos);
+            await saveToIndexedDB('users', users);
+            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+
+            renderAppointments();
+            updateMedicosList();
+            applyTheme();
+            showNotification('Dados restaurados do Firebase com sucesso!');
+        } else {
+            showNotification('Nenhum backup encontrado no Firebase!', true);
+        }
+    } catch (error) {
+        console.error('Erro ao restaurar do Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar do Firebase: ${error.message}`);
+        showNotification('Erro ao restaurar do Firebase: ' + error.message, true);
+    }
+}
+
+// Nova função para importar TXT para Firebase
+async function importTxtToFirebase() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.txt';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const progressModal = document.getElementById('progressModal');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressModal.style.display = 'block';
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const text = event.target.result;
+                    const lines = text.split('\n').filter(line => line.trim() !== '');
+                    const existingIds = new Set(appointments.map(a => a.id));
+                    const newAppointments = [];
+
+                    lines.forEach((line, index) => {
+                        const fields = line.split(';');
+                        if (fields.length >= 1) {
+                            const appointment = {
+                                id: fields[0] || Date.now().toString() + index,
+                                nomePaciente: fields[1] || 'Paciente Sem Nome',
+                                telefone: fields[2] || '',
+                                email: fields[3] || '',
+                                nomeMedico: fields[4] || '',
+                                localCRM: fields[5] || '',
+                                dataConsulta: fields[6] || '',
+                                horaConsulta: fields[7] || '',
+                                tipoCirurgia: fields[8] || '',
+                                procedimentos: fields[9] || '',
+                                agendamentoFeitoPor: fields[10] || '',
+                                descricao: fields[11] || '',
+                                status: fields[12] || 'Aguardando Atendimento'
+                            };
+                            if (!existingIds.has(appointment.id)) {
+                                newAppointments.push(appointment);
+                            }
+                        }
+                    });
+
+                    appointments = [...appointments, ...newAppointments];
+                    let processed = 0;
+                    const total = newAppointments.length;
+
+                    for (const app of newAppointments) {
+                        await saveToFirebase('appointments', app);
+                        processed++;
+                        const percentage = Math.round((processed / total) * 100);
+                        progressFill.style.width = `${percentage}%`;
+                        progressText.textContent = `${percentage}%`;
+                    }
+
+                    await saveToIndexedDB('appointments', appointments);
+                    renderAppointments();
+                    progressModal.style.display = 'none';
+                    showNotification('Dados TXT importados e mesclados no Firebase com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao processar TXT:', error);
+                    errorLogs.push(`[${new Date().toISOString()}] Erro ao processar TXT: ${error.message}`);
+                    showNotification('Erro ao importar TXT: ' + error.message, true);
+                    progressModal.style.display = 'none';
+                }
+            };
+            reader.onerror = () => {
+                showNotification('Erro ao ler o arquivo TXT!', true);
+                progressModal.style.display = 'none';
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    } catch (error) {
+        console.error('Erro ao importar TXT para Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao importar TXT para Firebase: ${error.message}`);
+        showNotification('Erro ao importar: ' + error.message, true);
+    }
+}
+
 async function importJsonToFirebase() {
     try {
         const input = document.createElement('input');
@@ -1499,35 +1726,16 @@ async function importJsonToFirebase() {
             const reader = new FileReader();
             reader.onload = async (event) => {
                 try {
-                    const jsonData = JSON.parse(event.target.result);
-                    if (!jsonData.appointments || !Array.isArray(jsonData.appointments)) {
-                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array válido.');
-                    }
-
+                    const data = JSON.parse(event.target.result);
+                    const newAppointments = data.appointments || [];
                     const existingIds = new Set(appointments.map(a => a.id));
-                    const newAppointments = jsonData.appointments.filter(app => !existingIds.has(app.id)).map(app => ({
-                      
-                      
-                                              id: app.id || Date.now().toString(),
-                        nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
-                        telefone: app.telefone || '',
-                        email: app.email || '',
-                        nomeMedico: app.nomeMedico || '',
-                        localCRM: app.localCRM || '',
-                        dataConsulta: app.dataConsulta || '',
-                        horaConsulta: app.horaConsulta || '',
-                        tipoCirurgia: app.tipoCirurgia || '',
-                        procedimentos: app.procedimentos || '',
-                        agendamentoFeitoPor: app.agendamentoFeitoPor || '',
-                        descricao: app.descricao || '',
-                        status: app.status || 'Aguardando Atendimento'
-                    }));
-                    appointments = [...appointments, ...newAppointments];
+                    const uniqueAppointments = newAppointments.filter(app => !existingIds.has(app.id));
 
+                    appointments = [...appointments, ...uniqueAppointments];
                     let processed = 0;
-                    const total = newAppointments.length;
+                    const total = uniqueAppointments.length;
 
-                    for (const app of newAppointments) {
+                    for (const app of uniqueAppointments) {
                         await saveToFirebase('appointments', app);
                         processed++;
                         const percentage = Math.round((processed / total) * 100);
@@ -1538,7 +1746,7 @@ async function importJsonToFirebase() {
                     await saveToIndexedDB('appointments', appointments);
                     renderAppointments();
                     progressModal.style.display = 'none';
-                    showNotification('Dados JSON importados e mesclados no Firebase com sucesso!');
+                    showNotification('Dados JSON importados para Firebase com sucesso!');
                 } catch (error) {
                     console.error('Erro ao processar JSON:', error);
                     errorLogs.push(`[${new Date().toISOString()}] Erro ao processar JSON: ${error.message}`);
@@ -1546,17 +1754,13 @@ async function importJsonToFirebase() {
                     progressModal.style.display = 'none';
                 }
             };
-            reader.onerror = () => {
-                showNotification('Erro ao ler o arquivo JSON!', true);
-                progressModal.style.display = 'none';
-            };
             reader.readAsText(file);
         };
         input.click();
     } catch (error) {
         console.error('Erro ao importar JSON para Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao importar JSON para Firebase: ${error.message}`);
-        showNotification('Erro ao importar: ' + error.message, true);
+        showNotification('Erro ao importar JSON: ' + error.message, true);
     }
 }
 
@@ -1581,31 +1785,32 @@ async function importExcelToFirebase() {
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheetName = workbook.SheetNames[0];
                     const sheet = workbook.Sheets[sheetName];
-                    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-
-                    if (!jsonData || jsonData.length === 0) {
-                        throw new Error('O arquivo Excel está vazio ou mal formatado.');
-                    }
-
+                    const jsonData = XLSX.utils.sheet_to_json(sheet);
                     const existingIds = new Set(appointments.map(a => a.id));
-                    const newAppointments = jsonData.map(row => ({
-                        id: row.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                        nomePaciente: row.nomePaciente || 'Paciente Sem Nome',
-                        telefone: row.telefone || '',
-                        email: row.email || '',
-                        nomeMedico: row.nomeMedico || '',
-                        localCRM: row.localCRM || '',
-                        dataConsulta: row.dataConsulta || '',
-                        horaConsulta: row.horaConsulta || '',
-                        tipoCirurgia: row.tipoCirurgia || '',
-                        procedimentos: row.procedimentos || '',
-                        agendamentoFeitoPor: row.agendamentoFeitoPor || '',
-                        descricao: row.descricao || '',
-                        status: row.status || 'Aguardando Atendimento'
-                    })).filter(app => !existingIds.has(app.id));
+                    const newAppointments = [];
+
+                    jsonData.forEach((row, index) => {
+                        const appointment = {
+                            id: row.id || Date.now().toString() + index,
+                            nomePaciente: row.nomePaciente || 'Paciente Sem Nome',
+                            telefone: row.telefone || '',
+                            email: row.email || '',
+                            nomeMedico: row.nomeMedico || '',
+                            localCRM: row.localCRM || '',
+                            dataConsulta: row.dataConsulta || '',
+                            horaConsulta: row.horaConsulta || '',
+                            tipoCirurgia: row.tipoCirurgia || '',
+                            procedimentos: row.procedimentos || '',
+                            agendamentoFeitoPor: row.agendamentoFeitoPor || '',
+                            descricao: row.descricao || '',
+                            status: row.status || 'Aguardando Atendimento'
+                        };
+                        if (!existingIds.has(appointment.id)) {
+                            newAppointments.push(appointment);
+                        }
+                    });
 
                     appointments = [...appointments, ...newAppointments];
-
                     let processed = 0;
                     const total = newAppointments.length;
 
@@ -1620,7 +1825,7 @@ async function importExcelToFirebase() {
                     await saveToIndexedDB('appointments', appointments);
                     renderAppointments();
                     progressModal.style.display = 'none';
-                    showNotification('Dados do Excel importados e mesclados no Firebase com sucesso!');
+                    showNotification('Dados Excel importados para Firebase com sucesso!');
                 } catch (error) {
                     console.error('Erro ao processar Excel:', error);
                     errorLogs.push(`[${new Date().toISOString()}] Erro ao processar Excel: ${error.message}`);
@@ -1628,228 +1833,47 @@ async function importExcelToFirebase() {
                     progressModal.style.display = 'none';
                 }
             };
-            reader.onerror = () => {
-                showNotification('Erro ao ler o arquivo Excel!', true);
-                progressModal.style.display = 'none';
-            };
             reader.readAsArrayBuffer(file);
         };
         input.click();
     } catch (error) {
         console.error('Erro ao importar Excel para Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao importar Excel para Firebase: ${error.message}`);
-        showNotification('Erro ao importar: ' + error.message, true);
+        showNotification('Erro ao importar Excel: ' + error.message, true);
     }
 }
 
-function backupLocal() {
-    try {
-        const data = {
-            appointments,
-            medicos,
-            users,
-            settings: { currentView, deleteAllPassword, lastSync, theme }
-        };
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup_local_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        syncLocalWithFirebase();
-        showNotification('Backup local realizado e sincronizado com Firebase!');
-    } catch (error) {
-        console.error('Erro ao realizar backup local:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao realizar backup local: ${error.message}`);
-        showNotification('Erro ao realizar backup: ' + error.message, true);
-    }
-}
-
-async function restoreLocal() {
-    try {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            showNotification('Carregando arquivo...', false);
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    if (!data.appointments || !Array.isArray(data.appointments)) {
-                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array válido.');
-                    }
-
-                    const existingIds = new Set(appointments.map(a => a.id));
-                    const newAppointments = data.appointments.filter(app => !existingIds.has(app.id)).map(app => ({
-                        id: app.id || Date.now().toString(),
-                        nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
-                        telefone: app.telefone || '',
-                        email: app.email || '',
-                        nomeMedico: app.nomeMedico || '',
-                        localCRM: app.localCRM || '',
-                        dataConsulta: app.dataConsulta || '',
-                        horaConsulta: app.horaConsulta || '',
-                        tipoCirurgia: app.tipoCirurgia || '',
-                        procedimentos: app.procedimentos || '',
-                        agendamentoFeitoPor: app.agendamentoFeitoPor || '',
-                        descricao: app.descricao || '',
-                        status: app.status || 'Aguardando Atendimento'
-                    }));
-                    appointments = [...appointments, ...newAppointments];
-                    medicos = data.medicos || [];
-                    users = data.users || [];
-                    const settings = data.settings || {};
-                    currentView = settings.currentView || 'list';
-                    deleteAllPassword = settings.deleteAllPassword || '1234';
-                    lastSync = settings.lastSync || 0;
-                    theme = settings.theme || {};
-
-                    await saveToIndexedDB('appointments', appointments);
-                    await saveToIndexedDB('medicos', medicos);
-                    await saveToIndexedDB('users', users);
-                    await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-                    applyTheme();
-                    renderAppointments();
-                    updateMedicosList();
-                    showNotification('Dados restaurados e mesclados localmente com sucesso!');
-                } catch (error) {
-                    console.error('Erro ao processar JSON para restauração:', error);
-                    errorLogs.push(`[${new Date().toISOString()}] Erro ao processar JSON para restauração: ${error.message}`);
-                    showNotification('Erro ao restaurar JSON: ' + error.message, true);
-                }
-            };
-            reader.onerror = () => {
-                showNotification('Erro ao carregar o arquivo JSON!', true);
-            };
-            reader.readAsText(file);
-        };
-        input.click();
-    } catch (error) {
-        console.error('Erro ao restaurar localmente:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar localmente: ${error.message}`);
-        showNotification('Erro ao restaurar: ' + error.message, true);
-    }
-}
-
-async function backupFirebase() {
-    try {
-        const data = await loadFromFirebase();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup_firebase_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        showNotification('Backup do Firebase realizado com sucesso!');
-    } catch (error) {
-        console.error('Erro ao realizar backup do Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao realizar backup do Firebase: ${error.message}`);
-        showNotification('Erro ao realizar backup: ' + error.message, true);
-    }
-}
-
-async function restoreFirebase() {
-    try {
-        const firebaseData = await loadFromFirebase();
-        const progressModal = document.getElementById('progressModal');
-        const progressFill = document.getElementById('progressFill');
-        const progressText = document.getElementById('progressText');
-        progressModal.style.display = 'block';
-
-        let processed = 0;
-        const total = Object.keys(firebaseData.appointments || {}).length + Object.keys(firebaseData.medicos || {}).length + 1;
-
-        const existingIds = new Set(appointments.map(a => a.id));
-        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id)).map(app => ({
-            id: app.id || Date.now().toString(),
-            nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
-            telefone: app.telefone || '',
-            email: app.email || '',
-            nomeMedico: app.nomeMedico || '',
-            localCRM: app.localCRM || '',
-            dataConsulta: app.dataConsulta || '',
-            horaConsulta: app.horaConsulta || '',
-            tipoCirurgia: app.tipoCirurgia || '',
-            procedimentos: app.procedimentos || '',
-            agendamentoFeitoPor: app.agendamentoFeitoPor || '',
-            descricao: app.descricao || '',
-            status: app.status || 'Aguardando Atendimento'
-        }));
-        appointments = [...appointments, ...newAppointments];
-        medicos = Object.values(firebaseData.medicos || []);
-        const settings = firebaseData.settings || {};
-        currentView = settings.currentView || currentView;
-        deleteAllPassword = settings.deleteAllPassword || deleteAllPassword;
-        lastSync = settings.lastSync || lastSync;
-        theme = settings.theme || theme;
-
-        processed += Object.keys(firebaseData.appointments || {}).length;
-        processed += Object.keys(firebaseData.medicos || {}).length;
-        processed += 1;
-
-        const percentage = Math.round((processed / total) * 100);
-        progressFill.style.width = `${percentage}%`;
-        progressText.textContent = `${percentage}%`;
-
-        await saveToIndexedDB('appointments', appointments);
-        await saveToIndexedDB('medicos', medicos);
-        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-        applyTheme();
-        renderAppointments();
-        updateMedicosList();
-        generateInsights();
-
-        progressModal.style.display = 'none';
-        showNotification('Dados restaurados do Firebase com sucesso!');
-    } catch (error) {
-        console.error('Erro ao restaurar do Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar do Firebase: ${error.message}`);
-        showNotification('Erro ao restaurar: ' + error.message, true);
-    }
-}
-
-// Banco de Dados IndexedDB
+// IndexedDB
 async function saveToIndexedDB(storeName, data) {
     try {
-        const dbRequest = indexedDB.open('AgendaDB', DB_VERSION);
+        const dbRequest = indexedDB.open('AgendaUnicaDB', DB_VERSION);
         return new Promise((resolve, reject) => {
             dbRequest.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                if (!db.objectStoreNames.contains('appointments')) {
-                    db.createObjectStore('appointments', { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains('medicos')) {
-                    db.createObjectStore('medicos', { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains('users')) {
-                    db.createObjectStore('users', { keyPath: 'username' });
-                }
-                if (!db.objectStoreNames.contains('settings')) {
-                    db.createObjectStore('settings', { keyPath: 'id' });
-                }
+                if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
+                if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
             };
+
             dbRequest.onsuccess = (event) => {
                 const db = event.target.result;
                 const transaction = db.transaction([storeName], 'readwrite');
                 const store = transaction.objectStore(storeName);
+
                 if (Array.isArray(data)) {
                     data.forEach(item => store.put(item));
                 } else {
-                    store.put({ ...data, id: storeName === 'settings' ? 'config' : data.id });
+                    store.put({ key: storeName, value: data });
                 }
+
                 transaction.oncomplete = () => {
                     db.close();
                     resolve();
                 };
                 transaction.onerror = () => reject(transaction.error);
             };
+
             dbRequest.onerror = () => reject(dbRequest.error);
         });
     } catch (error) {
@@ -1861,23 +1885,16 @@ async function saveToIndexedDB(storeName, data) {
 
 async function loadFromIndexedDB() {
     try {
-        const dbRequest = indexedDB.open('AgendaDB', DB_VERSION);
+        const dbRequest = indexedDB.open('AgendaUnicaDB', DB_VERSION);
         return new Promise((resolve, reject) => {
             dbRequest.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                if (!db.objectStoreNames.contains('appointments')) {
-                    db.createObjectStore('appointments', { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains('medicos')) {
-                    db.createObjectStore('medicos', { keyPath: 'id' });
-                }
-                if (!db.objectStoreNames.contains('users')) {
-                    db.createObjectStore('users', { keyPath: 'username' });
-                }
-                if (!db.objectStoreNames.contains('settings')) {
-                    db.createObjectStore('settings', { keyPath: 'id' });
-                }
+                if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'username' });
+                if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
             };
+
             dbRequest.onsuccess = (event) => {
                 const db = event.target.result;
                 const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readonly');
@@ -1888,10 +1905,10 @@ async function loadFromIndexedDB() {
 
                 const data = { appointments: [], medicos: [], users: [], settings: {} };
 
-                appointmentsStore.getAll().onsuccess = (e) => data.appointments = e.target.result || [];
-                medicosStore.getAll().onsuccess = (e) => data.medicos = e.target.result || [];
-                usersStore.getAll().onsuccess = (e) => data.users = e.target.result || [];
-                settingsStore.get('config').onsuccess = (e) => data.settings = e.target.result || {};
+                appointmentsStore.getAll().onsuccess = (e) => data.appointments = e.target.result;
+                medicosStore.getAll().onsuccess = (e) => data.medicos = e.target.result;
+                usersStore.getAll().onsuccess = (e) => data.users = e.target.result;
+                settingsStore.get('settings').onsuccess = (e) => data.settings = e.target.result?.value || {};
 
                 transaction.oncomplete = () => {
                     db.close();
@@ -1899,6 +1916,7 @@ async function loadFromIndexedDB() {
                 };
                 transaction.onerror = () => reject(transaction.error);
             };
+
             dbRequest.onerror = () => reject(dbRequest.error);
         });
     } catch (error) {
@@ -1908,13 +1926,52 @@ async function loadFromIndexedDB() {
     }
 }
 
-// Banco de Dados Firebase
+async function clearIndexedDB() {
+    try {
+        const dbRequest = indexedDB.open('AgendaUnicaDB', DB_VERSION);
+        return new Promise((resolve, reject) => {
+            dbRequest.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readwrite');
+                transaction.objectStore('appointments').clear();
+                transaction.objectStore('medicos').clear();
+                transaction.objectStore('users').clear();
+                transaction.objectStore('settings').clear();
+
+                transaction.oncomplete = () => {
+                    db.close();
+                    appointments = [];
+                    medicos = [];
+                    users = [];
+                    theme = {};
+                    renderAppointments();
+                    updateMedicosList();
+                    applyTheme();
+                    showNotification('IndexedDB limpo com sucesso!');
+                    resolve();
+                };
+                transaction.onerror = () => reject(transaction.error);
+            };
+
+            dbRequest.onerror = () => reject(dbRequest.error);
+        });
+    } catch (error) {
+        console.error('Erro ao limpar IndexedDB:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar IndexedDB: ${error.message}`);
+        showNotification('Erro ao limpar IndexedDB: ' + error.message, true);
+    }
+}
+
+// Firebase
 async function saveToFirebase(collectionName, data) {
     try {
-        const docRef = doc(db, collectionName, data.id || Date.now().toString());
-        await setDoc(docRef, data);
+        if (!data.id && collectionName !== 'settings' && collectionName !== 'backup') {
+            throw new Error('ID não fornecido para salvar no Firebase');
+        }
+        const docRef = doc(db, collectionName, collectionName === 'settings' || collectionName === 'backup' ? collectionName : data.id);
+        await setDoc(docRef, data, { merge: true });
         lastSync = Date.now();
-        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        console.log(`Dados salvos no Firebase (${collectionName}):`, data);
     } catch (error) {
         console.error('Erro ao salvar no Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no Firebase: ${error.message}`);
@@ -1924,11 +1981,9 @@ async function saveToFirebase(collectionName, data) {
 
 async function deleteFromFirebase(collectionName, id) {
     try {
-        if (!id) {
-            throw new Error('ID inválido para exclusão no Firebase');
-        }
         const docRef = doc(db, collectionName, id);
         await deleteDoc(docRef);
+        console.log(`Item excluído do Firebase (${collectionName}): ${id}`);
     } catch (error) {
         console.error('Erro ao excluir do Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir do Firebase: ${error.message}`);
@@ -1940,8 +1995,9 @@ async function deleteAllFromFirebase(collectionName) {
     try {
         const querySnapshot = await getDocs(collection(db, collectionName));
         const batch = writeBatch(db);
-        querySnapshot.forEach(doc => batch.delete(doc.ref));
+        querySnapshot.forEach((doc) => batch.delete(doc.ref));
         await batch.commit();
+        console.log(`Todos os itens excluídos do Firebase (${collectionName})`);
     } catch (error) {
         console.error('Erro ao excluir todos do Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir todos do Firebase: ${error.message}`);
@@ -1949,61 +2005,33 @@ async function deleteAllFromFirebase(collectionName) {
     }
 }
 
-async function loadFromFirebase() {
-    try {
-        const data = { appointments: {}, medicos: {}, settings: {} };
-        const appointmentsSnapshot = await getDocs(collection(db, 'appointments'));
-        appointmentsSnapshot.forEach(doc => data.appointments[doc.id] = doc.data());
-        const medicosSnapshot = await getDocs(collection(db, 'medicos'));
-        medicosSnapshot.forEach(doc => data.medicos[doc.id] = doc.data());
-        const settingsDoc = await getDoc(doc(db, 'settings', 'config'));
-        if (settingsDoc.exists()) data.settings = settingsDoc.data();
-        return data;
-    } catch (error) {
-        console.error('Erro ao carregar do Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar do Firebase: ${error.message}`);
-        throw error;
-    }
-}
-
 async function syncLocalWithFirebase() {
     try {
-        const firebaseData = await loadFromFirebase();
-        const existingIds = new Set(appointments.map(a => a.id));
-        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id)).map(app => ({
-            id: app.id || Date.now().toString(),
-            nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
-            telefone: app.telefone || '',
-            email: app.email || '',
-            nomeMedico: app.nomeMedico || '',
-            localCRM: app.localCRM || '',
-            dataConsulta: app.dataConsulta || '',
-            horaConsulta: app.horaConsulta || '',
-            tipoCirurgia: app.tipoCirurgia || '',
-            procedimentos: app.procedimentos || '',
-            agendamentoFeitoPor: app.agendamentoFeitoPor || '',
-            descricao: app.descricao || '',
-            status: app.status || 'Aguardando Atendimento'
-        }));
-        appointments = [...appointments, ...newAppointments];
-        medicos = Object.values(firebaseData.medicos || []);
-        const settings = firebaseData.settings || {};
-        currentView = settings.currentView || currentView;
-        deleteAllPassword = settings.deleteAllPassword || deleteAllPassword;
-        lastSync = settings.lastSync || lastSync;
-        theme = settings.theme || theme;
+        const collections = ['appointments', 'medicos', 'users', 'settings'];
+        for (const collectionName of collections) {
+            const querySnapshot = await getDocs(collection(db, collectionName));
+            const firebaseData = [];
+            querySnapshot.forEach(doc => firebaseData.push(doc.data()));
 
-        await saveToIndexedDB('appointments', appointments);
-        await saveToIndexedDB('medicos', medicos);
-        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-        renderAppointments();
-        updateMedicosList();
-        applyTheme();
+            if (collectionName === 'appointments') appointments = firebaseData;
+            else if (collectionName === 'medicos') medicos = firebaseData;
+            else if (collectionName === 'users') users = firebaseData;
+            else if (collectionName === 'settings' && firebaseData.length > 0) {
+                const settings = firebaseData[0];
+                currentView = settings.currentView || 'list';
+                deleteAllPassword = settings.deleteAllPassword || '1234';
+                lastSync = settings.lastSync || 0;
+                theme = settings.theme || {};
+            }
+
+            await saveToIndexedDB(collectionName, collectionName === 'settings' ? { currentView, deleteAllPassword, lastSync, theme } : firebaseData);
+        }
+        console.log('Sincronização com Firebase concluída!');
         showNotification('Sincronização com Firebase concluída!');
     } catch (error) {
         console.error('Erro ao sincronizar com Firebase:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao sincronizar com Firebase: ${error.message}`);
-        showNotification('Erro ao sincronizar: ' + error.message, true);
+        showNotification('Erro ao sincronizar com Firebase: ' + error.message, true);
     }
 }
 
@@ -2015,29 +2043,51 @@ function showNotification(message, isError = false) {
         notification.className = `notification ${isError ? 'error' : 'success'}`;
         notification.style.display = 'block';
         setTimeout(() => notification.style.display = 'none', 3000);
+        console.log(`Notificação: ${message}`);
     } catch (error) {
         console.error('Erro ao exibir notificação:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao exibir notificação: ${error.message}`);
     }
 }
 
-// Navegação para Seção de Status
-function scrollToStatusSection() {
+// Limpar Logs
+function clearErrorLogs() {
     try {
-        document.getElementById('statusFilter').scrollIntoView({ behavior: 'smooth' });
-        showNotification('Navegando para a seção de status!');
+        errorLogs = [];
+        const errorLogsList = document.getElementById('errorLogsList');
+        if (errorLogsList) {
+            errorLogsList.innerHTML = '<li>Nenhum erro registrado.</li>';
+        }
+        showNotification('Logs de erros limpos com sucesso!');
     } catch (error) {
-        console.error('Erro ao navegar para seção de status:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao navegar para seção de status: ${error.message}`);
-        showNotification('Erro ao navegar: ' + error.message, true);
+        console.error('Erro ao limpar logs:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar logs: ${error.message}`);
+        showNotification('Erro ao limpar logs: ' + error.message, true);
     }
 }
 
-// Expor funções globais
+// Navegação
+function scrollToStatusSection() {
+    try {
+        const section = document.getElementById('statusFilter');
+        if (section) {
+            section.scrollIntoView({ behavior: 'smooth' });
+            showNotification('Rolando para a seção de status!');
+        }
+    } catch (error) {
+        console.error('Erro ao rolar para seção de status:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao rolar para seção de status: ${error.message}`);
+        showNotification('Erro ao rolar: ' + error.message, true);
+    }
+}
+
+// Exposição de Funções Globais
 window.editAppointment = editAppointment;
 window.deleteAppointment = deleteAppointment;
 window.viewAppointment = viewAppointment;
 window.shareAppointment = shareAppointment;
+window.changeView = changeView;
+window.showTab = showTab;
 window.toggleDetails = toggleDetails;
 window.moveCard = moveCard;
 window.openMedicoModal = openMedicoModal;
@@ -2053,23 +2103,17 @@ window.applySortFilter = applySortFilter;
 window.saveTheme = saveTheme;
 window.resetTheme = resetTheme;
 window.saveDeletePassword = saveDeletePassword;
-window.importJsonToFirebase = importJsonToFirebase;
-window.importExcelToFirebase = importExcelToFirebase;
 window.backupLocal = backupLocal;
 window.restoreLocal = restoreLocal;
 window.backupFirebase = backupFirebase;
 window.restoreFirebase = restoreFirebase;
-window.generateReport = generateReport;
-window.toggleReportView = toggleReportView;
+window.importJsonToFirebase = importJsonToFirebase;
+window.importExcelToFirebase = importExcelToFirebase;
+window.importTxtToFirebase = importTxtToFirebase;
 window.clearIndexedDB = clearIndexedDB;
 window.clearErrorLogs = clearErrorLogs;
+window.scrollToStatusSection = scrollToStatusSection;
+window.generateReport = generateReport;
+window.toggleReportView = toggleReportView;
 
-console.log("Script carregado com sucesso!");
-                      
-                      
-                      
-                      
-                      
-                      
-                      
-                      
+console.log("Aplicação JavaScript carregada com sucesso!");
