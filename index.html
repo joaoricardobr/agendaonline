@@ -136,7 +136,7 @@
                 </form>
             </div>
 
-            <!-- Controles e Filtros -->
+            <!-- Controles e Filtros com Barra de Busca -->
             <div class="search-card">
                 <div class="header-controls">
                     <button class="control-btn" id="allBtn" data-tooltip="Todos"><i class="fas fa-list-ul"></i> Todos</button>
@@ -147,9 +147,12 @@
                     <button class="control-btn" id="statusFilterBtn" data-tooltip="Status"><i class="fas fa-filter"></i> Status</button>
                     <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
                     <button class="control-btn" id="clearFiltersBtn" data-tooltip="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
-                      <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos "><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
-  
-                   </div>
+                    <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
+                </div>
+                <!-- Barra de Busca Global -->
+                <div class="search-bar" style="margin-top: 15px; width: 100%;">
+                    <input type="text" id="globalSearch" placeholder="Busca global (pacientes, médicos, telefones, etc.)" style="width: 100%; padding: 12px; border-radius: 10px; border: 1.5px solid #ced4da; font-size: 15px;">
+                </div>
             </div>
 
             <!-- Seção de Agendamentos -->
@@ -308,7 +311,69 @@
                 <!-- Aba "Configurações" -->
                 <div id="settingsTab" class="tab-content" style="display: none;">
                     <h2>Configurações</h2>
-                    <div id="settingsCards" class="grid-view" style="display: grid;"></div>
+                    <div id="settingsCards" class="grid-view" style="display: grid;">
+                        <div class="card">
+                            <h4><i class="fas fa-paint-brush"></i> Personalizar Tema</h4>
+                            <div class="form-group">
+                                <label>Cor de Fundo do Body</label>
+                                <input type="color" id="bodyBgColor" value="#f9f9fb">
+                                <input type="text" id="bodyBgColorHex" value="#f9f9fb">
+                            </div>
+                            <div class="form-group">
+                                <label>Cor de Fundo dos Cards</label>
+                                <input type="color" id="cardBgColor" value="#ffffff">
+                                <input type="text" id="cardBgColorHex" value="#ffffff">
+                            </div>
+                            <div class="form-group">
+                                <label>Cor do Texto</label>
+                                <input type="color" id="textColor" value="#343a40">
+                                <input type="text" id="textColorHex" value="#343a40">
+                            </div>
+                            <div class="form-group">
+                                <label>Cor da Borda dos Botões</label>
+                                <input type="color" id="borderColor" value="#007bff">
+                                <input type="text" id="borderColorHex" value="#007bff">
+                            </div>
+                            <div class="form-group">
+                                <label>Cor da Borda dos Cards</label>
+                                <input type="color" id="cardBorderColor" value="#d1d3e2">
+                                <input type="text" id="cardBorderColorHex" value="#d1d3e2">
+                            </div>
+                            <div class="form-group">
+                                <label>Cor da Borda dos Formulários</label>
+                                <input type="color" id="formBorderColor" value="#ced4da">
+                                <input type="text" id="formBorderColorHex" value="#ced4da">
+                            </div>
+                            <div class="modal-buttons">
+                                <button onclick="saveTheme()">Salvar Tema</button>
+                                <button onclick="resetTheme()">Restaurar Padrão</button>
+                            </div>
+                        </div>
+                        <!-- Novo Card de Backups -->
+                        <div class="card">
+                            <h4><i class="fas fa-database"></i> Sistema de Backups</h4>
+                            <p>Gerencie backups automáticos e manuais:</p>
+                            <div class="form-group">
+                                <label>Backup Automático (a cada 4h)</label>
+                                <select id="autoBackupToggle">
+                                    <option value="true">Ativado</option>
+                                    <option value="false">Desativado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Descrição de Backup (JSON/TXT)</label>
+                                <textarea id="backupDescription" placeholder="Cole aqui o código JSON para importar"></textarea>
+                            </div>
+                            <div class="modal-buttons">
+                                <button onclick="backupLocal()">Backup Local</button>
+                                <button onclick="restoreLocal()">Restaurar Local</button>
+                                <button onclick="backupFirebase()">Backup Firebase</button>
+                                <button onclick="restoreFirebase()">Restaurar Firebase</button>
+                                <button onclick="importJsonToFirebase()">Importar JSON</button>
+                                <button onclick="importExcelToFirebase()">Importar Excel</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -402,15 +467,7 @@
                     <p id="progressText">0%</p>
                 </div>
             </div>
-            <div id="progressModal" class="modal">
-    <div class="modal-content">
-        <h4>Importando Dados...</h4>
-        <div class="progress-bar">
-            <div id="progressFill" class="progress-fill"></div>
-        </div>
-        <p id="progressText">0%</p>
-    </div>
-</div>
+            
 
             <!-- Notificação -->
             <div class="notification" id="notification"></div>
