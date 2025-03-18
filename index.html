@@ -6,7 +6,6 @@
     <title>Agenda Consultório Dra Soraya</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -143,11 +142,11 @@
                     <button class="control-btn" id="allBtn" data-tooltip="Todos"><i class="fas fa-list-ul"></i> Todos</button>
                     <button class="control-btn" id="reportsBtn" data-tooltip="Relatórios"><i class="fas fa-chart-bar"></i> Relatórios</button>
                     <button class="control-btn" id="insightsBtn" data-tooltip="Insights"><i class="fas fa-lightbulb"></i> Insights</button>
+                    <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Configurações</button>
                     <button class="control-btn" id="printBtn" data-tooltip="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
                     <button class="control-btn" id="statusFilterBtn" data-tooltip="Status"><i class="fas fa-filter"></i> Status</button>
                     <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
                     <button class="control-btn" id="clearFiltersBtn" data-tooltip="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
-                    <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Configurações</button>
                     <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
                     <button class="control-btn" id="clearIndexedDBBtn" data-tooltip="Limpar IndexedDB"><i class="fas fa-trash-restore"></i> Limpar IndexedDB</button>
                 </div>
@@ -304,6 +303,12 @@
                     <h2>Insights</h2>
                     <div id="insightsCards" class="grid-view" style="display: grid;"></div>
                 </div>
+
+                <!-- Aba "Configurações" -->
+                <div id="settingsTab" class="tab-content" style="display: none;">
+                    <h2>Configurações</h2>
+                    <div id="settingsCards" class="grid-view" style="display: grid;"></div>
+                </div>
             </div>
 
             <!-- Modais -->
@@ -387,57 +392,13 @@
                 </div>
             </div>
 
-            <div class="modal" id="settingsModal">
+            <div id="progressModal" class="modal" style="display: none;">
                 <div class="modal-content">
-                    <span class="modal-close">×</span>
-                    <h4><i class="fas fa-cog"></i> Configurações</h4>
-                    <div class="modal-form">
-                        <div class="form-group">
-                            <label>Fundo do Site</label>
-                            <input type="color" id="bodyBgColor" value="#f9f9fb">
-                            <input type="text" id="bodyBgHex" placeholder="Hex (#xxxxxx)">
-                        </div>
-                        <div class="form-group">
-                            <label>Fundo dos Cards</label>
-                            <input type="color" id="cardBgColor" value="#ffffff">
-                            <input type="text" id="cardBgHex" placeholder="Hex (#xxxxxx)">
-                        </div>
-                        <div class="form-group">
-                            <label>Texto</label>
-                            <input type="color" id="textColor" value="#343a40">
-                            <input type="text" id="textHex" placeholder="Hex (#xxxxxx)">
-                        </div>
-                        <div class="form-group">
-                            <label>Bordas</label>
-                            <input type="color" id="borderColor" value="#007bff">
-                            <input type="text" id="borderHex" placeholder="Hex (#xxxxxx)">
-                        </div>
-                        <div class="modal-buttons">
-                            <button id="saveTheme">Salvar Tema</button>
-                            <button id="resetTheme">Restaurar Tema</button>
-                        </div>
-                        <div class="form-group">
-                            <label>Senha para Excluir</label>
-                            <input type="password" id="deleteAllPassword">
-                            <button id="saveDeletePasswordBtn" onclick="saveDeletePassword()">Salvar</button>
-                        </div>
-                        <div class="modal-buttons">
-                           <button id="importJsonBtn" onclick="importJsonToFirebase()">Importar JSON para Firebase</button>
-                           <button onclick="backupLocal()">Backup JSON</button>
-                            <button onclick="restoreLocal()">Restaurar JSON</button>
-                            <button onclick="backupFirebase()">Backup Firebase</button>
-                            <button onclick="restoreFirebase()">Restaurar Firebase</button>
-                        </div>
+                    <h3>Processando...</h3>
+                    <div id="progressBar" style="width: 100%; height: 20px; background-color: #e0e0e0; border-radius: 5px; overflow: hidden;">
+                        <div id="progressFill" style="width: 0%; height: 100%; background-color: #4caf50; transition: width 0.3s;"></div>
                     </div>
-                    <div id="progressModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <h3>Restaurando Backup...</h3>
-        <div id="progressBar" style="width: 100%; height: 20px; background-color: #e0e0e0; border-radius: 5px; overflow: hidden;">
-            <div id="progressFill" style="width: 0%; height: 100%; background-color: #4caf50; transition: width 0.3s;"></div>
-        </div>
-        <p id="progressText">0%</p>
-    </div>
-</div>
+                    <p id="progressText">0%</p>
                 </div>
             </div>
 
