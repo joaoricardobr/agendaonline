@@ -786,6 +786,21 @@ footer a:hover {
 .error-log-card::-webkit-scrollbar-track {
     background: #f0f4f8;
 }
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background-color: #f0f4f8;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.progress-fill {
+    width: 0%;
+    height: 100%;
+    background-color: #007bff;
+    transition: width 0.3s ease-in-out;
+}
 
 /* Responsividade */
 @media (max-width: 768px) {
