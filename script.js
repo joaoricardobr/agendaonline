@@ -44,9 +44,8 @@ let actionBox = null;
 let medicoModal = null;
 let deleteAllModal = null;
 let sortFilterModal = null;
-let settingsModal = null;
+let settingsCards = null;
 let medicosListDisplay = null;
-let usersList = null;
 let loginForm = null;
 let loginEmail = null;
 let loginPassword = null;
@@ -81,9 +80,8 @@ document.addEventListener('DOMContentLoaded', () => {
     medicoModal = document.getElementById('medicoModal');
     deleteAllModal = document.getElementById('deleteAllModal');
     sortFilterModal = document.getElementById('sortFilterModal');
-    settingsModal = document.getElementById('settingsModal');
+    settingsCards = document.getElementById('settingsCards');
     medicosListDisplay = document.getElementById('medicosListDisplay');
-    usersList = document.getElementById('usersList');
     loginForm = document.getElementById('loginForm');
     loginEmail = document.getElementById('loginEmail');
     loginPassword = document.getElementById('loginPassword');
@@ -131,10 +129,10 @@ function setupEventListeners() {
         document.getElementById('allBtn')?.addEventListener('click', () => { showTab('allTab'); showNotification('Aba "Todos" selecionada!'); });
         document.getElementById('reportsBtn')?.addEventListener('click', () => { showTab('reportsTab'); showNotification('Aba "Relatórios" selecionada!'); });
         document.getElementById('insightsBtn')?.addEventListener('click', () => { showTab('insightsTab'); showNotification('Aba "Insights" selecionada!'); });
+        document.getElementById('settingsBtn')?.addEventListener('click', () => { showTab('settingsTab'); loadSettingsTab(); showNotification('Aba "Configurações" selecionada!'); });
         document.getElementById('printBtn')?.addEventListener('click', printAppointments);
         document.getElementById('deleteAllBtn')?.addEventListener('click', () => { openDeleteAllModal(); showNotification('Modal de exclusão aberto!'); });
         document.getElementById('sortFilterBtn')?.addEventListener('click', () => { openSortFilterModal(); showNotification('Modal de filtros aberto!'); });
-        document.getElementById('settingsBtn')?.addEventListener('click', () => { openSettingsModal(); showNotification('Modal de configurações aberto!'); });
         document.getElementById('resetBtn')?.addEventListener('click', () => { resetForm(); showNotification('Formulário resetado!'); });
         document.getElementById('exportExcelBtn')?.addEventListener('click', () => { exportToExcel(); });
         document.getElementById('clearFiltersBtn')?.addEventListener('click', () => { clearFilters(); showNotification('Filtros limpos!'); });
@@ -151,9 +149,6 @@ function setupEventListeners() {
                 if (e.target === modal) { closeModal(modal); showNotification('Modal fechado ao clicar fora!'); }
             });
         });
-
-        document.getElementById('saveTheme')?.addEventListener('click', () => { saveTheme(); showNotification('Tema salvo!'); });
-        document.getElementById('resetTheme')?.addEventListener('click', () => { resetTheme(); showNotification('Tema resetado!'); });
     } catch (error) {
         console.error("Erro ao configurar eventos:", error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao configurar eventos: ${error.message}`);
@@ -221,7 +216,6 @@ async function loadInitialData() {
         theme = cachedData.settings?.theme || {};
         loadFormData();
         updateMedicosList();
-        updateUsersList();
         applyTheme();
         renderAppointments();
         showNotification('Dados iniciais carregados com sucesso!');
@@ -508,10 +502,139 @@ function showTab(tabId) {
         document.getElementById(tabId).style.display = 'block';
         if (tabId === 'allTab') renderAppointments();
         else if (tabId === 'insightsTab') generateInsights();
+        else if (tabId === 'settingsTab') loadSettingsTab();
     } catch (error) {
         console.error('Erro ao mostrar aba:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao mostrar aba: ${error.message}`);
         showNotification('Erro ao mostrar aba: ' + error.message, true);
+    }
+}
+
+// Função para Carregar a Aba de Configurações
+function loadSettingsTab() {
+    try {
+        settingsCards.innerHTML = '';
+
+        // Card de Personalização de Tema
+        const themeCard = document.createElement('div');
+        themeCard.className = 'card';
+        themeCard.innerHTML = `
+            <h4><i class="fas fa-paint-brush"></i> Personalizar Tema</h4>
+            <div class="form-group">
+                <label>Fundo do Site</label>
+                <input type="color" id="bodyBgColor" value="${theme.bodyBgColor || '#f9f9fb'}">
+                <input type="text" id="bodyBgColorHex" value="${theme.bodyBgColor || '#f9f9fb'}" placeholder="Código HEX" maxlength="7">
+            </div>
+            <div class="form-group">
+                <label>Fundo dos Cards</label>
+                <input type="color" id="cardBgColor" value="${theme.cardBgColor || '#ffffff'}">
+                <input type="text" id="cardBgColorHex" value="${theme.cardBgColor || '#ffffff'}" placeholder="Código HEX" maxlength="7">
+            </div>
+            <div class="form-group">
+                <label>Texto</label>
+                <input type="color" id="textColor" value="${theme.textColor || '#343a40'}">
+                <input type="text" id="textColorHex" value="${theme.textColor || '#343a40'}" placeholder="Código HEX" maxlength="7">
+            </div>
+            <div class="form-group">
+                <label>Bordas</label>
+                <input type="color" id="borderColor" value="${theme.borderColor || '#007bff'}">
+                <input type="text" id="borderColorHex" value="${theme.borderColor || '#007bff'}" placeholder="Código HEX" maxlength="7">
+            </div>
+            <div class="form-group">
+                <label>Bordas dos Cards</label>
+                <input type="color" id="cardBorderColor" value="${theme.cardBorderColor || '#d1d3e2'}">
+                <input type="text" id="cardBorderColorHex" value="${theme.cardBorderColor || '#d1d3e2'}" placeholder="Código HEX" maxlength="7">
+            </div>
+            <div class="form-group">
+                <label>Bordas dos Formulários</label>
+                <input type="color" id="formBorderColor" value="${theme.formBorderColor || '#ced4da'}">
+                <input type="text" id="formBorderColorHex" value="${theme.formBorderColor || '#ced4da'}" placeholder="Código HEX" maxlength="7">
+            </div>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="saveTheme()">Salvar Tema</button>
+                <button class="action-btn delete-btn" onclick="resetTheme()">Restaurar Tema</button>
+            </div>
+        `;
+        settingsCards.appendChild(themeCard);
+
+        // Sincronizar inputs de cor com HEX
+        const syncColorInputs = (colorInputId, hexInputId) => {
+            const colorInput = document.getElementById(colorInputId);
+            const hexInput = document.getElementById(hexInputId);
+            colorInput.addEventListener('input', () => hexInput.value = colorInput.value);
+            hexInput.addEventListener('input', () => {
+                if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) colorInput.value = hexInput.value;
+            });
+        };
+        syncColorInputs('bodyBgColor', 'bodyBgColorHex');
+        syncColorInputs('cardBgColor', 'cardBgColorHex');
+        syncColorInputs('textColor', 'textColorHex');
+        syncColorInputs('borderColor', 'borderColorHex');
+        syncColorInputs('cardBorderColor', 'cardBorderColorHex');
+        syncColorInputs('formBorderColor', 'formBorderColorHex');
+
+        // Card de Senha para Exclusão
+        const passwordCard = document.createElement('div');
+        passwordCard.className = 'card';
+        passwordCard.innerHTML = `
+            <h4><i class="fas fa-lock"></i> Senha para Excluir Tudo</h4>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="deleteAllPassword" value="${deleteAllPassword}">
+            </div>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="saveDeletePassword()">Salvar Senha</button>
+            </div>
+        `;
+        settingsCards.appendChild(passwordCard);
+
+        // Card de Limpar IndexedDB
+        const clearIndexedDBCard = document.createElement('div');
+        clearIndexedDBCard.className = 'card';
+        clearIndexedDBCard.innerHTML = `
+            <h4><i class="fas fa-trash-restore"></i> Limpar IndexedDB</h4>
+            <div class="card-actions">
+                <button class="action-btn delete-btn" onclick="clearIndexedDB()">Limpar IndexedDB</button>
+            </div>
+        `;
+        settingsCards.appendChild(clearIndexedDBCard);
+
+        // Card de Logs de Erros
+        const logsCard = document.createElement('div');
+        logsCard.className = 'card';
+        logsCard.innerHTML = `
+            <h4><i class="fas fa-exclamation-triangle"></i> Logs de Erros</h4>
+            <div class="logs-content" style="max-height: 200px; overflow-y: auto;">
+                <ul id="errorLogsList">
+                    ${errorLogs.length > 0 ? errorLogs.map(log => `<li>${log}</li>`).join('') : '<li>Nenhum erro registrado.</li>'}
+                </ul>
+            </div>
+            <div class="card-actions">
+                <button class="action-btn delete-btn" onclick="clearErrorLogs()">Limpar Logs</button>
+            </div>
+        `;
+        settingsCards.appendChild(logsCard);
+
+        // Card de Backup e Restauração
+        const backupCard = document.createElement('div');
+        backupCard.className = 'card';
+        backupCard.innerHTML = `
+            <h4><i class="fas fa-database"></i> Backup e Restauração</h4>
+            <div class="card-actions">
+                <button class="action-btn view-btn" onclick="importJsonToFirebase()">Importar JSON para Firebase</button>
+                <button class="action-btn view-btn" onclick="backupLocal()">Backup Local</button>
+                <button class="action-btn view-btn" onclick="restoreLocal()">Restaurar Local</button>
+                <button class="action-btn view-btn" onclick="backupFirebase()">Backup Firebase</button>
+                <button class="action-btn view-btn" onclick="restoreFirebase()">Restaurar Firebase</button>
+            </div>
+        `;
+        settingsCards.appendChild(backupCard);
+
+        showNotification('Aba de configurações carregada com sucesso!');
+    } catch (error) {
+        console.error('Erro ao carregar aba de configurações:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar aba de configurações: ${error.message}`);
+        showNotification('Erro ao carregar configurações: ' + error.message, true);
     }
 }
 
@@ -816,19 +939,6 @@ function applySortFilter() {
     }
 }
 
-function openSettingsModal() {
-    try {
-        settingsModal.style.display = 'block';
-        loadThemeSettings();
-        updateUsersList();
-        showNotification('Modal de configurações aberto!');
-    } catch (error) {
-        console.error('Erro ao abrir modal de configurações:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao abrir modal de configurações: ${error.message}`);
-        showNotification('Erro ao abrir modal: ' + error.message, true);
-    }
-}
-
 function closeModal(modal) {
     try {
         modal.style.display = 'none';
@@ -843,39 +953,42 @@ function closeModal(modal) {
 async function saveTheme() {
     try {
         theme = {
-            bodyBgColor: document.getElementById('bodyBgColor').value,
-            cardBgColor: document.getElementById('cardBgColor').value,
-            formBgColor: document.getElementById('formBgColor').value,
-            textColor: document.getElementById('textColor').value,
-            borderColor: document.getElementById('borderColor').value,
-            cardBorderColor: document.getElementById('cardBorderColor').value
+            bodyBgColor: document.getElementById('bodyBgColorHex').value,
+            cardBgColor: document.getElementById('cardBgColorHex').value,
+            textColor: document.getElementById('textColorHex').value,
+            borderColor: document.getElementById('borderColorHex').value,
+            cardBorderColor: document.getElementById('cardBorderColorHex').value,
+            formBorderColor: document.getElementById('formBorderColorHex').value
         };
-        const newDeleteAllPassword = document.getElementById('deleteAllPassword').value;
-        if (newDeleteAllPassword) deleteAllPassword = newDeleteAllPassword;
         await saveToFirebase('settings', { theme, deleteAllPassword, currentView, lastSync });
         await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
         applyTheme();
-        closeModal(settingsModal);
-        showNotification('Configurações de tema salvas!');
+        showNotification('Tema salvo com sucesso!');
     } catch (error) {
         console.error('Erro ao salvar tema:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar tema: ${error.message}`);
-        showNotification('Erro ao salvar configurações: ' + error.message, true);
+        showNotification('Erro ao salvar tema: ' + error.message, true);
     }
 }
 
-function resetTheme() {
+async function resetTheme() {
     try {
         theme = {};
-        document.getElementById('bodyBgColor').value = '#f0f4f8';
+        document.getElementById('bodyBgColor').value = '#f9f9fb';
+        document.getElementById('bodyBgColorHex').value = '#f9f9fb';
         document.getElementById('cardBgColor').value = '#ffffff';
-        document.getElementById('formBgColor').value = '#ffffff';
-        document.getElementById('textColor').value = '#1f2937';
-        document.getElementById('borderColor').value = '#1e40af';
-        document.getElementById('cardBorderColor').value = '#d9d9ec';
+        document.getElementById('cardBgColorHex').value = '#ffffff';
+        document.getElementById('textColor').value = '#343a40';
+        document.getElementById('textColorHex').value = '#343a40';
+        document.getElementById('borderColor').value = '#007bff';
+        document.getElementById('borderColorHex').value = '#007bff';
+        document.getElementById('cardBorderColor').value = '#d1d3e2';
+        document.getElementById('cardBorderColorHex').value = '#d1d3e2';
+        document.getElementById('formBorderColor').value = '#ced4da';
+        document.getElementById('formBorderColorHex').value = '#ced4da';
+        await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
         applyTheme();
-        saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
-        saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
         showNotification('Tema restaurado para padrão!');
     } catch (error) {
         console.error('Erro ao resetar tema:', error);
@@ -884,99 +997,40 @@ function resetTheme() {
     }
 }
 
-function loadThemeSettings() {
+async function saveDeletePassword() {
     try {
-        const bodyBgColor = document.getElementById('bodyBgColor');
-        const cardBgColor = document.getElementById('cardBgColor');
-        const formBgColor = document.getElementById('formBgColor');
-        const textColor = document.getElementById('textColor');
-        const borderColor = document.getElementById('borderColor');
-        const cardBorderColor = document.getElementById('cardBorderColor');
-
-        if (bodyBgColor) bodyBgColor.value = theme.bodyBgColor || '#f0f4f8';
-        if (cardBgColor) cardBgColor.value = theme.cardBgColor || '#ffffff';
-        if (formBgColor) formBgColor.value = theme.formBgColor || '#ffffff';
-        if (textColor) textColor.value = theme.textColor || '#1f2937';
-        if (borderColor) borderColor.value = theme.borderColor || '#1e40af';
-        if (cardBorderColor) cardBorderColor.value = theme.cardBorderColor || '#d9d9ec';
+        const newPassword = document.getElementById('deleteAllPassword').value;
+        if (newPassword) {
+            deleteAllPassword = newPassword;
+            await saveToFirebase('settings', { theme, deleteAllPassword, currentView, lastSync });
+            await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+            showNotification('Senha para exclusão salva com sucesso!');
+        } else {
+            showNotification('Por favor, insira uma senha!', true);
+        }
     } catch (error) {
-        console.error('Erro ao carregar configurações de tema:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar configurações de tema: ${error.message}`);
-        showNotification('Erro ao carregar tema: ' + error.message, true);
+        console.error('Erro ao salvar senha de exclusão:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar senha de exclusão: ${error.message}`);
+        showNotification('Erro ao salvar senha: ' + error.message, true);
     }
 }
 
 function applyTheme() {
     try {
-        document.body.style.backgroundColor = theme.bodyBgColor || '#f0f4f8';
+        document.body.style.backgroundColor = theme.bodyBgColor || '#f9f9fb';
         document.querySelectorAll('.card').forEach(card => {
             card.style.backgroundColor = theme.cardBgColor || '#ffffff';
-            card.style.borderColor = theme.cardBorderColor || '#d9d9ec';
+            card.style.borderColor = theme.cardBorderColor || '#d1d3e2';
         });
-        document.querySelector('.form-section').style.backgroundColor = theme.formBgColor || '#ffffff';
-        document.body.style.color = theme.textColor || '#1f2937';
-        document.querySelectorAll('button').forEach(btn => btn.style.borderColor = theme.borderColor || '#1e40af');
+        document.body.style.color = theme.textColor || '#343a40';
+        document.querySelectorAll('button').forEach(btn => btn.style.borderColor = theme.borderColor || '#007bff');
+        document.querySelectorAll('.form-section, .form-group input, .form-group textarea, .form-group select').forEach(form => {
+            form.style.borderColor = theme.formBorderColor || '#ced4da';
+        });
     } catch (error) {
         console.error('Erro ao aplicar tema:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao aplicar tema: ${error.message}`);
         showNotification('Erro ao aplicar tema: ' + error.message, true);
-    }
-}
-
-// Funções de Usuários
-async function addUser() {
-    try {
-        const username = document.getElementById('newUsername').value.trim();
-        const password = document.getElementById('newPassword').value.trim();
-        if (username && password) {
-            const user = { username, password, id: Date.now().toString() };
-            users.push(user);
-            await saveToFirebase('users', user);
-            await saveToIndexedDB('users', users);
-            updateUsersList();
-            document.getElementById('newUsername').value = '';
-            document.getElementById('newPassword').value = '';
-            showNotification('Usuário adicionado com sucesso!');
-        } else {
-            showNotification('Por favor, preencha usuário e senha!', true);
-        }
-    } catch (error) {
-        console.error('Erro ao adicionar usuário:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao adicionar usuário: ${error.message}`);
-        showNotification('Erro ao adicionar usuário: ' + error.message, true);
-    }
-}
-
-function updateUsersList() {
-    try {
-        if (!usersList) return;
-        usersList.innerHTML = '';
-        users.forEach((user, index) => {
-            const li = document.createElement('li');
-            li.innerHTML = `${user.username} <button onclick="deleteUser(${index})">Excluir</button>`;
-            usersList.appendChild(li);
-        });
-    } catch (error) {
-        console.error('Erro ao atualizar lista de usuários:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao atualizar lista de usuários: ${error.message}`);
-        showNotification('Erro ao atualizar lista: ' + error.message, true);
-    }
-}
-
-async function deleteUser(index) {
-    try {
-        if (confirm('Tem certeza que deseja excluir este usuário?')) {
-            const user = users[index];
-            users.splice(index, 1);
-            await deleteFromFirebase('users', user.id);
-            await saveToIndexedDB('users', users);
-            updateUsersList();
-            showNotification('Usuário excluído com sucesso!');
-        }
-    } catch (error) {
-        console.error('Erro ao excluir usuário:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir usuário: ${error.message}`);
-        showNotification('Erro ao excluir usuário: ' + error.message, true);
     }
 }
 
@@ -1058,8 +1112,7 @@ function printAppointments() {
                         h1 { text-align: center; font-size: 18px; margin-bottom: 10px; }
                         table { width: 100%; border-collapse: collapse; font-size: 12px; }
                         th, td { border: 1px solid #333; padding: 8px; text-align: left; }
-                        th { background-color: #e9ecef; font-weight: bold; }
-                        tr:nth-child(even) { background-color: #f9f9f9; }
+                        th { background-color: #e9ecef; }
                         .no-print { display: none; }
                     </style>
                 </head>
@@ -1106,140 +1159,126 @@ function printAppointments() {
                 </body>
                 </html>
             `);
-        } else if (currentView === 'grid') {
+        } else {
             printWindow.document.write(`
                 <html>
                 <head>
-                    <title>Impressão - Grid de Agendamentos</title>
+                    <title>Impressão - ${currentView === 'grid' ? 'Grid' : 'Pipeline'} de Agendamentos</title>
                     <style>
                         @page { size: landscape; margin: 10mm; }
                         body { font-family: Arial, sans-serif; margin: 0; padding: 10mm; }
                         h1 { text-align: center; font-size: 18px; margin-bottom: 10px; }
-                        .card-container { display: flex; flex-wrap: wrap; gap: 15px; }
-                        .card { border: 1px solid #333; padding: 15px; width: 300px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); background-color: #fff; page-break-inside: avoid; }
-                        .card h4 { font-size: 16px; margin-bottom: 10px; color: #007bff; }
-                        .card p { font-size: 12px; margin: 5px 0; }
-                        .card p strong { color: #333; }
+                        .card, .mini-card { border: 1px solid #333; padding: 10px; margin: 10px; width: 200px; display: inline-block; vertical-align: top; font-size: 12px; }
+                        .card h4, .mini-card h4 { margin: 0 0 5px; font-size: 14px; }
+                        .pipeline-column { display: inline-block; vertical-align: top; width: 220px; margin-right: 10px; }
+                        .pipeline-column h3 { font-size: 14px; margin-bottom: 5px; }
                     </style>
                 </head>
                 <body>
-                    <h1>Grid de Agendamentos</h1>
-                    <div class="card-container">
-                        ${selectedAppointments.map(app => `
-                            <div class="card">
-                                <h4>${app.nomePaciente || 'Sem Nome'}</h4>
-                                <p><strong>ID:</strong> ${app.id || '-'}</p>
-                                <p><strong>Telefone:</strong> ${app.telefone || '-'}</p>
-                                <p><strong>Email:</strong> ${app.email || '-'}</p>
-                                <p><strong>Médico:</strong> ${app.nomeMedico || '-'}</p>
-                                <p><strong>Local CRM:</strong> ${app.localCRM || '-'}</p>
-                                <p><strong>Data:</strong> ${app.dataConsulta || '-'}</p>
-                                <p><strong>Hora:</strong> ${app.horaConsulta || '-'}</p>
-                                <p><strong>Tipo Cirurgia:</strong> ${app.tipoCirurgia || '-'}</p>
-                                <p><strong>Procedimentos:</strong> ${app.procedimentos || '-'}</p>
-                                <p><strong>Feito Por:</strong> ${app.agendamentoFeitoPor || '-'}</p>
-                                <p><strong>Descrição:</strong> ${app.descricao || '-'}</p>
-                                <p><strong>Status:</strong> ${app.status || '-'}</p>
-                            </div>
-                        `).join('')}
-                    </div>
+                    <h1>${currentView === 'grid' ? 'Grid' : 'Pipeline'} de Agendamentos</h1>
+                    ${currentView === 'grid' ? selectedAppointments.map(app => `
+                        <div class="card">
+                            <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                            <p>ID: ${app.id || '-'}</p>
+                            <p>Telefone: ${app.telefone || '-'}</p>
+                            <p>Email: ${app.email || '-'}</p>
+                            <p>Médico: ${app.nomeMedico || '-'}</p>
+                            <p>Local CRM: ${app.localCRM || '-'}</p>
+                            <p>Data: ${app.dataConsulta || '-'}</p>
+                            <p>Hora: ${app.horaConsulta || '-'}</p>
+                            <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
+                            <p>Procedimentos: ${app.procedimentos || '-'}</p>
+                            <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
+                            <p>Descrição: ${app.descricao || '-'}</p>
+                            <p>Status: ${app.status || '-'}</p>
+                        </div>
+                    `).join('') : `
+                        <div class="pipeline-column">
+                            <h3>Aguardando Atendimento</h3>
+                            ${selectedAppointments.filter(app => app.status === 'Aguardando Atendimento').map(app => `
+                                <div class="mini-card">
+                                    <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                                    <p>ID: ${app.id || '-'}</p>
+                                    <p>Médico: ${app.nomeMedico || '-'}</p>
+                                    <p>Data: ${app.dataConsulta || '-'} às ${app.horaConsulta || '-'}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="pipeline-column">
+                            <h3>Atendido</h3>
+                            ${selectedAppointments.filter(app => app.status === 'Atendido').map(app => `
+                                <div class="mini-card">
+                                    <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                                    <p>ID: ${app.id || '-'}</p>
+                                    <p>Médico: ${app.nomeMedico || '-'}</p>
+                                    <p>Data: ${app.dataConsulta || '-'} às ${app.horaConsulta || '-'}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="pipeline-column">
+                            <h3>Reagendado</h3>
+                            ${selectedAppointments.filter(app => app.status === 'Reagendado').map(app => `
+                                <div class="mini-card">
+                                    <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                                    <p>ID: ${app.id || '-'}</p>
+                                    <p>Médico: ${app.nomeMedico || '-'}</p>
+                                    <p>Data: ${app.dataConsulta || '-'} às ${app.horaConsulta || '-'}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="pipeline-column">
+                            <h3>Cancelado</h3>
+                            ${selectedAppointments.filter(app => app.status === 'Cancelado').map(app => `
+                                <div class="mini-card">
+                                    <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                                    <p>ID: ${app.id || '-'}</p>
+                                    <p>Médico: ${app.nomeMedico || '-'}</p>
+                                    <p>Data: ${app.dataConsulta || '-'} às ${app.horaConsulta || '-'}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
                 </body>
                 </html>
             `);
-        } else {
-            printWindow.close();
-            showNotification('Impressão não suportada no modo Pipeline!', true);
-            return;
         }
 
         printWindow.document.close();
         printWindow.focus();
         printWindow.print();
-        showNotification(`Impressão iniciada no modo ${currentView === 'list' ? 'Lista' : 'Grid'}!`);
-        setTimeout(() => printWindow.close(), 1000);
+        showNotification('Impressão realizada com sucesso!');
     } catch (error) {
-        console.error('Erro ao gerar impressão:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar impressão: ${error.message}`);
-        showNotification('Erro ao gerar impressão: ' + error.message, true);
+        console.error('Erro ao imprimir agendamentos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao imprimir agendamentos: ${error.message}`);
+        showNotification('Erro ao imprimir: ' + error.message, true);
     }
 }
 
-// Função de Exportação para Excel
+// Exportação para Excel
 function exportToExcel() {
     try {
-        console.log("Função exportToExcel chamada!");
-        if (typeof XLSX === 'undefined') {
-            console.error('Biblioteca SheetJS não carregada!');
-            errorLogs.push(`[${new Date().toISOString()}] Biblioteca SheetJS não carregada`);
-            showNotification('Erro: Biblioteca SheetJS não carregada. Verifique o script no HTML!', true);
-            return;
-        }
-
         const selectedIds = Array.from(document.querySelectorAll('.select-row:checked')).map(cb => cb.dataset.id);
-        let exportData;
-
-        if (selectedIds.length > 0) {
-            exportData = appointments.filter(app => selectedIds.includes(app.id));
-            showNotification(`Exportando ${selectedIds.length} agendamentos selecionados...`);
-        } else {
-            exportData = statusFilter.value === 'all' ? appointments : appointments.filter(app => app.status === statusFilter.value);
-            showNotification(`Exportando todos os agendamentos visíveis (${exportData.length})...`);
-        }
+        const exportData = selectedIds.length > 0 ? appointments.filter(app => selectedIds.includes(app.id)) : appointments;
 
         if (exportData.length === 0) {
-            showNotification('Nenhum agendamento disponível para exportar!', true);
+            showNotification('Nenhum dado para exportar!', true);
             return;
         }
 
-        const headers = [
-            'ID', 'Paciente', 'Telefone', 'Email', 'Médico', 'Local CRM',
-            'Data', 'Hora', 'Tipo Cirurgia', 'Procedimentos', 'Feito Por', 'Descrição', 'Status'
-        ];
-
-        const data = [headers, ...exportData.map(app => [
-            app.id || '-',
-            app.nomePaciente || '-',
-            app.telefone || '-',
-            app.email || '-',
-            app.nomeMedico || '-',
-            app.localCRM || '-',
-            app.dataConsulta || '-',
-            app.horaConsulta || '-',
-            app.tipoCirurgia || '-',
-            app.procedimentos || '-',
-            app.agendamentoFeitoPor || '-',
-            app.descricao || '-',
-            app.status || '-'
-        ])];
-
-        const ws = XLSX.utils.aoa_to_sheet(data);
-        const colWidths = headers.map((header, i) => ({
-            wch: Math.max(
-                header.length,
-                ...exportData.map(app => {
-                    const value = data[1 + exportData.indexOf(app)][i] || '';
-                    return value.toString().length;
-                })
-            ) + 2
-        }));
-        ws['!cols'] = colWidths;
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Agendamentos');
-
-        const fileName = `agendamentos_${new Date().toISOString().slice(0,10)}.xlsx`;
-        XLSX.writeFile(wb, fileName);
-
-        showNotification('Planilha Excel exportada com sucesso!');
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Agendamentos");
+        XLSX.writeFile(workbook, "Agendamentos_Exportados.xlsx");
+        showNotification('Dados exportados para Excel com sucesso!');
     } catch (error) {
         console.error('Erro ao exportar para Excel:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao exportar para Excel: ${error.message}`);
-        showNotification('Erro ao exportar para Excel: ' + error.message, true);
+        showNotification('Erro ao exportar: ' + error.message, true);
     }
 }
 
-// Funções de Relatórios
-async function generateReport() {
+// Relatórios
+function generateReport() {
     try {
         const reportType = document.getElementById('reportType').value;
         const reportMonth = document.getElementById('reportMonth').value;
@@ -1247,6 +1286,7 @@ async function generateReport() {
         const reportDoctor = document.getElementById('reportDoctor').value;
 
         let filteredAppointments = [...appointments];
+
         if (reportMonth) {
             const [year, month] = reportMonth.split('-');
             filteredAppointments = filteredAppointments.filter(app => {
@@ -1254,11 +1294,13 @@ async function generateReport() {
                 return date.getFullYear() === parseInt(year) && date.getMonth() === parseInt(month) - 1;
             });
         }
+
         if (reportYear) {
             filteredAppointments = filteredAppointments.filter(app => new Date(app.dataConsulta).getFullYear() === parseInt(reportYear));
         }
+
         if (reportDoctor) {
-            filteredAppointments = filteredAppointments.filter(app => app.nomeMedico === reportDoctor);
+            filteredAppointments = filteredAppointments.filter(app => app.nomeMedico.toLowerCase().includes(reportDoctor.toLowerCase()));
         }
 
         switch (reportType) {
@@ -1316,8 +1358,7 @@ async function generateReport() {
             reportGrid.appendChild(card);
         });
 
-        await saveToFirebase('reports', { id: Date.now().toString(), type: reportType, data: filteredAppointments });
-        showNotification('Relatório gerado e salvo no Firebase com sucesso!');
+        showNotification('Relatório gerado com sucesso!');
     } catch (error) {
         console.error('Erro ao gerar relatório:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar relatório: ${error.message}`);
@@ -1328,7 +1369,7 @@ async function generateReport() {
 function toggleReportView(view) {
     try {
         document.getElementById('reportResult').style.display = view === 'list' ? 'block' : 'none';
-        document.getElementById('reportGrid').style.display = view === 'grid' ? 'grid' : 'none';
+        document.getElementById('reportGrid').style.display = view === 'grid' ? 'block' : 'none';
         document.querySelectorAll('#reportsTab .view-mode').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`#reportsTab .view-mode[data-view="${view}"]`).classList.add('active');
         showNotification(`Visualização de relatório alterada para ${view}!`);
@@ -1339,49 +1380,43 @@ function toggleReportView(view) {
     }
 }
 
-// Funções de Insights
-async function generateInsights() {
+// Insights
+function generateInsights() {
     try {
         const insightsCards = document.getElementById('insightsCards');
         insightsCards.innerHTML = '';
 
         const totalAppointments = appointments.length;
-        const statusCount = {
-            'Aguardando Atendimento': 0,
-            'Atendido': 0,
-            'Reagendado': 0,
-            'Cancelado': 0
-        };
-        appointments.forEach(app => statusCount[app.status]++);
-
-        const doctorsCount = {};
-        appointments.forEach(app => doctorsCount[app.nomeMedico] = (doctorsCount[app.nomeMedico] || 0) + 1);
+        const byStatus = appointments.reduce((acc, app) => {
+            acc[app.status] = (acc[app.status] || 0) + 1;
+            return acc;
+        }, {});
 
         const totalCard = document.createElement('div');
-        totalCard.className = 'insights-card';
-        totalCard.innerHTML = `<h4><i class="fas fa-calendar-check"></i> Total de Agendamentos</h4><p>${totalAppointments} agendamentos registrados.</p>`;
+        totalCard.className = 'card';
+        totalCard.innerHTML = `<h4>Total de Agendamentos</h4><p>${totalAppointments}</p>`;
         insightsCards.appendChild(totalCard);
 
-        const statusCard = document.createElement('div');
-        statusCard.className = 'insights-card';
-        statusCard.innerHTML = `<h4><i class="fas fa-chart-pie"></i> Status dos Agendamentos</h4><ul>` +
-            Object.entries(statusCount).map(([status, count]) => `<li>${status}: ${count}</li>`).join('') + `</ul>`;
-        insightsCards.appendChild(statusCard);
+        for (const [status, count] of Object.entries(byStatus)) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `<h4>${status}</h4><p>${count}</p>`;
+            insightsCards.appendChild(card);
+        }
 
-        const doctorsCard = document.createElement('div');
-        doctorsCard.className = 'insights-card';
-        doctorsCard.innerHTML = `<h4><i class="fas fa-user-md"></i> Agendamentos por Médico</h4><ul>` +
-            Object.entries(doctorsCount).map(([doctor, count]) => `<li>${doctor || 'Não especificado'}: ${count}</li>`).join('') + `</ul>`;
-        insightsCards.appendChild(doctorsCard);
+        const doctors = appointments.reduce((acc, app) => {
+            acc[app.nomeMedico] = (acc[app.nomeMedico] || 0) + 1;
+            return acc;
+        }, {});
+        const topDoctor = Object.entries(doctors).sort((a, b) => b[1] - a[1])[0];
+        if (topDoctor) {
+            const doctorCard = document.createElement('div');
+            doctorCard.className = 'card';
+            doctorCard.innerHTML = `<h4>Médico Mais Ativo</h4><p>${topDoctor[0]}: ${topDoctor[1]} agendamentos</p>`;
+            insightsCards.appendChild(doctorCard);
+        }
 
-        const errorLogCard = document.createElement('div');
-        errorLogCard.className = 'insights-card error-log-card';
-        errorLogCard.innerHTML = `<h4><i class="fas fa-exclamation-triangle"></i> Logs de Erros</h4><ul>` +
-            (errorLogs.length ? errorLogs.map(log => `<li>${log}</li>`).join('') : '<li>Nenhum erro registrado.</li>') + `</ul>`;
-        insightsCards.appendChild(errorLogCard);
-
-        await saveToFirebase('insights', { id: 'default', totalAppointments, statusCount, doctorsCount, errorLogs });
-        showNotification('Insights gerados e salvos no Firebase com sucesso!');
+        showNotification('Insights gerados com sucesso!');
     } catch (error) {
         console.error('Erro ao gerar insights:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao gerar insights: ${error.message}`);
@@ -1389,461 +1424,331 @@ async function generateInsights() {
     }
 }
 
-// Funções de Backup
+// Função para Limpar IndexedDB
+async function clearIndexedDB() {
+    try {
+        if (confirm('Tem certeza que deseja limpar o IndexedDB? Isso removerá todos os dados locais.')) {
+            const dbRequest = indexedDB.open('AgendaDB', DB_VERSION);
+            dbRequest.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readwrite');
+                transaction.objectStore('appointments').clear();
+                transaction.objectStore('medicos').clear();
+                transaction.objectStore('users').clear();
+                transaction.objectStore('settings').clear();
+                transaction.oncomplete = () => {
+                    appointments = [];
+                    medicos = [];
+                    users = [];
+                    theme = {};
+                    deleteAllPassword = '1234';
+                    currentView = 'list';
+                    lastSync = 0;
+                    renderAppointments();
+                    updateMedicosList();
+                    applyTheme();
+                    showNotification('IndexedDB limpo com sucesso!');
+                    db.close();
+                };
+            };
+        }
+    } catch (error) {
+        console.error('Erro ao limpar IndexedDB:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar IndexedDB: ${error.message}`);
+        showNotification('Erro ao limpar IndexedDB: ' + error.message, true);
+    }
+}
+
+// Função para Limpar Logs de Erros
+function clearErrorLogs() {
+    try {
+        errorLogs = [];
+        document.getElementById('errorLogsList').innerHTML = '<li>Nenhum erro registrado.</li>';
+        showNotification('Logs de erros limpos!');
+    } catch (error) {
+        console.error('Erro ao limpar logs:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar logs: ${error.message}`);
+        showNotification('Erro ao limpar logs: ' + error.message, true);
+    }
+}
+
+// Backup e Restauração
+async function importJsonToFirebase() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const importedData = JSON.parse(event.target.result);
+                const progressModal = document.getElementById('progressModal');
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                progressModal.style.display = 'block';
+
+                const batch = writeBatch(db);
+                let processed = 0;
+                const total = importedData.appointments ? importedData.appointments.length : 0;
+
+                // Mesclar dados existentes com os importados
+                const existingIds = new Set(appointments.map(a => a.id));
+                const newAppointments = importedData.appointments.filter(app => !existingIds.has(app.id));
+                appointments = [...appointments, ...newAppointments];
+
+                for (const appointment of newAppointments) {
+                    const docRef = doc(db, 'appointments', appointment.id || Date.now().toString());
+                    batch.set(docRef, appointment);
+                    processed++;
+                    const percentage = Math.round((processed / total) * 100);
+                    progressFill.style.width = `${percentage}%`;
+                    progressText.textContent = `${percentage}%`;
+                }
+
+                await batch.commit();
+                await saveToIndexedDB('appointments');
+                renderAppointments();
+                progressModal.style.display = 'none';
+                showNotification('Dados importados e mesclados no Firebase com sucesso!');
+            };
+            reader.onerror = () => {
+                showNotification('Erro ao ler o arquivo JSON!', true);
+                progressModal.style.display = 'none';
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    } catch (error) {
+        console.error('Erro ao importar JSON para Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao importar JSON para Firebase: ${error.message}`);
+        showNotification('Erro ao importar: ' + error.message, true);
+    }
+}
+
 function backupLocal() {
     try {
-        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
+        const data = {
+            appointments,
+            medicos,
+            users,
+            settings: { currentView, deleteAllPassword, lastSync, theme }
+        };
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `backup_${new Date().toISOString()}.json`;
+        a.download = `backup_local_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
-        showNotification('Backup local salvo com sucesso!');
+
+        // Atualizar automaticamente no Firebase mesclando dados
+        syncLocalWithFirebase();
+        showNotification('Backup local realizado e sincronizado com Firebase!');
     } catch (error) {
-        console.error('Erro ao salvar backup local:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar backup local: ${error.message}`);
-        showNotification('Erro ao salvar backup local: ' + error.message, true);
+        console.error('Erro ao realizar backup local:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao realizar backup local: ${error.message}`);
+        showNotification('Erro ao realizar backup: ' + error.message, true);
     }
 }
 
-function restoreLocal() {
+async function restoreLocal() {
     try {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = 'application/json';
+        input.accept = '.json';
         input.onchange = async (e) => {
             const file = e.target.files[0];
-            if (!file) {
-                showNotification('Nenhum arquivo selecionado!', true);
-                return;
-            }
+            if (!file) return;
 
-            const progressModal = document.getElementById('progressModal');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            progressModal.style.display = 'block';
+            showNotification('Carregando arquivo...', false);
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const data = JSON.parse(event.target.result);
+                const existingIds = new Set(appointments.map(a => a.id));
+                const newAppointments = (data.appointments || []).filter(app => !existingIds.has(app.id));
+                appointments = [...appointments, ...newAppointments];
+                medicos = data.medicos || [];
+                users = data.users || [];
+                const settings = data.settings || {};
+                currentView = settings.currentView || 'list';
+                deleteAllPassword = settings.deleteAllPassword || '1234';
+                lastSync = settings.lastSync || 0;
+                theme = settings.theme || {};
 
-            // Função auxiliar para atualizar a barra de progresso em tempo real
-            const updateProgress = (percentage, message) => {
-                return new Promise(resolve => {
-                    progressFill.style.width = `${percentage}%`;
-                    progressText.textContent = `${percentage}% - ${message}`;
-                    requestAnimationFrame(() => setTimeout(resolve, 100)); // Garante atualização visual
-                });
+                await saveToIndexedDB('appointments', appointments);
+                await saveToIndexedDB('medicos', medicos);
+                await saveToIndexedDB('users', users);
+                await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+                applyTheme();
+                renderAppointments();
+                updateMedicosList();
+                showNotification('Dados restaurados e mesclados localmente com sucesso!');
             };
-
-            // Etapa 1: Ler o arquivo JSON
-            await updateProgress(10, 'Lendo arquivo...');
-            const text = await file.text();
-            const data = JSON.parse(text);
-            console.log("Dados lidos do arquivo JSON:", data);
-
-            if (!data || typeof data !== 'object') {
-                showNotification('Arquivo JSON inválido!', true);
-                progressModal.style.display = 'none';
-                return;
-            }
-
-            // Etapa 2: Atribuir dados às variáveis globais
-            await updateProgress(30, 'Atribuindo dados...');
-            appointments = Array.isArray(data.appointments) ? data.appointments : [];
-            medicos = Array.isArray(data.medicos) ? data.medicos : [];
-            users = Array.isArray(data.users) ? data.users : [];
-            const settings = data.settings || {};
-            currentView = settings.currentView || 'list';
-            deleteAllPassword = settings.deleteAllPassword || '1234';
-            lastSync = settings.lastSync || 0;
-            theme = settings.theme || {};
-
-            // Etapa 3: Salvar no Firebase
-            await updateProgress(60, 'Salvando no Firebase...');
-            await Promise.all([
-                saveToFirebase('appointments', appointments),
-                saveToFirebase('medicos', medicos),
-                saveToFirebase('users', users),
-                saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme })
-            ]);
-
-            // Etapa 4: Salvar no IndexedDB
-            await updateProgress(90, 'Salvando no IndexedDB...');
-            await Promise.all([
-                saveToIndexedDB('appointments', appointments),
-                saveToIndexedDB('medicos', medicos),
-                saveToIndexedDB('users', users),
-                saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme })
-            ]);
-
-            // Etapa 5: Renderizar automaticamente
-            await updateProgress(100, 'Renderizando dados...');
-            renderAppointments();
-            updateMedicosList();
-            updateUsersList();
-            applyTheme();
-
-            setTimeout(() => {
-                progressModal.style.display = 'none';
-                showNotification('Backup local restaurado e exibido com sucesso!');
-            }, 500);
+            reader.onerror = () => {
+                showNotification('Erro ao carregar o arquivo JSON!', true);
+            };
+            reader.readAsText(file);
         };
         input.click();
     } catch (error) {
-        console.error('Erro ao restaurar backup local:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar backup local: ${error.message}`);
-        document.getElementById('progressModal').style.display = 'none';
-        showNotification('Erro ao restaurar backup local: ' + error.message, true);
+        console.error('Erro ao restaurar localmente:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar localmente: ${error.message}`);
+        showNotification('Erro ao restaurar: ' + error.message, true);
     }
 }
 
 async function backupFirebase() {
     try {
-        const data = { appointments, medicos, users, settings: { currentView, deleteAllPassword, lastSync, theme } };
-        await setDoc(doc(db, 'backups', `backup_${new Date().toISOString()}`), data);
-        showNotification('Backup salvo no Firebase com sucesso!');
+        const data = await loadFromFirebase();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup_firebase_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showNotification('Backup do Firebase realizado com sucesso!');
     } catch (error) {
-        console.error('Erro ao salvar backup no Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar backup no Firebase: ${error.message}`);
-        showNotification('Erro ao salvar backup no Firebase: ' + error.message, true);
+        console.error('Erro ao realizar backup do Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao realizar backup do Firebase: ${error.message}`);
+        showNotification('Erro ao realizar backup: ' + error.message, true);
     }
 }
 
 async function restoreFirebase() {
     try {
+        const firebaseData = await loadFromFirebase();
         const progressModal = document.getElementById('progressModal');
         const progressFill = document.getElementById('progressFill');
         const progressText = document.getElementById('progressText');
         progressModal.style.display = 'block';
 
-        const updateProgress = (percentage, message) => {
-            return new Promise(resolve => {
-                progressFill.style.width = `${percentage}%`;
-                progressText.textContent = `${percentage}% - ${message}`;
-                requestAnimationFrame(() => setTimeout(resolve, 100));
-            });
-        };
+        let processed = 0;
+        const total = Object.keys(firebaseData.appointments || {}).length + Object.keys(firebaseData.medicos || {}).length + 1;
 
-        // Etapa 1: Buscar dados do Firebase
-        await updateProgress(10, 'Buscando backup no Firebase...');
-        const snapshot = await getDocs(collection(db, 'backups'));
-        if (!snapshot.empty) {
-            const latestBackup = snapshot.docs[snapshot.docs.length - 1].data();
+        const existingIds = new Set(appointments.map(a => a.id));
+        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id));
+        appointments = [...appointments, ...newAppointments];
+        medicos = Object.values(firebaseData.medicos || []);
+        const settings = firebaseData.settings || {};
+        currentView = settings.currentView || currentView;
+        deleteAllPassword = settings.deleteAllPassword || deleteAllPassword;
+        lastSync = settings.lastSync || lastSync;
+        theme = settings.theme || theme;
 
-            // Etapa 2: Atribuir dados
-            await updateProgress(30, 'Atribuindo dados...');
-            appointments = Array.isArray(latestBackup.appointments) ? latestBackup.appointments : [];
-            medicos = Array.isArray(latestBackup.medicos) ? latestBackup.medicos : [];
-            users = Array.isArray(latestBackup.users) ? latestBackup.users : [];
-            const settings = latestBackup.settings || {};
-            currentView = settings.currentView || 'list';
-            deleteAllPassword = settings.deleteAllPassword || '1234';
-            lastSync = settings.lastSync || 0
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
-                        theme = settings.theme || {};
+        processed += Object.keys(firebaseData.appointments || {}).length;
+        processed += Object.keys(firebaseData.medicos || {}).length;
+        processed += 1;
 
-            // Etapa 3: Salvar no Firebase
-            await updateProgress(60, 'Salvando no Firebase...');
-            await Promise.all([
-                saveToFirebase('appointments', appointments),
-                saveToFirebase('medicos', medicos),
-                saveToFirebase('users', users),
-                saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme })
-            ]);
+        const percentage = Math.round((processed / total) * 100);
+        progressFill.style.width = `${percentage}%`;
+        progressText.textContent = `${percentage}%`;
 
-            // Etapa 4: Salvar no IndexedDB
-            await updateProgress(90, 'Salvando no IndexedDB...');
-            await Promise.all([
-                saveToIndexedDB('appointments', appointments),
-                saveToIndexedDB('medicos', medicos),
-                saveToIndexedDB('users', users),
-                saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme })
-            ]);
+        await saveToIndexedDB('appointments', appointments);
+        await saveToIndexedDB('medicos', medicos);
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        applyTheme();
+        renderAppointments();
+        updateMedicosList();
+        generateInsights(); // Restaurar os cartões de insights como estavam
 
-            // Etapa 5: Renderizar
-            await updateProgress(100, 'Renderizando dados...');
-            renderAppointments();
-            updateMedicosList();
-            updateUsersList();
-            applyTheme();
-
-            setTimeout(() => {
-                progressModal.style.display = 'none';
-                showNotification('Backup restaurado do Firebase com sucesso!');
-            }, 500);
-        } else {
-            progressModal.style.display = 'none';
-            showNotification('Nenhum backup encontrado no Firebase!', true);
-        }
+        progressModal.style.display = 'none';
+        showNotification('Dados restaurados do Firebase com sucesso!');
     } catch (error) {
-        console.error('Erro ao restaurar backup do Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar backup do Firebase: ${error.message}`);
-        document.getElementById('progressModal').style.display = 'none';
-        showNotification('Erro ao restaurar backup do Firebase: ' + error.message, true);
+        console.error('Erro ao restaurar do Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao restaurar do Firebase: ${error.message}`);
+        showNotification('Erro ao restaurar: ' + error.message, true);
     }
 }
 
-async function importJsonToFirebase() {
-    try {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'application/json';
-        input.onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) {
-                showNotification('Nenhum arquivo selecionado!', true);
-                return;
-            }
-
-            const progressModal = document.getElementById('progressModal');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-            progressModal.style.display = 'block';
-
-            const updateProgress = (percentage, message) => {
-                return new Promise(resolve => {
-                    progressFill.style.width = `${percentage}%`;
-                    progressText.textContent = `${percentage}% - ${message}`;
-                    requestAnimationFrame(() => setTimeout(resolve, 100));
-                });
-            };
-
-            // Etapa 1: Ler o arquivo JSON
-            await updateProgress(20, 'Lendo arquivo...');
-            const text = await file.text();
-            const data = JSON.parse(text);
-            console.log("Dados lidos do arquivo JSON para importação:", data);
-
-            if (!data || typeof data !== 'object') {
-                showNotification('Arquivo JSON inválido!', true);
-                progressModal.style.display = 'none';
-                return;
-            }
-
-            // Etapa 2: Salvar no Firebase como backup
-            await updateProgress(80, 'Importando para o Firebase...');
-            const backupData = {
-                appointments: Array.isArray(data.appointments) ? data.appointments : [],
-                medicos: Array.isArray(data.medicos) ? data.medicos : [],
-                users: Array.isArray(data.users) ? data.users : [],
-                settings: data.settings || { currentView: 'list', deleteAllPassword: '1234', lastSync: 0, theme: {} },
-                timestamp: new Date().toISOString()
-            };
-            await setDoc(doc(db, 'backups', `backup_${Date.now()}`), backupData);
-
-            // Etapa 3: Finalizar
-            await updateProgress(100, 'Importação concluída...');
-            setTimeout(() => {
-                progressModal.style.display = 'none';
-                showNotification('Arquivo JSON importado para o Firebase com sucesso!');
-            }, 500);
-        };
-        input.click();
-    } catch (error) {
-        console.error('Erro ao importar JSON para o Firebase:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao importar JSON para o Firebase: ${error.message}`);
-        document.getElementById('progressModal').style.display = 'none';
-        showNotification('Erro ao importar JSON para o Firebase: ' + error.message, true);
-    }
-}
-
-// Função de Sincronização
-async function syncLocalWithFirebase() {
-    const now = Date.now();
-    if (now - lastSync > 60000) {
-        try {
-            const snapshot = await getDocs(collection(db, 'appointments'));
-            const firebaseAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            appointments = mergeData(appointments, firebaseAppointments, 'id');
-            await saveToIndexedDB('appointments', appointments);
-
-            const medicosSnapshot = await getDocs(collection(db, 'medicos'));
-            const firebaseMedicos = medicosSnapshot.docs.map(doc => doc.data());
-            medicos = mergeData(medicos, firebaseMedicos, 'nome');
-            await saveToIndexedDB('medicos', medicos);
-
-            const usersSnapshot = await getDocs(collection(db, 'users'));
-            const firebaseUsers = usersSnapshot.docs.map(doc => doc.data());
-            users = mergeData(users, firebaseUsers, 'username');
-            await saveToIndexedDB('users', users);
-
-            const settingsDoc = await getDoc(doc(db, 'settings', 'default'));
-            if (settingsDoc.exists()) {
-                const firebaseSettings = settingsDoc.data();
-                currentView = firebaseSettings.currentView || 'list';
-                deleteAllPassword = firebaseSettings.deleteAllPassword || '1234';
-                theme = firebaseSettings.theme || {};
-                lastSync = firebaseSettings.lastSync || 0;
-                await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-            }
-
-            lastSync = now;
-            await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
-            showNotification('Dados sincronizados com o Firebase com sucesso!');
-        } catch (error) {
-            console.error('Erro ao sincronizar com Firebase:', error);
-            errorLogs.push(`[${new Date().toISOString()}] Erro ao sincronizar com Firebase: ${error.message}`);
-            showNotification('Erro ao sincronizar com Firebase: ' + error.message, true);
-        }
-    }
-}
-
-// Função de Mesclagem de Dados
-function mergeData(localData, remoteData, key) {
-    try {
-        const merged = [...localData];
-        remoteData.forEach(remoteItem => {
-            const localIndex = merged.findIndex(localItem => localItem[key] === remoteItem[key]);
-            if (localIndex === -1) {
-                merged.push(remoteItem);
-            } else {
-                merged[localIndex] = { ...merged[localIndex], ...remoteItem };
-            }
-        });
-        return merged;
-    } catch (error) {
-        console.error('Erro ao mesclar dados:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao mesclar dados: ${error.message}`);
-        return localData; // Retorna dados locais em caso de erro
-    }
-}
-
-// Funções de Armazenamento no Firebase
-async function saveToFirebase(collectionName, data) {
-    try {
-        if (Array.isArray(data)) {
-            const batch = writeBatch(db);
-            data.forEach(item => {
-                const docId = item.id || Date.now().toString();
-                const docRef = doc(db, collectionName, docId);
-                batch.set(docRef, item);
-            });
-            await batch.commit();
-            console.log(`Array de dados salvos no Firebase (${collectionName}):`, data);
-        } else {
-            const docId = data.id || (collectionName === 'settings' || collectionName === 'reports' || collectionName === 'insights' ? 'default' : Date.now().toString());
-            await setDoc(doc(db, collectionName, docId), data);
-            console.log(`Dados salvos no Firebase (${collectionName}):`, data);
-        }
-    } catch (error) {
-        console.error(`Erro ao salvar no Firebase (${collectionName}):`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no Firebase (${collectionName}): ${error.message}`);
-        throw error;
-    }
-}
-
-async function deleteFromFirebase(collectionName, id) {
-    try {
-        await deleteDoc(doc(db, collectionName, id));
-        console.log(`Documento excluído do Firebase (${collectionName}/${id})`);
-    } catch (error) {
-        console.error(`Erro ao excluir do Firebase (${collectionName}/${id}):`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir do Firebase (${collectionName}/${id}): ${error.message}`);
-        throw error;
-    }
-}
-
-async function deleteAllFromFirebase(collectionName) {
-    try {
-        const snapshot = await getDocs(collection(db, collectionName));
-        const batch = writeBatch(db);
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        console.log(`Todos os documentos excluídos do Firebase (${collectionName})`);
-    } catch (error) {
-        console.error(`Erro ao excluir todos do Firebase (${collectionName}):`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir todos do Firebase (${collectionName}): ${error.message}`);
-        throw error;
-    }
-}
-
-// Funções de Armazenamento no IndexedDB
+// Banco de Dados IndexedDB
 async function saveToIndexedDB(storeName, data) {
     try {
-        const dbRequest = indexedDB.open('AgendaUnicaDB', DB_VERSION);
+        const dbRequest = indexedDB.open('AgendaDB', DB_VERSION);
         return new Promise((resolve, reject) => {
             dbRequest.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
-                if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
-                if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'id' });
-                if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('appointments')) {
+                    db.createObjectStore('appointments', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('medicos')) {
+                    db.createObjectStore('medicos', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('users')) {
+                    db.createObjectStore('users', { keyPath: 'username' });
+                }
+                if (!db.objectStoreNames.contains('settings')) {
+                    db.createObjectStore('settings', { keyPath: 'id' });
+                }
             };
             dbRequest.onsuccess = (event) => {
                 const db = event.target.result;
                 const transaction = db.transaction([storeName], 'readwrite');
                 const store = transaction.objectStore(storeName);
                 if (Array.isArray(data)) {
-                    data.forEach(item => {
-                        if (!item.id) item.id = Date.now().toString(); // Garante que cada item tenha um id
-                        store.put(item);
-                    });
+                    data.forEach(item => store.put(item));
                 } else {
-                    store.put({ id: 'default', ...data }); // Adiciona id: 'default' para objetos únicos como settings
+                    storeput({ ...data, id: storeName === 'settings' ? 'config' : data.id });
                 }
                 transaction.oncomplete = () => {
-                    console.log(`Dados salvos no IndexedDB (${storeName}):`, data);
+                    db.close();
                     resolve();
                 };
-                transaction.onerror = (e) => reject(e.target.error);
-                db.close();
+                transaction.onerror = () => reject(transaction.error);
             };
-            dbRequest.onerror = (e) => reject(e.target.error);
+            dbRequest.onerror = () => reject(dbRequest.error);
         });
     } catch (error) {
-        console.error(`Erro ao salvar no IndexedDB (${storeName}):`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no IndexedDB (${storeName}): ${error.message}`);
+        console.error('Erro ao salvar no IndexedDB:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no IndexedDB: ${error.message}`);
         throw error;
     }
 }
 
 async function loadFromIndexedDB() {
     try {
-        const dbRequest = indexedDB.open('AgendaUnicaDB', DB_VERSION);
+        const dbRequest = indexedDB.open('AgendaDB', DB_VERSION);
         return new Promise((resolve, reject) => {
             dbRequest.onupgradeneeded = (event) => {
                 const db = event.target.result;
-                if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
-                if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
-                if (!db.objectStoreNames.contains('users')) db.createObjectStore('users', { keyPath: 'id' });
-                if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
+                if (!db.objectStoreNames.contains('appointments')) {
+                    db.createObjectStore('appointments', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('medicos')) {
+                    db.createObjectStore('medicos', { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains('users')) {
+                    db.createObjectStore('users', { keyPath: 'username' });
+                }
+                if (!db.objectStoreNames.contains('settings')) {
+                    db.createObjectStore('settings', { keyPath: 'id' });
+                }
             };
             dbRequest.onsuccess = (event) => {
                 const db = event.target.result;
                 const transaction = db.transaction(['appointments', 'medicos', 'users', 'settings'], 'readonly');
-                const data = {};
-                transaction.objectStore('appointments').getAll().onsuccess = (e) => data.appointments = e.target.result;
-                transaction.objectStore('medicos').getAll().onsuccess = (e) => data.medicos = e.target.result;
-                transaction.objectStore('users').getAll().onsuccess = (e) => data.users = e.target.result;
-                transaction.objectStore('settings').get('default').onsuccess = (e) => data.settings = e.target.result || {};
+                const appointmentsStore = transaction.objectStore('appointments');
+                const medicosStore = transaction.objectStore('medicos');
+                const usersStore = transaction.objectStore('users');
+                const settingsStore = transaction.objectStore('settings');
+
+                const data = { appointments: [], medicos: [], users: [], settings: {} };
+
+                appointmentsStore.getAll().onsuccess = (e) => data.appointments = e.target.result;
+                medicosStore.getAll().onsuccess = (e) => data.medicos = e.target.result;
+                usersStore.getAll().onsuccess = (e) => data.users = e.target.result;
+                settingsStore.get('config').onsuccess = (e) => data.settings = e.target.result || {};
+
                 transaction.oncomplete = () => {
-                    console.log("Dados carregados do IndexedDB:", data);
+                    db.close();
                     resolve(data);
                 };
-                transaction.onerror = (e) => reject(e.target.error);
-                db.close();
+                transaction.onerror = () => reject(transaction.error);
             };
-            dbRequest.onerror = (e) => reject(e.target.error);
+            dbRequest.onerror = () => reject(dbRequest.error);
         });
     } catch (error) {
         console.error('Erro ao carregar do IndexedDB:', error);
@@ -1852,24 +1757,94 @@ async function loadFromIndexedDB() {
     }
 }
 
-// Função de Navegação
-function scrollToStatusSection() {
+// Banco de Dados Firebase
+async function saveToFirebase(collectionName, data) {
     try {
-        document.getElementById('statusFilterSection').scrollIntoView({ behavior: 'smooth' });
-        showNotification('Rolando para seção de status!');
+        const docRef = doc(db, collectionName, data.id || Date.now().toString());
+        await setDoc(docRef, data);
+        lastSync = Date.now();
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
     } catch (error) {
-        console.error('Erro ao rolar para seção de status:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao rolar para seção de status: ${error.message}`);
-        showNotification('Erro ao rolar para seção: ' + error.message, true);
+        console.error('Erro ao salvar no Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar no Firebase: ${error.message}`);
+        throw error;
     }
 }
 
-// Função de Notificação
+async function deleteFromFirebase(collectionName, id) {
+    try {
+        const docRef = doc(db, collectionName, id);
+        await deleteDoc(docRef);
+    } catch (error) {
+        console.error('Erro ao excluir do Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir do Firebase: ${error.message}`);
+        throw error;
+    }
+}
+
+async function deleteAllFromFirebase(collectionName) {
+    try {
+        const querySnapshot = await getDocs(collection(db, collectionName));
+        const batch = writeBatch(db);
+        querySnapshot.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+    } catch (error) {
+        console.error('Erro ao excluir todos do Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao excluir todos do Firebase: ${error.message}`);
+        throw error;
+    }
+}
+
+async function loadFromFirebase() {
+    try {
+        const data = { appointments: {}, medicos: {}, settings: {} };
+        const appointmentsSnapshot = await getDocs(collection(db, 'appointments'));
+        appointmentsSnapshot.forEach(doc => data.appointments[doc.id] = doc.data());
+        const medicosSnapshot = await getDocs(collection(db, 'medicos'));
+        medicosSnapshot.forEach(doc => data.medicos[doc.id] = doc.data());
+        const settingsDoc = await getDoc(doc(db, 'settings', 'config'));
+        if (settingsDoc.exists()) data.settings = settingsDoc.data();
+        return data;
+    } catch (error) {
+        console.error('Erro ao carregar do Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar do Firebase: ${error.message}`);
+        throw error;
+    }
+}
+
+async function syncLocalWithFirebase() {
+    try {
+        const firebaseData = await loadFromFirebase();
+        const existingIds = new Set(appointments.map(a => a.id));
+        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id));
+        appointments = [...appointments, ...newAppointments];
+        medicos = Object.values(firebaseData.medicos || []);
+        const settings = firebaseData.settings || {};
+        currentView = settings.currentView || currentView;
+        deleteAllPassword = settings.deleteAllPassword || deleteAllPassword;
+        lastSync = settings.lastSync || lastSync;
+        theme = settings.theme || theme;
+
+        await saveToIndexedDB('appointments', appointments);
+        await saveToIndexedDB('medicos', medicos);
+        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        renderAppointments();
+        updateMedicosList();
+        applyTheme();
+        showNotification('Sincronização com Firebase concluída!');
+    } catch (error) {
+        console.error('Erro ao sincronizar com Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao sincronizar com Firebase: ${error.message}`);
+        showNotification('Erro ao sincronizar: ' + error.message, true);
+    }
+}
+
+// Notificações
 function showNotification(message, isError = false) {
     try {
         if (!notification) return;
         notification.textContent = message;
-        notification.className = isError ? 'notification error' : 'notification';
+        notification.className = `notification ${isError ? 'error' : 'success'}`;
         notification.style.display = 'block';
         setTimeout(() => notification.style.display = 'none', 3000);
     } catch (error) {
@@ -1878,35 +1853,25 @@ function showNotification(message, isError = false) {
     }
 }
 
-// Console de Erros no Final
-window.addEventListener('beforeunload', () => {
-    console.log("===== Console de Erros =====");
-    if (errorLogs.length > 0) {
-        console.log("Erros registrados durante a sessão:");
-        errorLogs.forEach((log, index) => console.log(`${index + 1}. ${log}`));
-    } else {
-        console.log("Nenhum erro registrado nesta sessão.");
+// Navegação para Seção de Status
+function scrollToStatusSection() {
+    try {
+        document.getElementById('statusFilter').scrollIntoView({ behavior: 'smooth' });
+        showNotification('Navegando para a seção de status!');
+    } catch (error) {
+        console.error('Erro ao navegar para seção de status:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao navegar para seção de status: ${error.message}`);
+        showNotification('Erro ao navegar: ' + error.message, true);
     }
-    console.log("===========================");
-});
+}
 
-// Expor funções ao escopo global para uso no HTML
-window.saveAppointment = saveAppointment;
-window.deleteAppointment = deleteAppointment;
+// Expor funções globais
 window.editAppointment = editAppointment;
+window.deleteAppointment = deleteAppointment;
 window.viewAppointment = viewAppointment;
 window.shareAppointment = shareAppointment;
-window.changeView = changeView;
-window.showTab = showTab;
-window.changePage = changePage;
-window.toggleSelectAll = toggleSelectAll;
-window.toggleSelectAllItems = toggleSelectAllItems;
-window.handleDragStart = handleDragStart;
-window.handleDragEnd = handleDragEnd;
-window.handleDragOver = handleDragOver;
-window.handleDrop = handleDrop;
-window.moveCard = moveCard;
 window.toggleDetails = toggleDetails;
+window.moveCard = moveCard;
 window.openMedicoModal = openMedicoModal;
 window.closeMedicoModal = closeMedicoModal;
 window.saveMedico = saveMedico;
@@ -1917,24 +1882,17 @@ window.confirmDeleteAll = confirmDeleteAll;
 window.openSortFilterModal = openSortFilterModal;
 window.closeSortFilterModal = closeSortFilterModal;
 window.applySortFilter = applySortFilter;
-window.openSettingsModal = openSettingsModal;
-window.closeModal = closeModal;
 window.saveTheme = saveTheme;
 window.resetTheme = resetTheme;
-window.addUser = addUser;
-window.deleteUser = deleteUser;
-window.resetForm = resetForm;
-window.clearFilters = clearFilters;
-window.printAppointments = printAppointments;
-window.exportToExcel = exportToExcel;
-window.generateReport = generateReport;
-window.toggleReportView = toggleReportView;
-window.generateInsights = generateInsights;
+window.saveDeletePassword = saveDeletePassword;
+window.importJsonToFirebase = importJsonToFirebase;
 window.backupLocal = backupLocal;
 window.restoreLocal = restoreLocal;
 window.backupFirebase = backupFirebase;
 window.restoreFirebase = restoreFirebase;
-window.importJsonToFirebase = importJsonToFirebase;
-window.scrollToStatusSection = scrollToStatusSection;
+window.generateReport = generateReport;
+window.toggleReportView = toggleReportView;
+window.clearIndexedDB = clearIndexedDB;
+window.clearErrorLogs = clearErrorLogs;
 
 console.log("Script carregado com sucesso!");
