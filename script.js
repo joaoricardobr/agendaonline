@@ -1,3 +1,4 @@
+
 // Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, getDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -594,7 +595,6 @@ function loadSettingsTab() {
         clearIndexedDBCard.innerHTML = `
             <h4><i class="fas fa-trash-restore"></i> Limpar IndexedDB</h4>
             <div class="card-actions">
-                
                 <button class="action-btn delete-btn" onclick="clearIndexedDB()">Limpar IndexedDB</button>
             </div>
         `;
@@ -835,8 +835,16 @@ function updateMedicosList() {
 
 async function deleteMedico(index) {
     try {
+        if (index < 0 || index >= medicos.length) {
+            showNotification('Médico não encontrado!', true);
+            return;
+        }
         if (confirm('Tem certeza que deseja excluir este médico?')) {
             const medico = medicos[index];
+            if (!medico || !medico.id) {
+                showNotification('ID do médico inválido!', true);
+                return;
+            }
             medicos.splice(index, 1);
             await deleteFromFirebase('medicos', medico.id);
             await saveToIndexedDB('medicos', medicos);
@@ -1483,37 +1491,44 @@ async function importJsonToFirebase() {
             const file = e.target.files[0];
             if (!file) return;
 
+            const progressModal = document.getElementById('progressModal');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressModal.style.display = 'block';
+
             const reader = new FileReader();
             reader.onload = async (event) => {
-                const importedData = JSON.parse(event.target.result);
-                const progressModal = document.getElementById('progressModal');
-                const progressFill = document.getElementById('progressFill');
-                const progressText = document.getElementById('progressText');
-                progressModal.style.display = 'block';
+                try {
+                    const jsonData = JSON.parse(event.target.result);
+                    if (!jsonData.appointments || !Array.isArray(jsonData.appointments)) {
+                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array.');
+                    }
 
-                const batch = writeBatch(db);
-                let processed = 0;
-                const total = importedData.appointments ? importedData.appointments.length : 0;
+                    const existingIds = new Set(appointments.map(a => a.id));
+                    const newAppointments = jsonData.appointments.filter(app => !existingIds.has(app.id));
+                    appointments = [...appointments, ...newAppointments];
 
-                // Mesclar dados existentes com os importados
-                const existingIds = new Set(appointments.map(a => a.id));
-                const newAppointments = importedData.appointments.filter(app => !existingIds.has(app.id));
-                appointments = [...appointments, ...newAppointments];
+                    let processed = 0;
+                    const total = newAppointments.length;
 
-                for (const appointment of newAppointments) {
-                    const docRef = doc(db, 'appointments', appointment.id || Date.now().toString());
-                    batch.set(docRef, appointment);
-                    processed++;
-                    const percentage = Math.round((processed / total) * 100);
-                    progressFill.style.width = `${percentage}%`;
-                    progressText.textContent = `${percentage}%`;
+                    for (const app of newAppointments) {
+                        await saveToFirebase('appointments', app);
+                        processed++;
+                        const percentage = Math.round((processed / total) * 100);
+                        progressFill.style.width = `${percentage}%`;
+                        progressText.textContent = `${percentage}%`;
+                    }
+
+                    await saveToIndexedDB('appointments', appointments);
+                    renderAppointments();
+                    progressModal.style.display = 'none';
+                    showNotification('Dados importados e mesclados no Firebase com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao processar JSON:', error);
+                    errorLogs.push(`[${new Date().toISOString()}] Erro ao processar JSON: ${error.message}`);
+                    showNotification('Erro ao importar JSON: ' + error.message, true);
+                    progressModal.style.display = 'none';
                 }
-
-                await batch.commit();
-                await saveToIndexedDB('appointments');
-                renderAppointments();
-                progressModal.style.display = 'none';
-                showNotification('Dados importados e mesclados no Firebase com sucesso!');
             };
             reader.onerror = () => {
                 showNotification('Erro ao ler o arquivo JSON!', true);
@@ -1567,26 +1582,36 @@ async function restoreLocal() {
             showNotification('Carregando arquivo...', false);
             const reader = new FileReader();
             reader.onload = async (event) => {
-                const data = JSON.parse(event.target.result);
-                const existingIds = new Set(appointments.map(a => a.id));
-                const newAppointments = (data.appointments || []).filter(app => !existingIds.has(app.id));
-                appointments = [...appointments, ...newAppointments];
-                medicos = data.medicos || [];
-                users = data.users || [];
-                const settings = data.settings || {};
-                currentView = settings.currentView || 'list';
-                deleteAllPassword = settings.deleteAllPassword || '1234';
-                lastSync = settings.lastSync || 0;
-                theme = settings.theme || {};
+                try {
+                    const data = JSON.parse(event.target.result);
+                    if (!data.appointments || !Array.isArray(data.appointments)) {
+                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array.');
+                    }
 
-                await saveToIndexedDB('appointments', appointments);
-                await saveToIndexedDB('medicos', medicos);
-                await saveToIndexedDB('users', users);
-                await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-                applyTheme();
-                renderAppointments();
-                updateMedicosList();
-                showNotification('Dados restaurados e mesclados localmente com sucesso!');
+                    const existingIds = new Set(appointments.map(a => a.id));
+                    const newAppointments = data.appointments.filter(app => !existingIds.has(app.id));
+                    appointments = [...appointments, ...newAppointments];
+                    medicos = data.medicos || [];
+                    users = data.users || [];
+                    const settings = data.settings || {};
+                    currentView = settings.currentView || 'list';
+                    deleteAllPassword = settings.deleteAllPassword || '1234';
+                    lastSync = settings.lastSync || 0;
+                    theme = settings.theme || {};
+
+                    await saveToIndexedDB('appointments', appointments);
+                    await saveToIndexedDB('medicos', medicos);
+                    await saveToIndexedDB('users', users);
+                    await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+                    applyTheme();
+                    renderAppointments();
+                    updateMedicosList();
+                    showNotification('Dados restaurados e mesclados localmente com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao processar JSON para restauração:', error);
+                    errorLogs.push(`[${new Date().toISOString()}] Erro ao processar JSON para restauração: ${error.message}`);
+                    showNotification('Erro ao restaurar JSON: ' + error.message, true);
+                }
             };
             reader.onerror = () => {
                 showNotification('Erro ao carregar o arquivo JSON!', true);
@@ -1654,7 +1679,7 @@ async function restoreFirebase() {
         applyTheme();
         renderAppointments();
         updateMedicosList();
-        generateInsights(); // Restaurar os cartões de insights como estavam
+        generateInsights();
 
         progressModal.style.display = 'none';
         showNotification('Dados restaurados do Firebase com sucesso!');
@@ -1692,7 +1717,7 @@ async function saveToIndexedDB(storeName, data) {
                 if (Array.isArray(data)) {
                     data.forEach(item => store.put(item));
                 } else {
-                    storeput({ ...data, id: storeName === 'settings' ? 'config' : data.id });
+                    store.put({ ...data, id: storeName === 'settings' ? 'config' : data.id });
                 }
                 transaction.oncomplete = () => {
                     db.close();
@@ -1774,6 +1799,9 @@ async function saveToFirebase(collectionName, data) {
 
 async function deleteFromFirebase(collectionName, id) {
     try {
+        if (!id) {
+            throw new Error('ID inválido para exclusão no Firebase');
+        }
         const docRef = doc(db, collectionName, id);
         await deleteDoc(docRef);
     } catch (error) {
