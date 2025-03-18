@@ -1,4 +1,3 @@
-
 /* Reset e Configurações Globais */
 * {
     margin: 0;
@@ -786,6 +785,7 @@ footer a:hover {
 .error-log-card::-webkit-scrollbar-track {
     background: #f0f4f8;
 }
+
 .progress-bar {
     width: 100%;
     height: 20px;
