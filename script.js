@@ -594,8 +594,7 @@ function loadSettingsTab() {
         clearIndexedDBCard.innerHTML = `
             <h4><i class="fas fa-trash-restore"></i> Limpar IndexedDB</h4>
             <div class="card-actions">
-                  <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos "><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
-  
+                
                 <button class="action-btn delete-btn" onclick="clearIndexedDB()">Limpar IndexedDB</button>
             </div>
         `;
