@@ -1,4 +1,3 @@
-
 // Importações do Firebase
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc, getDoc, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -623,6 +622,7 @@ function loadSettingsTab() {
             <h4><i class="fas fa-database"></i> Backup e Restauração</h4>
             <div class="card-actions">
                 <button class="action-btn view-btn" onclick="importJsonToFirebase()">Importar JSON para Firebase</button>
+                <button class="action-btn view-btn" onclick="importExcelToFirebase()">Importar Excel para Firebase</button>
                 <button class="action-btn view-btn" onclick="backupLocal()">Backup Local</button>
                 <button class="action-btn view-btn" onclick="restoreLocal()">Restaurar Local</button>
                 <button class="action-btn view-btn" onclick="backupFirebase()">Backup Firebase</button>
@@ -1501,11 +1501,27 @@ async function importJsonToFirebase() {
                 try {
                     const jsonData = JSON.parse(event.target.result);
                     if (!jsonData.appointments || !Array.isArray(jsonData.appointments)) {
-                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array.');
+                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array válido.');
                     }
 
                     const existingIds = new Set(appointments.map(a => a.id));
-                    const newAppointments = jsonData.appointments.filter(app => !existingIds.has(app.id));
+                    const newAppointments = jsonData.appointments.filter(app => !existingIds.has(app.id)).map(app => ({
+                      
+                      
+                                              id: app.id || Date.now().toString(),
+                        nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
+                        telefone: app.telefone || '',
+                        email: app.email || '',
+                        nomeMedico: app.nomeMedico || '',
+                        localCRM: app.localCRM || '',
+                        dataConsulta: app.dataConsulta || '',
+                        horaConsulta: app.horaConsulta || '',
+                        tipoCirurgia: app.tipoCirurgia || '',
+                        procedimentos: app.procedimentos || '',
+                        agendamentoFeitoPor: app.agendamentoFeitoPor || '',
+                        descricao: app.descricao || '',
+                        status: app.status || 'Aguardando Atendimento'
+                    }));
                     appointments = [...appointments, ...newAppointments];
 
                     let processed = 0;
@@ -1522,7 +1538,7 @@ async function importJsonToFirebase() {
                     await saveToIndexedDB('appointments', appointments);
                     renderAppointments();
                     progressModal.style.display = 'none';
-                    showNotification('Dados importados e mesclados no Firebase com sucesso!');
+                    showNotification('Dados JSON importados e mesclados no Firebase com sucesso!');
                 } catch (error) {
                     console.error('Erro ao processar JSON:', error);
                     errorLogs.push(`[${new Date().toISOString()}] Erro ao processar JSON: ${error.message}`);
@@ -1544,6 +1560,88 @@ async function importJsonToFirebase() {
     }
 }
 
+async function importExcelToFirebase() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx, .xls';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const progressModal = document.getElementById('progressModal');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            progressModal.style.display = 'block';
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+                    if (!jsonData || jsonData.length === 0) {
+                        throw new Error('O arquivo Excel está vazio ou mal formatado.');
+                    }
+
+                    const existingIds = new Set(appointments.map(a => a.id));
+                    const newAppointments = jsonData.map(row => ({
+                        id: row.id || Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        nomePaciente: row.nomePaciente || 'Paciente Sem Nome',
+                        telefone: row.telefone || '',
+                        email: row.email || '',
+                        nomeMedico: row.nomeMedico || '',
+                        localCRM: row.localCRM || '',
+                        dataConsulta: row.dataConsulta || '',
+                        horaConsulta: row.horaConsulta || '',
+                        tipoCirurgia: row.tipoCirurgia || '',
+                        procedimentos: row.procedimentos || '',
+                        agendamentoFeitoPor: row.agendamentoFeitoPor || '',
+                        descricao: row.descricao || '',
+                        status: row.status || 'Aguardando Atendimento'
+                    })).filter(app => !existingIds.has(app.id));
+
+                    appointments = [...appointments, ...newAppointments];
+
+                    let processed = 0;
+                    const total = newAppointments.length;
+
+                    for (const app of newAppointments) {
+                        await saveToFirebase('appointments', app);
+                        processed++;
+                        const percentage = Math.round((processed / total) * 100);
+                        progressFill.style.width = `${percentage}%`;
+                        progressText.textContent = `${percentage}%`;
+                    }
+
+                    await saveToIndexedDB('appointments', appointments);
+                    renderAppointments();
+                    progressModal.style.display = 'none';
+                    showNotification('Dados do Excel importados e mesclados no Firebase com sucesso!');
+                } catch (error) {
+                    console.error('Erro ao processar Excel:', error);
+                    errorLogs.push(`[${new Date().toISOString()}] Erro ao processar Excel: ${error.message}`);
+                    showNotification('Erro ao importar Excel: ' + error.message, true);
+                    progressModal.style.display = 'none';
+                }
+            };
+            reader.onerror = () => {
+                showNotification('Erro ao ler o arquivo Excel!', true);
+                progressModal.style.display = 'none';
+            };
+            reader.readAsArrayBuffer(file);
+        };
+        input.click();
+    } catch (error) {
+        console.error('Erro ao importar Excel para Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao importar Excel para Firebase: ${error.message}`);
+        showNotification('Erro ao importar: ' + error.message, true);
+    }
+}
+
 function backupLocal() {
     try {
         const data = {
@@ -1560,7 +1658,6 @@ function backupLocal() {
         a.click();
         URL.revokeObjectURL(url);
 
-        // Atualizar automaticamente no Firebase mesclando dados
         syncLocalWithFirebase();
         showNotification('Backup local realizado e sincronizado com Firebase!');
     } catch (error) {
@@ -1585,11 +1682,25 @@ async function restoreLocal() {
                 try {
                     const data = JSON.parse(event.target.result);
                     if (!data.appointments || !Array.isArray(data.appointments)) {
-                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array.');
+                        throw new Error('O arquivo JSON deve conter uma propriedade "appointments" com um array válido.');
                     }
 
                     const existingIds = new Set(appointments.map(a => a.id));
-                    const newAppointments = data.appointments.filter(app => !existingIds.has(app.id));
+                    const newAppointments = data.appointments.filter(app => !existingIds.has(app.id)).map(app => ({
+                        id: app.id || Date.now().toString(),
+                        nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
+                        telefone: app.telefone || '',
+                        email: app.email || '',
+                        nomeMedico: app.nomeMedico || '',
+                        localCRM: app.localCRM || '',
+                        dataConsulta: app.dataConsulta || '',
+                        horaConsulta: app.horaConsulta || '',
+                        tipoCirurgia: app.tipoCirurgia || '',
+                        procedimentos: app.procedimentos || '',
+                        agendamentoFeitoPor: app.agendamentoFeitoPor || '',
+                        descricao: app.descricao || '',
+                        status: app.status || 'Aguardando Atendimento'
+                    }));
                     appointments = [...appointments, ...newAppointments];
                     medicos = data.medicos || [];
                     users = data.users || [];
@@ -1656,7 +1767,21 @@ async function restoreFirebase() {
         const total = Object.keys(firebaseData.appointments || {}).length + Object.keys(firebaseData.medicos || {}).length + 1;
 
         const existingIds = new Set(appointments.map(a => a.id));
-        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id));
+        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id)).map(app => ({
+            id: app.id || Date.now().toString(),
+            nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
+            telefone: app.telefone || '',
+            email: app.email || '',
+            nomeMedico: app.nomeMedico || '',
+            localCRM: app.localCRM || '',
+            dataConsulta: app.dataConsulta || '',
+            horaConsulta: app.horaConsulta || '',
+            tipoCirurgia: app.tipoCirurgia || '',
+            procedimentos: app.procedimentos || '',
+            agendamentoFeitoPor: app.agendamentoFeitoPor || '',
+            descricao: app.descricao || '',
+            status: app.status || 'Aguardando Atendimento'
+        }));
         appointments = [...appointments, ...newAppointments];
         medicos = Object.values(firebaseData.medicos || []);
         const settings = firebaseData.settings || {};
@@ -1763,9 +1888,9 @@ async function loadFromIndexedDB() {
 
                 const data = { appointments: [], medicos: [], users: [], settings: {} };
 
-                appointmentsStore.getAll().onsuccess = (e) => data.appointments = e.target.result;
-                medicosStore.getAll().onsuccess = (e) => data.medicos = e.target.result;
-                usersStore.getAll().onsuccess = (e) => data.users = e.target.result;
+                appointmentsStore.getAll().onsuccess = (e) => data.appointments = e.target.result || [];
+                medicosStore.getAll().onsuccess = (e) => data.medicos = e.target.result || [];
+                usersStore.getAll().onsuccess = (e) => data.users = e.target.result || [];
                 settingsStore.get('config').onsuccess = (e) => data.settings = e.target.result || {};
 
                 transaction.oncomplete = () => {
@@ -1845,7 +1970,21 @@ async function syncLocalWithFirebase() {
     try {
         const firebaseData = await loadFromFirebase();
         const existingIds = new Set(appointments.map(a => a.id));
-        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id));
+        const newAppointments = Object.values(firebaseData.appointments || {}).filter(app => !existingIds.has(app.id)).map(app => ({
+            id: app.id || Date.now().toString(),
+            nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
+            telefone: app.telefone || '',
+            email: app.email || '',
+            nomeMedico: app.nomeMedico || '',
+            localCRM: app.localCRM || '',
+            dataConsulta: app.dataConsulta || '',
+            horaConsulta: app.horaConsulta || '',
+            tipoCirurgia: app.tipoCirurgia || '',
+            procedimentos: app.procedimentos || '',
+            agendamentoFeitoPor: app.agendamentoFeitoPor || '',
+            descricao: app.descricao || '',
+            status: app.status || 'Aguardando Atendimento'
+        }));
         appointments = [...appointments, ...newAppointments];
         medicos = Object.values(firebaseData.medicos || []);
         const settings = firebaseData.settings || {};
@@ -1915,6 +2054,7 @@ window.saveTheme = saveTheme;
 window.resetTheme = resetTheme;
 window.saveDeletePassword = saveDeletePassword;
 window.importJsonToFirebase = importJsonToFirebase;
+window.importExcelToFirebase = importExcelToFirebase;
 window.backupLocal = backupLocal;
 window.restoreLocal = restoreLocal;
 window.backupFirebase = backupFirebase;
@@ -1925,3 +2065,11 @@ window.clearIndexedDB = clearIndexedDB;
 window.clearErrorLogs = clearErrorLogs;
 
 console.log("Script carregado com sucesso!");
+                      
+                      
+                      
+                      
+                      
+                      
+                      
+                      
