@@ -1393,8 +1393,147 @@ function exportToExcel() {
 }
 
 function printAppointments() {
-    window.print();
-    showNotification('Imprimindo agendamentos...');
+    try {
+        // Criar uma nova janela para impressão
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        
+        // Filtrar apenas os agendamentos visíveis (baseado no filtro de status e paginação)
+        const status = statusFilter.value;
+        let filteredAppointments = status === 'all' ? appointments : appointments.filter(a => a.status === status);
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const paginatedData = filteredAppointments.slice(start, end);
+
+        // Estilo CSS para impressão
+        const printStyles = `
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 20px;
+                    color: #333;
+                }
+                h1 {
+                    text-align: center;
+                    font-size: 24px;
+                    margin-bottom: 20px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 8px;
+                    text-align: left;
+                    font-size: 14px;
+                }
+                th {
+                    background-color: #f2f2f2;
+                    font-weight: bold;
+                }
+                .footer {
+                    text-align: center;
+                    font-size: 12px;
+                    color: #666;
+                    margin-top: 20px;
+                }
+                .no-print {
+                    display: none;
+                }
+                @media print {
+                    .no-print {
+                        display: none !important;
+                    }
+                }
+            </style>
+        `;
+
+        // Conteúdo HTML para impressão
+        let tableContent = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Paciente</th>
+                        <th>Telefone</th>
+                        <th>Email</th>
+                        <th>Médico</th>
+                        <th>CRM</th>
+                        <th>Data</th>
+                        <th>Hora</th>
+                        <th>Tipo Cirurgia</th>
+                        <th>Procedimentos</th>
+                        <th>Agendado Por</th>
+                        <th>Descrição</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        paginatedData.forEach(appointment => {
+            tableContent += `
+                <tr>
+                    <td>${appointment.id || '-'}</td>
+                    <td>${appointment.nomePaciente || '-'}</td>
+                    <td>${appointment.telefone || '-'}</td>
+                    <td>${appointment.email || '-'}</td>
+                    <td>${appointment.nomeMedico || '-'}</td>
+                    <td>${appointment.localCRM || '-'}</td>
+                    <td>${appointment.dataConsulta || '-'}</td>
+                    <td>${appointment.horaConsulta || '-'}</td>
+                    <td>${appointment.tipoCirurgia || '-'}</td>
+                    <td>${appointment.procedimentos || '-'}</td>
+                    <td>${appointment.agendamentoFeitoPor || '-'}</td>
+                    <td>${appointment.descricao || '-'}</td>
+                    <td>${appointment.status || '-'}</td>
+                </tr>
+            `;
+        });
+
+        tableContent += `
+                </tbody>
+            </table>
+        `;
+
+        // Montar o documento completo
+        const printDocument = `
+            <html>
+                <head>
+                    <title>Relatório de Agendamentos - Agenda Única</title>
+                    ${printStyles}
+                </head>
+                <body>
+                    <h1>Relatório de Agendamentos</h1>
+                    <p>Data do Relatório: ${new Date().toLocaleString()}</p>
+                    <p>Total de Agendamentos: ${paginatedData.length} (Página ${currentPage} de ${totalPages})</p>
+                    ${tableContent}
+                    <div class="footer">
+                        Gerado por Agenda Única - ${new Date().getFullYear()}
+                    </div>
+                </body>
+            </html>
+        `;
+
+        // Escrever o conteúdo na janela de impressão
+        printWindow.document.open();
+        printWindow.document.write(printDocument);
+        printWindow.document.close();
+
+        // Aguardar o carregamento e imprimir
+        printWindow.onload = () => {
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        };
+
+        showNotification('Imprimindo agendamentos...');
+    } catch (error) {
+        console.error('Erro ao imprimir agendamentos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao imprimir agendamentos: ${error.message}`);
+        showNotification('Erro ao imprimir: ' + error.message, true);
+    }
 }
 
 // Funções de Navegação e Filtros
