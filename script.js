@@ -84,8 +84,15 @@ async function saveToFirebase(collectionName, data) {
             console.error("Firestore não está definido!");
             throw new Error('Firestore não inicializado corretamente.');
         }
-        console.log(`Salvando em ${collectionName} com ID ${data.id}`);
-        await setDoc(doc(db, collectionName, data.id), data);
+        let docId = data.id;
+        if (collectionName === 'settings') {
+            docId = 'config'; // ID fixo para settings
+        }
+        if (!docId) {
+            throw new Error(`ID do documento não fornecido para a coleção ${collectionName}`);
+        }
+        console.log(`Salvando em ${collectionName} com ID ${docId}`);
+        await setDoc(doc(db, collectionName, docId), data);
         lastSync = Date.now();
         await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
     } catch (error) {
@@ -1510,8 +1517,9 @@ async function saveTheme() {
             cardBorderColor: document.getElementById('cardBorderColor').value,
             formBorderColor: document.getElementById('formBorderColor').value
         };
-        await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-        await saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
+        const settingsData = { currentView, deleteAllPassword, lastSync, theme };
+        await saveToIndexedDB('settings', settingsData);
+        await saveToFirebase('settings', settingsData);
         applyTheme();
         showNotification('Tema salvo com sucesso no Firebase e localmente!');
     } catch (error) {
@@ -1520,7 +1528,6 @@ async function saveTheme() {
         showNotification('Erro ao salvar tema: ' + error.message, true);
     }
 }
-
 function resetTheme() {
     theme = {};
     saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
