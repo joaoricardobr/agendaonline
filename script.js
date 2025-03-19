@@ -1848,5 +1848,7 @@ window.restoreFirebase = restoreFirebase;
 window.importJsonToFirebase = importJsonToFirebase;
 window.importExcelToFirebase = importExcelToFirebase;
 window.saveJsonToFirebase = saveJsonToFirebase;
+window.openMedicoModal = openMedicoModal;
+window.closeMedicoModal = closeMedicoModal;
 
 console.log("Script carregado com sucesso!");
