@@ -61,7 +61,7 @@ try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
-    console.log("Firebase inicializado com sucesso!");
+    console.log("Firebase inicializado com sucesso!", db);
 } catch (error) {
     console.error("Erro ao inicializar Firebase:", error);
     errorLogs.push(`[${new Date().toISOString()}] Erro ao inicializar Firebase: ${error.message}`);
@@ -71,25 +71,190 @@ try {
 // Função de Salvamento no Firebase
 async function saveToFirebase(collectionName, data) {
     try {
-        if (!db) {
-            console.error("Firestore não está definido!");
-            throw new Error('Firestore não inicializado corretamente.');
-        }
-        let docId = data.id;
-        if (collectionName === 'settings') {
-            docId = 'config'; // ID fixo para settings
-        }
-        if (!docId) {
-            throw new Error(`ID do documento não fornecido para a coleção ${collectionName}`);
-        }
+        if (!db) throw new Error('Firestore não inicializado corretamente.');
+        let docId = data.id || 'config'; // Default to 'config' if no ID
         console.log(`Salvando em ${collectionName} com ID ${docId}`);
         await setDoc(doc(db, collectionName, docId), data);
         lastSync = Date.now();
         await saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
     } catch (error) {
-        console.error(`Erro ao salvar em ${collectionName} no Firebase:`, error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar em ${collectionName} no Firebase: ${error.message}`);
-        throw error;
+        console.error(`Erro ao salvar em ${collectionName}:`, error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar: ${error.message}`);
+        throw error; // Re-throw to allow caller to handle
+    }
+}
+// Funções de Exportação e Impressão
+function exportToExcel() {
+    try {
+        const worksheet = XLSX.utils.json_to_sheet(appointments);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Agendamentos');
+        XLSX.writeFile(workbook, `agendamentos_${new Date().toISOString().split('T')[0]}.xlsx`);
+        showNotification('Exportação para Excel concluída!');
+    } catch (error) {
+        console.error('Erro ao exportar para Excel:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao exportar para Excel: ${error.message}`);
+        showNotification('Erro ao exportar para Excel: ' + error.message, true);
+    }
+}
+
+function printAppointments() {
+    try {
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        if (!printWindow) throw new Error('Não foi possível abrir a janela de impressão. Verifique as permissões do navegador.');
+
+        const status = statusFilter.value;
+        let filteredAppointments = status === 'all' ? appointments : appointments.filter(a => a.status === status);
+        const start = (currentPage - 1) * itemsPerPage;
+        const end = start + itemsPerPage;
+        const paginatedData = filteredAppointments.slice(start, end);
+
+        // Estilo CSS para impressão (completado e corrigido)
+        const printStyles = `
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 20px;
+                    color: #333;
+                }
+                h1 {
+                    text-align: center;
+                    font-size: 24px;
+                    margin-bottom: 20px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 8px;
+                    text-align: left;
+                    font-size: 14px;
+                }
+                th {
+                    background-color: #f2f2f2;
+                    font-weight: bold;
+                }
+                .print-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 15px;
+                }
+                .card {
+                    border: 1px solid #ccc;
+                    padding: 10px;
+                    page-break-inside: avoid;
+                }
+                .card h4 {
+                    font-size: 16px;
+                    margin-bottom: 8px;
+                }
+                .card p {
+                    margin: 4px 0;
+                    font-size: 14px;
+                }
+                .no-print {
+                    display: none;
+                }
+                @media print {
+                    body {
+                        margin: 0;
+                    }
+                    .card {
+                        break-inside: avoid;
+                    }
+                }
+            </style>
+        `;
+
+        let content = `<html><head><title>Impressão de Agendamentos</title>${printStyles}</head><body>`;
+        content += `<h1>Agendamentos - Página ${currentPage} de ${totalPages}</h1>`;
+
+        if (currentView === 'list') {
+            content += `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Paciente</th>
+                            <th>Telefone</th>
+                            <th>Email</th>
+                            <th>Médico</th>
+                            <th>CRM</th>
+                            <th>Data</th>
+                            <th>Hora</th>
+                            <th>Tipo Cirurgia</th>
+                            <th>Procedimentos</th>
+                            <th>Feito Por</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            paginatedData.forEach(app => {
+                content += `
+                    <tr>
+                        <td>${app.id || '-'}</td>
+                        <td>${app.nomePaciente || '-'}</td>
+                        <td>${app.telefone || '-'}</td>
+                        <td>${app.email || '-'}</td>
+                        <td>${app.nomeMedico || '-'}</td>
+                        <td>${app.localCRM || '-'}</td>
+                        <td>${app.dataConsulta || '-'}</td>
+                        <td>${app.horaConsulta || '-'}</td>
+                        <td>${app.tipoCirurgia || '-'}</td>
+                        <td>${app.procedimentos || '-'}</td>
+                        <td>${app.agendamentoFeitoPor || '-'}</td>
+                        <td>${app.descricao || '-'}</td>
+                        <td>${app.status || '-'}</td>
+                    </tr>
+                `;
+            });
+            content += `</tbody></table>`;
+        } else {
+            content += `<div class="print-grid">`;
+            paginatedData.forEach(app => {
+                content += `
+                    <div class="card">
+                        <h4>${app.nomePaciente || 'Sem Nome'}</h4>
+                        <p>ID: ${app.id || '-'}</p>
+                        <p>Telefone: ${app.telefone || '-'}</p>
+                        <p>Email: ${app.email || '-'}</p>
+                        <p>Médico: ${app.nomeMedico || '-'}</p>
+                        <p>CRM: ${app.localCRM || '-'}</p>
+                        <p>Data: ${app.dataConsulta || '-'}</p>
+                        <p>Hora: ${app.horaConsulta || '-'}</p>
+                        <p>Tipo Cirurgia: ${app.tipoCirurgia || '-'}</p>
+                        <p>Procedimentos: ${app.procedimentos || '-'}</p>
+                        <p>Feito Por: ${app.agendamentoFeitoPor || '-'}</p>
+                        <p>Descrição: ${app.descricao || '-'}</p>
+                        <p>Status: ${app.status || '-'}</p>
+                    </div>
+                `;
+            });
+            content += `</div>`;
+        }
+
+        content += `</body></html>`;
+        printWindow.document.open();
+        printWindow.document.write(content);
+        printWindow.document.close();
+
+        // Garantir que o conteúdo esteja carregado antes de imprimir
+        printWindow.onload = () => {
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        };
+
+        showNotification('Impressão realizada com sucesso!');
+    } catch (error) {
+        console.error('Erro ao imprimir agendamentos:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao imprimir agendamentos: ${error.message}`);
+        showNotification('Erro ao imprimir: ' + error.message, true);
     }
 }
 
@@ -128,20 +293,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (notification) showNotification("Aplicação iniciada com sucesso!");
     setupEventListeners();
 
-    onAuthStateChanged(auth, (user) => {
-        console.log("Estado de autenticação alterado:", user ? "Usuário logado" : "Nenhum usuário logado");
-        currentUser = user;
-        if (user) {
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('mainContent').style.display = 'block';
-            loadInitialData();
-            showNotification(`Bem-vindo de volta, ${user.email}!`);
-        } else {
-            document.getElementById('loginContainer').style.display = 'flex';
-            document.getElementById('mainContent').style.display = 'none';
-            loadSavedCredentials();
-        }
-    });
+   onAuthStateChanged(auth, (user) => {
+    console.log("Estado de autenticação alterado:", user ? "Usuário logado" : "Nenhum usuário logado");
+    currentUser = user;
+    if (user) {
+        document.getElementById('loginContainer').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+        loadInitialData().catch(error => {
+            console.error("Erro ao carregar dados iniciais após login:", error);
+            showNotification("Erro ao carregar dados após login.", true);
+        });
+    } else {
+        document.getElementById('loginContainer').style.display = 'flex';
+        document.getElementById('mainContent').style.display = 'none';
+        loadSavedCredentials();
+    }
+});
+    const autoBackupEnabled = localStorage.getItem('autoBackup') === 'true';
+    if (autoBackupEnabled) {
+        document.getElementById('autoBackupToggle').value = 'true';
+        toggleAutoBackup(true);
+    }
 });
 
 // Configuração de Listeners
@@ -162,7 +334,7 @@ function setupEventListeners() {
         document.getElementById('deleteAllBtn')?.addEventListener('click', () => { openDeleteAllModal(); showNotification('Modal de exclusão aberto!'); });
         document.getElementById('sortFilterBtn')?.addEventListener('click', () => { openSortFilterModal(); showNotification('Modal de filtros aberto!'); });
         document.getElementById('resetBtn')?.addEventListener('click', () => { resetForm(); showNotification('Formulário resetado!'); });
-        document.getElementById('exportExcelBtn')?.addEventListener('click', () => { exportToExcel(); });
+        document.querySelector('.add-medico-btn').addEventListener('click', openMedicoModal); document.getElementById('exportExcelBtn')?.addEventListener('click', () => { exportToExcel(); });
         document.getElementById('clearFiltersBtn')?.addEventListener('click', () => { clearFilters(); showNotification('Filtros limpos!'); });
         document.getElementById('logoutBtn')?.addEventListener('click', () => { logoutUser(); showNotification('Logout solicitado!'); });
         document.getElementById('statusFilterBtn')?.addEventListener('click', () => { scrollToStatusSection(); showNotification('Navegando para seção de status!'); });
@@ -204,7 +376,6 @@ async function loginUser() {
         showNotification('Por favor, preencha email e senha!', true);
         return;
     }
-    console.log("Tentando login com:", { email });
     try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
@@ -220,10 +391,7 @@ async function loginUser() {
 function loadSavedCredentials() {
     try {
         const savedEmail = localStorage.getItem('savedEmail');
-        if (savedEmail) {
-            loginEmail.value = savedEmail;
-            console.log("Email carregado do localStorage:", savedEmail);
-        }
+        if (savedEmail) loginEmail.value = savedEmail;
     } catch (error) {
         console.error('Erro ao carregar credenciais salvas:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar credenciais salvas: ${error.message}`);
@@ -233,7 +401,6 @@ function loadSavedCredentials() {
 async function logoutUser() {
     try {
         await signOut(auth);
-        console.log("Logout realizado com sucesso.");
         showNotification('Logout realizado com sucesso!');
     } catch (error) {
         console.error('Erro ao fazer logout:', error);
@@ -286,11 +453,8 @@ async function saveAppointment(e) {
         };
 
         const index = appointments.findIndex(a => a.id === appointment.id);
-        if (index !== -1) {
-            appointments[index] = appointment;
-        } else {
-            appointments.push(appointment);
-        }
+        if (index !== -1) appointments[index] = appointment;
+        else appointments.push(appointment);
 
         await saveToFirebase('appointments', appointment);
         await saveToIndexedDB('appointments', appointments);
@@ -460,9 +624,7 @@ function renderAppointments(filteredAppointments = appointments) {
                     `;
                     miniCard.addEventListener('dragstart', (e) => { draggedCard = e.target; });
                     miniCard.addEventListener('click', (e) => {
-                        if (!e.target.classList.contains('action-btn')) {
-                            showStatusOptions(appointment.id);
-                        }
+                        if (!e.target.classList.contains('action-btn')) showStatusOptions(appointment.id);
                     });
                     column.appendChild(miniCard);
                 }
@@ -502,7 +664,7 @@ function showMoreDetails(id) {
         detailsModal.className = 'modal';
         detailsModal.innerHTML = `
             <div class="modal-content">
-                <span class="modal-close">&times;</span>
+                <span class="modal-close">×</span>
                 <h3>Detalhes do Agendamento</h3>
                 <p><strong>ID:</strong> ${appointment.id || '-'}</p>
                 <p><strong>Paciente:</strong> ${appointment.nomePaciente || 'Sem Nome'}</p>
@@ -512,7 +674,7 @@ function showMoreDetails(id) {
                 <p><strong>CRM:</strong> ${appointment.localCRM || '-'}</p>
                 <p><strong>Data:</strong> ${appointment.dataConsulta || '-'}</p>
                 <p><strong>Hora:</strong> ${appointment.horaConsulta || '-'}</p>
-                <p><strong>Tipo de Cirurgia:</strong> ${appointment.tipoCirurgia || '-'}</p>
+                <p><strong>Tipo Cirurgia:</strong> ${appointment.tipoCirurgia || '-'}</p>
                 <p><strong>Procedimentos:</strong> ${appointment.procedimentos || '-'}</p>
                 <p><strong>Agendado Por:</strong> ${appointment.agendamentoFeitoPor || '-'}</p>
                 <p><strong>Descrição:</strong> ${appointment.descricao || '-'}</p>
@@ -541,7 +703,7 @@ function showStatusOptions(id) {
         statusModal.className = 'modal';
         statusModal.innerHTML = `
             <div class="modal-content">
-                <span class="modal-close">&times;</span>
+                <span class="modal-close">×</span>
                 <h3>Alterar Status</h3>
                 <button class="action-btn" onclick="updateStatus('${id}', 'Aguardando Atendimento')">Aguardando Atendimento</button>
                 <button class="action-btn" onclick="updateStatus('${id}', 'Atendido')">Atendido</button>
@@ -571,7 +733,7 @@ async function updateStatus(id, newStatus) {
         await saveToFirebase('appointments', appointment);
         await saveToIndexedDB('appointments', appointments);
         renderAppointments();
-        document.querySelector('.modal').remove();
+        document.querySelector('.modal')?.remove();
         showNotification(`Status alterado para ${newStatus}!`);
     }
 }
@@ -901,7 +1063,6 @@ async function backupFirebase() {
 
 async function restoreFirebase() {
     try {
-        console.log("db antes de restaurar:", db);
         const firebaseData = await loadFromFirebase();
         const progressModal = document.getElementById('progressModal');
         const progressFill = document.getElementById('progressFill');
@@ -1282,29 +1443,17 @@ async function saveToIndexedDB(storeName, data) {
         const request = indexedDB.open('AgendaDB', DB_VERSION);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            if (!db.objectStoreNames.contains('appointments')) {
-                db.createObjectStore('appointments', { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains('medicos')) {
-                db.createObjectStore('medicos', { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains('settings')) {
-                db.createObjectStore('settings', { keyPath: 'id' });
-            }
+            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
         };
         request.onsuccess = (event) => {
             const db = event.target.result;
             const tx = db.transaction(storeName, 'readwrite');
             const store = tx.objectStore(storeName);
-            if (Array.isArray(data)) {
-                data.forEach(item => store.put(item));
-            } else {
-                store.put({ id: 'config', ...data });
-            }
-            tx.oncomplete = () => {
-                db.close();
-                resolve();
-            };
+            if (Array.isArray(data)) data.forEach(item => store.put(item));
+            else store.put({ id: 'config', ...data });
+            tx.oncomplete = () => { db.close(); resolve(); };
             tx.onerror = () => reject(tx.error);
         };
         request.onerror = () => reject(request.error);
@@ -1316,15 +1465,9 @@ async function loadFromIndexedDB() {
         const request = indexedDB.open('AgendaDB', DB_VERSION);
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            if (!db.objectStoreNames.contains('appointments')) {
-                db.createObjectStore('appointments', { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains('medicos')) {
-                db.createObjectStore('medicos', { keyPath: 'id' });
-            }
-            if (!db.objectStoreNames.contains('settings')) {
-                db.createObjectStore('settings', { keyPath: 'id' });
-            }
+            if (!db.objectStoreNames.contains('appointments')) db.createObjectStore('appointments', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('medicos')) db.createObjectStore('medicos', { keyPath: 'id' });
+            if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'id' });
         };
         request.onsuccess = (event) => {
             const db = event.target.result;
@@ -1334,18 +1477,12 @@ async function loadFromIndexedDB() {
                 const store = tx.objectStore(storeName);
                 const req = store.getAll();
                 req.onsuccess = () => {
-                    if (storeName === 'settings') {
-                        data[storeName] = req.result.find(item => item.id === 'config') || {};
-                    } else {
-                        data[storeName] = req.result;
-                    }
+                    if (storeName === 'settings') data[storeName] = req.result.find(item => item.id === 'config') || {};
+                    else data[storeName] = req.result;
                 };
                 req.onerror = () => reject(req.error);
             });
-            tx.oncomplete = () => {
-                db.close();
-                resolve(data);
-            };
+            tx.oncomplete = () => { db.close(); resolve(data); };
             tx.onerror = () => reject(tx.error);
         };
         request.onerror = () => reject(request.error);
@@ -1471,8 +1608,43 @@ function generateInsights() {
     `;
 }
 
-// Funções de Configurações
+
+ // Funções de Configurações
 function loadSettingsTab() {
+    settingsCards.innerHTML = `
+        <div class="settings-card">
+            <h3>Tema</h3>
+            <label>Cor de Fundo do Body:</label><input type="color" id="bodyBgColor"><input type="text" id="bodyBgColorHex">
+            <label>Cor de Fundo dos Cards:</label><input type="color" id="cardBgColor"><input type="text" id="cardBgColorHex">
+            <label>Cor do Texto:</label><input type="color" id="textColor"><input type="text" id="textColorHex">
+            <label>Cor da Borda dos Botões:</label><input type="color" id="borderColor"><input type="text" id="borderColorHex">
+            <label>Cor da Borda dos Cards:</label><input type="color" id="cardBorderColor"><input type="text" id="cardBorderColorHex">
+            <label>Cor da Borda dos Formulários:</label><input type="color" id="formBorderColor"><input type="text" id="formBorderColorHex">
+            <button onclick="saveTheme()">Salvar Tema</button>
+            <button onclick="resetTheme()">Resetar Tema</button>
+        </div>
+        <div class="settings-card">
+            <h3>Gerenciamento de Dados</h3>
+            <button onclick="backupLocal()">Backup Local</button>
+            <button onclick="restoreLocal()">Restaurar Local</button>
+            <button onclick="backupFirebase()">Backup Firebase</button>
+            <button onclick="restoreFirebase()">Restaurar Firebase</button>
+            <button onclick="clearIndexedDB()">Limpar IndexedDB</button>
+        </div>
+        <div class="settings-card">
+            <h3>Importação de Dados</h3>
+            <button onclick="importJsonToFirebase()">Importar JSON (Arquivo)</button>
+            <textarea id="backupDescription" placeholder="Cole aqui o JSON para carregar"></textarea>
+            <button onclick="loadJsonToFirebase()">Carregar JSON para Firebase</button>
+            <button onclick="importExcelToFirebase()">Importar Excel</button>
+        </div>
+        <div class="settings-card error-log-card">
+            <h3>Logs de Erros</h3>
+            <ul>${errorLogs.map(log => `<li>${log}</li>`).join('') || '<li>Nenhum erro registrado.</li>'}</ul>
+        </div>
+    `;
+
+    // Carregar valores do tema atual
     document.getElementById('bodyBgColor').value = theme.bodyBgColor || '#f9f9fb';
     document.getElementById('bodyBgColorHex').value = theme.bodyBgColor || '#f9f9fb';
     document.getElementById('cardBgColor').value = theme.cardBgColor || '#ffffff';
@@ -1486,6 +1658,7 @@ function loadSettingsTab() {
     document.getElementById('formBorderColor').value = theme.formBorderColor || '#ced4da';
     document.getElementById('formBorderColorHex').value = theme.formBorderColor || '#ced4da';
 
+    // Adicionar listeners para atualização em tempo real
     ['bodyBgColor', 'cardBgColor', 'textColor', 'borderColor', 'cardBorderColor', 'formBorderColor'].forEach(id => {
         document.getElementById(id).addEventListener('input', () => {
             document.getElementById(`${id}Hex`).value = document.getElementById(id).value;
@@ -1498,7 +1671,7 @@ function loadSettingsTab() {
     });
 }
 
-async function saveTheme() {
+function saveTheme() {
     try {
         theme = {
             bodyBgColor: document.getElementById('bodyBgColor').value,
@@ -1508,24 +1681,30 @@ async function saveTheme() {
             cardBorderColor: document.getElementById('cardBorderColor').value,
             formBorderColor: document.getElementById('formBorderColor').value
         };
-        const settingsData = { currentView, deleteAllPassword, lastSync, theme };
-        await saveToIndexedDB('settings', settingsData);
-        await saveToFirebase('settings', settingsData);
+        saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
         applyTheme();
-        showNotification('Tema salvo com sucesso no Firebase e localmente!');
+        showNotification('Tema salvo com sucesso!');
     } catch (error) {
         console.error('Erro ao salvar tema:', error);
         errorLogs.push(`[${new Date().toISOString()}] Erro ao salvar tema: ${error.message}`);
         showNotification('Erro ao salvar tema: ' + error.message, true);
     }
 }
+
 function resetTheme() {
-    theme = {};
-    saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
-    saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
-    applyTheme();
-    loadSettingsTab();
-    showNotification('Tema restaurado para o padrão!');
+    try {
+        theme = {};
+        saveToIndexedDB('settings', { currentView, deleteAllPassword, lastSync, theme });
+        saveToFirebase('settings', { currentView, deleteAllPassword, lastSync, theme });
+        applyTheme();
+        loadSettingsTab();
+        showNotification('Tema restaurado para o padrão!');
+    } catch (error) {
+        console.error('Erro ao resetar tema:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao resetar tema: ${error.message}`);
+        showNotification('Erro ao resetar tema: ' + error.message, true);
+    }
 }
 
 function applyTheme(newTheme = theme) {
@@ -1543,222 +1722,99 @@ function applyTheme(newTheme = theme) {
     });
 }
 
-// Funções de Exportação e Impressão
-function exportToExcel() {
-    const worksheet = XLSX.utils.json_to_sheet(appointments);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Agendamentos');
-    XLSX.writeFile(workbook, `agendamentos_${new Date().toISOString().split('T')[0]}.xlsx`);
-    showNotification('Exportação para Excel concluída!');
+// Função para limpar IndexedDB (adicionada conforme sua estrutura original)
+async function clearIndexedDB() {
+    try {
+        const request = indexedDB.deleteDatabase('AgendaDB');
+        request.onsuccess = () => {
+            appointments = [];
+            medicos = [];
+            theme = {};
+            lastSync = 0;
+            renderAppointments();
+            updateMedicosList();
+            loadSettingsTab();
+            showNotification('IndexedDB limpo com sucesso!');
+        };
+        request.onerror = () => {
+            throw new Error('Erro ao limpar IndexedDB');
+        };
+    } catch (error) {
+        console.error('Erro ao limpar IndexedDB:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao limpar IndexedDB: ${error.message}`);
+        showNotification('Erro ao limpar IndexedDB: ' + error.message, true);
+    }
 }
 
-
-function printAppointments() {
+// Função loadJsonToFirebase (assumindo que era sua intenção, já que estava nos botões)
+async function loadJsonToFirebase() {
     try {
-        const printWindow = window.open('', '_blank', 'width=800,height=600');
-        const status = statusFilter.value;
-        let filteredAppointments = status === 'all' ? appointments : appointments.filter(a => a.status === status);
-        const start = (currentPage - 1) * itemsPerPage;
-        const end = start + itemsPerPage;
-        const paginatedData = filteredAppointments.slice(start, end);
-
-        // Estilo CSS para impressão
-        const printStyles = `
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    margin: 20px;
-                    color: #333;
-                }
-                h1 {
-                    text-align: center;
-                    font-size: 24px;
-                    margin-bottom: 20px;
-                }
-                /* Estilos para tabela */
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 20px;
-                }
-                th, td {
-                    border: 1px solid #ccc;
-                    padding: 8px;
-                    text-align: left;
-                    font-size: 14px;
-                }
-                th {
-                    background-color: #f2f2f2;
-                    font-weight: bold;
-                }
-                /* Estilos para grid */
-                .print-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                    gap: 15px;
-                }
-                .card {
-                    border: 1px solid #ccc;
-                    padding: 10px;
-                    page-break-inside: avoid;
-                }
-                .card h4 {
-                    font-size: 16px;
-                    margin-bottom: 8px;
-                }
-                .card p {
-                    font-size: 12px;
-                    margin: 4px 0;
-                }
-                .footer {
-                    text-align: center;
-                    font-size: 12px;
-                    color: #666;
-                    margin-top: 20px;
-                }
-                .no-print {
-                    display: none;
-                }
-                @media print {
-                    .no-print {
-                        display: none !important;
-                    }
-                }
-            </style>
-        `;
-
-        // Conteúdo para impressão baseado na visualização atual
-        let content = '';
+        const jsonText = document.getElementById('backupDescription').value.trim();
+        if (!jsonText) {
+            showNotification('Por favor, insira um JSON válido!', true);
+            return;
+        }
         
-        if (currentView === 'grid') {
-            // Impressão em formato de cards (grid)
-            content = '<div class="print-grid">';
-            paginatedData.forEach(appointment => {
-                content += `
-                    <div class="card">
-                        <h4>${appointment.nomePaciente || 'Sem Nome'}</h4>
-                        <p>ID: ${appointment.id || '-'}</p>
-                        <p>Telefone: ${appointment.telefone || '-'}</p>
-                        <p>Email: ${appointment.email || '-'}</p>
-                        <p>Médico: ${appointment.nomeMedico || '-'}</p>
-                        <p>CRM: ${appointment.localCRM || '-'}</p>
-                        <p>Data: ${appointment.dataConsulta || '-'}</p>
-                        <p>Hora: ${appointment.horaConsulta || '-'}</p>
-                        <p>Tipo Cirurgia: ${appointment.tipoCirurgia || '-'}</p>
-                        <p>Procedimentos: ${appointment.procedimentos || '-'}</p>
-                        <p>Agendado Por: ${appointment.agendamentoFeitoPor || '-'}</p>
-                        <p>Descrição: ${appointment.descricao || '-'}</p>
-                        <p>Status: ${appointment.status || '-'}</p>
-                    </div>
-                `;
-            });
-            content += '</div>';
-        } else {
-            // Impressão em formato de tabela (list/pipeline)
-            content = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Paciente</th>
-                            <th>Telefone</th>
-                            <th>Email</th>
-                            <th>Médico</th>
-                            <th>CRM</th>
-                            <th>Data</th>
-                            <th>Hora</th>
-                            <th>Tipo Cirurgia</th>
-                            <th>Procedimentos</th>
-                            <th>Agendado Por</th>
-                            <th>Descrição</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            paginatedData.forEach(appointment => {
-                content += `
-                    <tr>
-                        <td>${appointment.id || '-'}</td>
-                        <td>${appointment.nomePaciente || '-'}</td>
-                        <td>${appointment.telefone || '-'}</td>
-                        <td>${appointment.email || '-'}</td>
-                        <td>${appointment.nomeMedico || '-'}</td>
-                        <td>${appointment.localCRM || '-'}</td>
-                        <td>${appointment.dataConsulta || '-'}</td>
-                        <td>${appointment.horaConsulta || '-'}</td>
-                        <td>${appointment.tipoCirurgia || '-'}</td>
-                        <td>${appointment.procedimentos || '-'}</td>
-                        <td>${appointment.agendamentoFeitoPor || '-'}</td>
-                        <td>${appointment.descricao || '-'}</td>
-                        <td>${appointment.status || '-'}</td>
-                    </tr>
-                `;
-            });
-            content += `
-                    </tbody>
-                </table>
-            `;
+        const jsonData = JSON.parse(jsonText);
+        if (!jsonData.appointments || !Array.isArray(jsonData.appointments)) {
+            throw new Error('O JSON deve conter uma propriedade "appointments" com um array válido.');
         }
 
-        // Montar o documento completo
-        const printDocument = `
-            <html>
-                <head>
-                    <title>Relatório de Agendamentos - Agenda Única</title>
-                    ${printStyles}
-                </head>
-                <body>
-                    <h1>Relatório de Agendamentos</h1>
-                    <p>Data do Relatório: ${new Date().toLocaleString()}</p>
-                    <p>Total de Agendamentos: ${paginatedData.length} (Página ${currentPage} de ${totalPages})</p>
-                    ${content}
-                    <div class="footer">
-                        Gerado por Agenda Única - ${new Date().getFullYear()}
-                    </div>
-                </body>
-            </html>
-        `;
+        const progressModal = document.getElementById('progressModal');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        progressModal.style.display = 'block';
 
-        // Escrever o conteúdo na janela de impressão
-        printWindow.document.open();
-        printWindow.document.write(printDocument);
-        printWindow.document.close();
+        let processed = 0;
+        const total = jsonData.appointments.length;
 
-        // Aguardar o carregamento e imprimir
-        printWindow.onload = () => {
-            printWindow.focus();
-            printWindow.print();
-            printWindow.close();
-        };
+        for (const app of jsonData.appointments) {
+            const appointment = {
+                id: app.id || Date.now().toString(),
+                nomePaciente: app.nomePaciente || 'Paciente Sem Nome',
+                telefone: app.telefone || '',
+                email: app.email || '',
+                nomeMedico: app.nomeMedico || '',
+                localCRM: app.localCRM || '',
+                dataConsulta: app.dataConsulta || '',
+                horaConsulta: app.horaConsulta || '',
+                tipoCirurgia: app.tipoCirurgia || '',
+                procedimentos: app.procedimentos || '',
+                agendamentoFeitoPor: app.agendamentoFeitoPor || '',
+                descricao: app.descricao || '',
+                status: app.status || 'Aguardando Atendimento'
+            };
+            await saveToFirebase('appointments', appointment);
+            processed++;
+            const percentage = Math.round((processed / total) * 100);
+            progressFill.style.width = `${percentage}%`;
+            progressText.textContent = `${percentage}%`;
+        }
 
-        showNotification('Imprimindo agendamentos...');
+        appointments = [...appointments, ...jsonData.appointments];
+        await saveToIndexedDB('appointments', appointments);
+        renderAppointments();
+        progressModal.style.display = 'none';
+        showNotification('JSON carregado para Firebase com sucesso!');
+        document.getElementById('backupDescription').value = '';
     } catch (error) {
-        console.error('Erro ao imprimir agendamentos:', error);
-        errorLogs.push(`[${new Date().toISOString()}] Erro ao imprimir agendamentos: ${error.message}`);
-        showNotification('Erro ao imprimir: ' + error.message, true);
+        console.error('Erro ao carregar JSON para Firebase:', error);
+        errorLogs.push(`[${new Date().toISOString()}] Erro ao carregar JSON para Firebase: ${error.message}`);
+        showNotification('Erro ao carregar JSON: ' + error.message, true);
     }
 }
-
-// Funções de Notificação
+// Função de notificação
 function showNotification(message, isError = false) {
-    if (notification) {
-        notification.textContent = message;
-        notification.className = `notification ${isError ? 'error' : 'success'}`;
-        notification.style.display = 'block';
-        setTimeout(() => {
-            notification.style.display = 'none';
-        }, 3000);
-    }
+    if (!notification) return;
+    notification.textContent = message;
+    notification.className = isError ? 'notification error' : 'notification success';
+    notification.style.display = 'block';
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
 }
 
-// Funções de Navegação
-function scrollToStatusSection() {
-    const section = document.getElementById('pipelineView');
-    if (section) section.scrollIntoView({ behavior: 'smooth' });
-}
-
-// Funções de Limpeza
+// Função para limpar filtros
 function clearFilters() {
     statusFilter.value = 'all';
     document.getElementById('globalSearch').value = '';
@@ -1766,13 +1822,20 @@ function clearFilters() {
     renderAppointments();
 }
 
-// Tornar funções globais disponíveis
+// Função para rolar até a seção de status
+function scrollToStatusSection() {
+    document.getElementById('statusFilter').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Funções globais para eventos de botões (necessárias para os botões inline)
 window.editAppointment = editAppointment;
 window.viewAppointment = viewAppointment;
 window.shareAppointment = shareAppointment;
 window.deleteAppointment = deleteAppointment;
-window.saveMedico = saveMedico;
+window.showMoreDetails = showMoreDetails;
+window.updateStatus = updateStatus;
 window.deleteMedico = deleteMedico;
+window.saveMedico = saveMedico;
 window.confirmDeleteAll = confirmDeleteAll;
 window.applySortFilter = applySortFilter;
 window.moveCard = moveCard;
@@ -1785,10 +1848,5 @@ window.restoreFirebase = restoreFirebase;
 window.importJsonToFirebase = importJsonToFirebase;
 window.importExcelToFirebase = importExcelToFirebase;
 window.saveJsonToFirebase = saveJsonToFirebase;
-window.resetTheme = resetTheme;
-window.showMoreDetails = showMoreDetails;
-window.showStatusOptions = showStatusOptions;
-window.updateStatus = updateStatus;
-window.saveTheme = saveTheme;
 
-console.log("Aplicação carregada com sucesso!");
+console.log("Script carregado com sucesso!");
