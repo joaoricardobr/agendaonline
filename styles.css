@@ -801,7 +801,9 @@ footer a:hover {
     background-color: #007bff;
     transition: width 0.3s ease-in-out;
 }
-
+.card input[type="checkbox"] {
+    margin-bottom: 10px;
+}
 /* Responsividade */
 @media (max-width: 768px) {
     .form-grid { grid-template-columns: 1fr; }
