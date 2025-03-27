@@ -1,4 +1,3 @@
-
 /* Reset e Configurações Globais */
 * {
     margin: 0;
@@ -660,80 +659,6 @@ button:hover {
 }
 
 /* Configurações e Rodapé */
-
-
-
-
-
-
-
-
-/* Configurações e Insights */
-.settings-cards, .insights-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
-}
-
-.settings-card, .insights-card {
-    background-color: #ffffff; /* Padrão, alterado via applyTheme (cardBgColor) */
-    border: 1px solid #d1d3e2; /* Padrão, alterado via applyTheme (cardBorderColor) */
-    padding: 15px;
-    border-radius: 8px;
-    transition: background-color 0.3s, border-color 0.3s;
-}
-
-.settings-card input[type="color"] {
-    width: 50px;
-    height: 30px;
-    vertical-align: middle;
-    border: none;
-    padding: 0;
-}
-
-.settings-card input[type="text"] {
-    width: 100px;
-    margin-left: 10px;
-    padding: 5px;
-    border: 1px solid #ced4da; /* Padrão, alterado via applyTheme (formBorderColor) */
-    border-radius: 4px;
-    transition: border-color 0.3s;
-}
-
-.settings-card label {
-    display: block;
-    margin-top: 10px;
-    margin-bottom: 5px;
-}
-
-.settings-card button {
-    margin-top: 10px;
-    padding: 8px 16px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.settings-card button:hover {
-    background-color: #0056b3;
-}
-
-.error-log-card ul {
-    max-height: 200px;
-    overflow-y: auto;
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.error-log-card li {
-    padding: 5px 0;
-    border-bottom: 1px solid #e9ecef;
-}
-
 footer {
     text-align: center;
     padding: 20px;
@@ -861,24 +786,6 @@ footer a:hover {
     background: #f0f4f8;
 }
 
-.progress-bar {
-    width: 100%;
-    height: 20px;
-    background-color: #f0f4f8;
-    border-radius: 10px;
-    overflow: hidden;
-    margin: 10px 0;
-}
-
-.progress-fill {
-    width: 0%;
-    height: 100%;
-    background-color: #007bff;
-    transition: width 0.3s ease-in-out;
-}
-.card input[type="checkbox"] {
-    margin-bottom: 10px;
-}
 /* Responsividade */
 @media (max-width: 768px) {
     .form-grid { grid-template-columns: 1fr; }
@@ -888,13 +795,3 @@ footer a:hover {
     .modal-content { width: 90%; }
     .pagination-controls { flex-direction: column; gap: 10px; }
 }
-
-
-
-
-
-
-
-
-
-
