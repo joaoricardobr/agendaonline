@@ -29,6 +29,7 @@
         </div>
     </div>
 
+ 
     <!-- Conteúdo Principal -->
     <div id="mainContent" style="display: none;">
         <div class="container">
@@ -136,22 +137,19 @@
                 </form>
             </div>
 
-            <!-- Controles e Filtros com Barra de Busca -->
+            <!-- Controles e Filtros -->
             <div class="search-card">
                 <div class="header-controls">
                     <button class="control-btn" id="allBtn" data-tooltip="Todos"><i class="fas fa-list-ul"></i> Todos</button>
                     <button class="control-btn" id="reportsBtn" data-tooltip="Relatórios"><i class="fas fa-chart-bar"></i> Relatórios</button>
                     <button class="control-btn" id="insightsBtn" data-tooltip="Insights"><i class="fas fa-lightbulb"></i> Insights</button>
-                    <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Configurações</button>
                     <button class="control-btn" id="printBtn" data-tooltip="Imprimir"><i class="fas fa-print"></i> Imprimir</button>
                     <button class="control-btn" id="statusFilterBtn" data-tooltip="Status"><i class="fas fa-filter"></i> Status</button>
                     <button class="control-btn" id="sortFilterBtn" data-tooltip="Filtros Avançados"><i class="fas fa-sliders-h"></i> Filtros</button>
                     <button class="control-btn" id="clearFiltersBtn" data-tooltip="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
+                    <button class="control-btn" id="settingsBtn" data-tooltip="Configurações"><i class="fas fa-cog"></i> Configurações</button>
                     <button class="control-btn delete-all-btn" id="deleteAllBtn" data-tooltip="Excluir Todos"><i class="fas fa-trash-alt"></i> Excluir Tudo</button>
-                </div>
-                <!-- Barra de Busca Global -->
-                <div class="search-bar" style="margin-top: 15px; width: 100%;">
-                    <input type="text" id="globalSearch" placeholder="Busca global (pacientes, médicos, telefones, etc.)" style="width: 100%; padding: 12px; border-radius: 10px; border: 1.5px solid #ced4da; font-size: 15px;">
+                    <button class="control-btn" id="clearIndexedDBBtn" data-tooltip="Limpar IndexedDB"><i class="fas fa-trash-restore"></i> Limpar IndexedDB</button>
                 </div>
             </div>
 
@@ -235,7 +233,6 @@
                             <option value="10" selected>10 por página</option>
                             <option value="20">20 por página</option>
                             <option value="50">50 por página</option>
-                            <option value="100">100 por página</option>
                         </select>
                     </div>
                 </div>
@@ -306,75 +303,6 @@
                 <div id="insightsTab" class="tab-content" style="display: none;">
                     <h2>Insights</h2>
                     <div id="insightsCards" class="grid-view" style="display: grid;"></div>
-                </div>
-
-                <!-- Aba "Configurações" -->
-                <div id="settingsTab" class="tab-content" style="display: none;">
-                    <h2>Configurações</h2>
-                    <div id="settingsCards" class="grid-view" style="display: grid;">
-                        <div class="card">
-                            <h4><i class="fas fa-paint-brush"></i> Personalizar Tema</h4>
-                            <div class="form-group">
-                                <label>Cor de Fundo do Body</label>
-                                <input type="color" id="bodyBgColor" value="#f9f9fb">
-                                <input type="text" id="bodyBgColorHex" value="#f9f9fb">
-                            </div>
-                            <div class="form-group">
-                                <label>Cor de Fundo dos Cards</label>
-                                <input type="color" id="cardBgColor" value="#ffffff">
-                                <input type="text" id="cardBgColorHex" value="#ffffff">
-                            </div>
-                            <div class="form-group">
-                                <label>Cor do Texto</label>
-                                <input type="color" id="textColor" value="#343a40">
-                                <input type="text" id="textColorHex" value="#343a40">
-                            </div>
-                            <div class="form-group">
-                                <label>Cor da Borda dos Botões</label>
-                                <input type="color" id="borderColor" value="#007bff">
-                                <input type="text" id="borderColorHex" value="#007bff">
-                            </div>
-                            <div class="form-group">
-                                <label>Cor da Borda dos Cards</label>
-                                <input type="color" id="cardBorderColor" value="#d1d3e2">
-                                <input type="text" id="cardBorderColorHex" value="#d1d3e2">
-                            </div>
-                            <div class="form-group">
-                                <label>Cor da Borda dos Formulários</label>
-                                <input type="color" id="formBorderColor" value="#ced4da">
-                                <input type="text" id="formBorderColorHex" value="#ced4da">
-                            </div>
-                            <div class="modal-buttons">
-                                <button onclick="saveTheme()">Salvar Tema</button>
-                                <button onclick="resetTheme()">Restaurar Padrão</button>
-                            </div>
-                        </div>
-                        <!-- Novo Card de Backups -->
-                        <div class="card">
-                            <h4><i class="fas fa-database"></i> Sistema de Backups</h4>
-                            <p>Gerencie backups automáticos e manuais:</p>
-                            <div class="form-group">
-                                <label>Backup Automático (a cada 4h)</label>
-                                <select id="autoBackupToggle">
-                                    <option value="true">Ativado</option>
-                                    <option value="false">Desativado</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Descrição de Backup (JSON/TXT)</label>
-                                <textarea id="backupDescription" placeholder="Cole aqui o código JSON para importar"></textarea>
-                            </div>
-                            <div class="modal-buttons">
-                              <button onclick="saveJsonToFirebase()">Salvar no Firebase</button>
-                                <button onclick="backupLocal()">Backup Local</button>
-                                <button onclick="restoreLocal()">Restaurar Local</button>
-                                <button onclick="backupFirebase()">Backup Firebase</button>
-                                <button onclick="restoreFirebase()">Restaurar Firebase</button>
-                                <button onclick="importJsonToFirebase()">Importar JSON</button>
-                                <button onclick="importExcelToFirebase()">Importar Excel</button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -459,16 +387,49 @@
                 </div>
             </div>
 
-            <div id="progressModal" class="modal" style="display: none;">
+            <div class="modal" id="settingsModal">
                 <div class="modal-content">
-                    <h3>Processando...</h3>
-                    <div id="progressBar" style="width: 100%; height: 20px; background-color: #e0e0e0; border-radius: 5px; overflow: hidden;">
-                        <div id="progressFill" style="width: 0%; height: 100%; background-color: #4caf50; transition: width 0.3s;"></div>
+                    <span class="modal-close">×</span>
+                    <h4><i class="fas fa-cog"></i> Configurações</h4>
+                    <div class="modal-form">
+                        <div class="form-group">
+                            <label>Fundo do Site</label>
+                            <input type="color" id="bodyBgColor" value="#f9f9fb">
+                            <input type="text" id="bodyBgHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="form-group">
+                            <label>Fundo dos Cards</label>
+                            <input type="color" id="cardBgColor" value="#ffffff">
+                            <input type="text" id="cardBgHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="form-group">
+                            <label>Texto</label>
+                            <input type="color" id="textColor" value="#343a40">
+                            <input type="text" id="textHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="form-group">
+                            <label>Bordas</label>
+                            <input type="color" id="borderColor" value="#007bff">
+                            <input type="text" id="borderHex" placeholder="Hex (#xxxxxx)">
+                        </div>
+                        <div class="modal-buttons">
+                            <button id="saveTheme">Salvar Tema</button>
+                            <button id="resetTheme">Restaurar Tema</button>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha para Excluir</label>
+                            <input type="password" id="deleteAllPassword">
+                            <button id="saveDeletePasswordBtn" onclick="saveDeletePassword()">Salvar</button>
+                        </div>
+                        <div class="modal-buttons">
+                            <button onclick="backupLocal()">Backup JSON</button>
+                            <button onclick="restoreLocal()">Restaurar JSON</button>
+                            <button onclick="backupFirebase()">Backup Firebase</button>
+                            <button onclick="restoreFirebase()">Restaurar Firebase</button>
+                        </div>
                     </div>
-                    <p id="progressText">0%</p>
                 </div>
             </div>
-            
 
             <!-- Notificação -->
             <div class="notification" id="notification"></div>
