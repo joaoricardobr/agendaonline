@@ -1,105 +1,1735 @@
+
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizador de Dados Cloud (Online/Offline)</title>
-    <!-- Styling is kept similar to the previous version -->
+    <title>LifeCare - Painel Funcional Completo</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SortableJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+    <!-- SUPABASE SDK - Posicionado no <head> -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
-        /* --- Base Variables & Reset --- */
         :root {
-            --color-primary-dark: #004080; --color-primary: #0056b3; --color-primary-light: #e6f0ff;
-            --color-accent: #198754; --color-accent-light: #d1e7dd;
-            --color-secondary: #6c757d; --color-secondary-light: #f8f9fa;
-            --color-border: #dee2e6; --color-background: #fbfdff;
-            --color-surface: #ffffff; --color-text: #212529; --color-text-muted: #6c757d;
-            --font-family-base: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            --spacing-xs: 0.25rem; --spacing-sm: 0.5rem; --spacing-md: 1rem; --spacing-lg: 1.5rem;
-            --border-radius-sm: 0.25rem; --border-radius-md: 0.375rem;
-            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05); --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-            --transition-speed: 0.2s; --max-width: 1700px; --grid-card-min-width: 300px;
-            --controls-height: 65px;
+            --primary-bg: #ffffff;
+            --secondary-bg: #f4f7fc;
+            --sidebar-bg: #ffffff;
+            --widget-bg: #ffffff;
+            --toolbar-bg: #ffffff;
+            --accent-color: #2C57A8; /* Será atualizado pelo appConfig */
+            --accent-text-color: #ffffff;
+            --text-primary: #333740;
+            --text-secondary: #6c757d;
+            --border-color: #dde2eb;
+            --hover-bg-light: #e9f0ff;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --positive-color: #28a745;
+            --negative-color: #dc3545;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --mobile-breakpoint: 768px;
+            --sidebar-width: 260px;
+            --sidebar-width-collapsed: 70px;
+            --base-padding: 15px;
+            --widget-padding: 20px;
+            --border-radius: 8px;
+            --transition-speed: 0.3s;
         }
-        *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: var(--font-family-base); margin: 0; padding: 0; background-color: var(--color-background); color: var(--color-text); line-height: 1.5; }
-        a { color: var(--color-primary); text-decoration: none; transition: color var(--transition-speed) ease; }
-        a:hover { color: var(--color-primary-dark); }
-        button { cursor: pointer; font-family: inherit; border: none; background: none; padding: 0; color: inherit;}
-        input, select { font-size: 0.9rem; border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); padding: 0 var(--spacing-md); transition: all var(--transition-speed) ease; background-color: var(--color-surface); height: 38px; }
-        input:focus, select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); }
-        label { font-weight: 500; margin-right: var(--spacing-sm); font-size: 0.85rem; color: var(--color-text-muted); white-space: nowrap; }
-        svg.icon { width: 1.1em; height: 1.1em; display: inline-block; vertical-align: -0.15em; fill: currentColor; }
-        .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
 
-        /* Layout, Controls, Buttons, Data Views, Pagination, Actions - STYLES FROM PREVIOUS VERSION */
-        .main-container { max-width: var(--max-width); margin: 0 auto; padding: 0 var(--spacing-md) var(--spacing-lg); }
-        .controls-container { position: sticky; top: 0; background: rgba(255, 255, 255, 0.98); backdrop-filter: saturate(180%) blur(6px); padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); z-index: 1000; display: flex; flex-wrap: wrap; gap: var(--spacing-md); align-items: center; min-height: var(--controls-height); }
-        .data-wrapper { margin-top: var(--spacing-lg); position: relative; min-height: 200px; /* Min height to show empty message */ }
-        .pagination-container { position: sticky; bottom: 0; background: rgba(255, 255, 255, 0.98); backdrop-filter: saturate(180%) blur(6px); padding: var(--spacing-sm) var(--spacing-md); margin-top: var(--spacing-lg); border-top: 1px solid var(--color-border); z-index: 950; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: var(--spacing-sm); }
-        .action-buttons-container { position: fixed; bottom: var(--spacing-md); right: var(--spacing-md); z-index: 1000; display: flex; gap: var(--spacing-sm); }
-        .control-group { display: flex; align-items: center; gap: var(--spacing-sm); }
-        .controls-container input[type="text"] { min-width: 220px; flex-grow: 1;}
-        .controls-container select { min-width: 160px; background-color: white; }
-        .import-group input[type="file"] { width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1;}
-        .import-group .file-upload-label { display: inline-flex; align-items: center; }
-        #importStatus { font-size: 0.8em; color: var(--color-text-muted); margin-left: var(--spacing-sm); white-space: nowrap; }
-        .view-controls { margin-left: auto; }
-        .alphabet-filter-container { padding: var(--spacing-sm) var(--spacing-md); background-color: var(--color-secondary-light); border-radius: var(--border-radius-md); margin-top: var(--spacing-md); border: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 2px; justify-content: center;}
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-sm); padding: 0 var(--spacing-md); border-radius: var(--border-radius-sm); font-size: 0.9rem; font-weight: 500; line-height: 1.5; border: 1px solid transparent; transition: all var(--transition-speed) ease; white-space: nowrap; height: 38px; }
-        .btn:hover { transform: translateY(-1px); }
-        .btn-primary { background-color: var(--color-primary); color: white; border-color: var(--color-primary); } .btn-primary:hover { background-color: var(--color-primary-dark); border-color: var(--color-primary-dark); box-shadow: var(--shadow-sm); }
-        .btn-secondary { background-color: var(--color-secondary); color: white; border-color: var(--color-secondary); } .btn-secondary:hover { background-color: #5a6268; border-color: #545b62; box-shadow: var(--shadow-sm); }
-        .btn-accent { background-color: var(--color-accent); color: white; border-color: var(--color-accent); } .btn-accent:hover { background-color: #157347; border-color: #146c43; box-shadow: var(--shadow-sm); }
-        .btn-outline { background-color: transparent; color: var(--color-secondary); border-color: var(--color-border); } .btn-outline:hover { background-color: var(--color-secondary-light); color: var(--color-text); border-color: #ced4da;}
-        .btn-outline.active { background-color: var(--color-primary-light); color: var(--color-primary); border-color: var(--color-primary); font-weight: 600;}
-        .btn-icon { padding: var(--spacing-sm); line-height: 1; width: 38px; height: 38px;}
-        .btn-alpha { padding: 0; width: 28px; height: 28px; font-size: 0.8rem; border-radius: 50%; border: 1px solid var(--color-border); background-color: var(--color-surface); color: var(--color-text-muted); } .btn-alpha:hover { background-color: var(--color-secondary-light); border-color: #ced4da; color: var(--color-text); } .btn-alpha.active { background-color: var(--color-primary); color: white; border-color: var(--color-primary); font-weight: bold;}
-        .dropdown { position: relative; display: inline-block; }
-        .dropdown-content { display: none; position: absolute; background-color: var(--color-surface); min-width: 160px; box-shadow: var(--shadow-md); border-radius: var(--border-radius-sm); border: 1px solid var(--color-border); z-index: 10; right: 0; bottom: 100%; margin-bottom: var(--spacing-xs); }
-        .dropdown-content button { color: var(--color-text); padding: var(--spacing-sm) var(--spacing-md); text-decoration: none; display: flex; align-items: center; gap: var(--spacing-sm); width: 100%; text-align: left; font-size: 0.9rem; background: none; border: none; }
-        .dropdown-content button:hover { background-color: var(--color-secondary-light); }
-        .dropdown:hover .dropdown-content { display: block; }
-        .data-header, .data-row { transition: background-color var(--transition-speed) ease; }
-        .data-row.marked { background-color: var(--color-accent-light) !important; }
-        .empty-data-message { text-align: center; padding: var(--spacing-lg) var(--spacing-md); color: var(--color-text-muted); background-color: var(--color-secondary-light); border: 1px dashed var(--color-border); border-radius: var(--border-radius-md); margin-top: var(--spacing-md); }
-        .data-wrapper.view-list { border: 1px solid var(--color-border); border-radius: var(--border-radius-md); overflow: hidden; background-color: var(--color-surface); box-shadow: var(--shadow-sm); }
-        .data-wrapper.view-list .data-header { display: flex; font-weight: 600; background-color: var(--color-secondary-light); padding: var(--spacing-sm) var(--spacing-md); position: sticky; top: var(--controls-height); z-index: 900; border-bottom: 2px solid var(--color-border); }
-        .data-wrapper.view-list .data-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--color-border); cursor: pointer; } .data-wrapper.view-list .data-row:last-child { border-bottom: none; } .data-wrapper.view-list .data-row:hover:not(.marked) { background-color: #f8f9fa; }
-        .data-wrapper.view-list .data-column { padding: var(--spacing-sm) var(--spacing-md); flex: 1; min-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; font-size: 0.9rem; border-right: 1px solid #eff2f5; } .data-wrapper.view-list .data-column:last-child { border-right: none; } .data-wrapper.view-list .col-flex-05 { flex: 0 0 50px; min-width: 50px; justify-content: center; } .data-wrapper.view-list .col-flex-1 { flex: 1 1 15%; min-width: 110px;} .data-wrapper.view-list .col-flex-2 { flex: 1 1 25%; min-width: 160px;} .data-wrapper.view-list .col-flex-3 { flex: 1 1 35%; min-width: 200px;} .data-wrapper.view-list .col-wrap { white-space: normal; } .data-wrapper.view-list .col-marker { padding: var(--spacing-sm); } .data-wrapper.view-list .data-column input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--color-primary); }
-        .data-wrapper.view-grid { display: grid; gap: var(--spacing-lg); grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--grid-card-min-width)), 1fr)); }
-        .data-wrapper.view-grid .data-header { display: none; }
-        .data-wrapper.view-grid .data-row { display: flex; flex-direction: column; background-color: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--border-radius-md); padding: var(--spacing-md); box-shadow: var(--shadow-md); transition: all var(--transition-speed) ease; position: relative; cursor: pointer; overflow: hidden; } .data-wrapper.view-grid .data-row:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0, 0, 0, 0.08); border-color: var(--color-primary-light);} .data-wrapper.view-grid .data-row.marked { border-top: 4px solid var(--color-accent); padding-top: calc(var(--spacing-md) - 4px); background-color: var(--color-accent-light) !important;}
-        .data-wrapper.view-grid .data-column { display: block; padding: var(--spacing-xs) 0; font-size: 0.9rem; line-height: 1.5; word-wrap: break-word; } .data-wrapper.view-grid .data-column::before { content: attr(data-label) ": "; font-weight: 600; color: var(--color-text-muted); display: block; margin-bottom: 2px; font-size: 0.8rem; text-transform: uppercase; } .data-wrapper.view-grid .col-marker { position: absolute; top: var(--spacing-sm); right: var(--spacing-sm); padding: 0 !important; } .data-wrapper.view-grid .col-marker::before { display: none; } .data-wrapper.view-grid .data-column input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--color-primary); } .data-wrapper.view-grid .data-column a { display: inline-block; word-break: break-all;}
-        .pagination-btn { font-size: 0.85rem; padding: var(--spacing-xs) var(--spacing-sm); height: 32px;}
-        .pagination-info { font-size: 0.85rem; color: var(--color-text-muted); margin: 0 var(--spacing-md); white-space: nowrap;}
-        @media (max-width: 992px) { .controls-container { gap: var(--spacing-sm) var(--spacing-md); } .controls-container input[type="text"] { min-width: 180px; } .view-controls { margin-left: 0; } }
-        @media (max-width: 768px) { body { padding-bottom: 70px; } .main-container { padding: 0 var(--spacing-sm) var(--spacing-lg); } .controls-container { padding: var(--spacing-sm); } .control-group { flex-basis: 48%; } .import-group { flex-basis: 100%; } .view-controls { flex-basis: 100%; justify-content: flex-end; margin-top: var(--spacing-sm);} .pagination-container { padding: var(--spacing-xs) var(--spacing-sm); } .pagination-btn, .pagination-info { font-size: 0.8rem; } .action-buttons-container { bottom: var(--spacing-sm); right: var(--spacing-sm); gap: var(--spacing-xs);} .btn { font-size: 0.85rem; height: 36px; padding: var(--spacing-xs) var(--spacing-sm); } .btn-icon { width: 36px; height: 36px; } .dropdown-content { bottom: calc(100% + 4px); } :root { --grid-card-min-width: 280px; } }
+        /* Estilos para formulários de cadastro */
+        .form-container { background-color: var(--widget-bg); padding: var(--widget-padding); border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: 0 2px 4px var(--shadow-color); margin-bottom: 20px; }
+        .form-container h4 { font-size: 1.2em; color: var(--accent-color); margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .form-section-title { font-size: 1em; font-weight: 600; color: var(--text-primary); margin-top: 20px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed var(--border-color); }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px 20px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { margin-bottom: 6px; font-weight: 500; color: var(--text-primary); font-size: 0.9em; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; }
+        .form-group textarea { min-height: 100px; }
+        .form-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        .form-actions .btn-cancel { background-color: var(--text-secondary); color: white; }
+        .form-actions .btn-cancel:hover { background-color: #5a6268; }
 
-        /* Print Styles */
-        @media print {
-             :root { --shadow-sm: none; --shadow-md: none; --color-primary: #000; --color-accent-light: #f0f0f0; /* etc. */ }
-             body { margin: 1cm; padding: 0; font-size: 9pt; color: black; background: white; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;}
-             .main-container, .controls-container, .pagination-container, .action-buttons-container, .view-controls, .alphabet-filter-container { display: none !important; }
-             main, .data-wrapper { display: block !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; background: none !important;}
-             .empty-data-message { display: none !important; }
-             body.printing-all .data-row { display: flex !important; page-break-inside: avoid !important; margin-bottom: 0 !important; border-bottom: 1px solid #ccc !important; border-radius: 0 !important; box-shadow: none !important; border-top: none !important; padding: 3px 4px !important; flex-direction: row !important; }
-             body.printing-all .data-wrapper.view-grid .data-column { display: flex !important; } body.printing-all .data-wrapper .data-column::before { display: none !important; }
-             .data-header { display: flex !important; position: static !important; background: #eee !important; border-bottom: 2px solid #000 !important; padding: 4px !important; font-weight: bold !important; border-radius: 0 !important; }
-             .data-row { page-break-inside: avoid !important; }
-             .data-column { padding: 2px 4px !important; font-size: 9pt !important; white-space: normal !important; flex: 1; align-items: flex-start !important; overflow: visible !important; border-right: 1px solid #ddd !important; } .data-column:last-child { border-right: none !important; } .data-column.col-flex-05 { display: none !important; } .data-column.col-flex-1 { flex: 1 1 15%; } .data-column.col-flex-2 { flex: 1 1 25%; } .data-column.col-flex-3 { flex: 1 1 35%; } .data-column::before { display: none !important; } .data-column a { color: #000 !important; text-decoration: none !important; } .data-column a[href^="tel:"]::after { content: " (" attr(data-phone) ")"; font-size: 0.9em; } .data-column a:not([href^="tel:"])::after { content: " (" attr(href) ")"; font-size: 0.85em; color: #555; word-break: break-all;} .data-column a > *:not(::after) { display: none; }
-             @page { margin: 1cm; }
-         }
+        /* Estilos para abas */
+        .nav-pills { display: flex; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+        .nav-pills .nav-item { margin-right: 5px; }
+        .nav-pills .nav-link { padding: 10px 15px; color: var(--text-secondary); text-decoration: none; border: 1px solid transparent; border-bottom: none; border-radius: var(--border-radius) var(--border-radius) 0 0; display: block; font-weight: 500; cursor: pointer; }
+        .nav-pills .nav-link:hover { background-color: var(--hover-bg-light); color: var(--accent-color); }
+        .nav-pills .nav-link.active { color: var(--accent-color); background-color: var(--widget-bg); border-color: var(--border-color) var(--border-color) var(--widget-bg); font-weight: 600; position: relative; top: 1px; }
+        .tab-content > .tab-pane { display: none; }
+        .tab-content > .tab-pane.active { display: block; animation: fadeIn 0.3s; }
+
+        /* Radio buttons */
+        .radio-group {display: flex; flex-wrap: wrap; gap: 15px;}
+        .radio-group label { font-weight: normal; display: inline-flex; align-items: center;}
+        .radio-group input[type="radio"] { margin-right: 5px; vertical-align: middle;}
+
+        /* Charts */
+        .chart-container { width: 100%; min-height: 300px; padding: 20px; margin-bottom: 20px; background-color: var(--secondary-bg); border: 1px dashed var(--border-color); border-radius: var(--border-radius); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--text-secondary); }
+        .chart-container i { font-size: 2.5em; margin-bottom: 10px; color: var(--accent-color); }
+
+        /* Forms ocultos */
+        .hidden-form { display: none; }
+
+        /* Reset e variáveis */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; }
+        html { scroll-behavior: smooth; }
+        body { background-color: var(--secondary-bg); color: var(--text-primary); font-size: 14px; overflow-x: hidden; }
+        a { text-decoration: none; color: var(--text-secondary); }
+        ul { list-style: none; }
+        button, select, input[type="text"], input[type="number"], input[type="email"], input[type="date"], input[type="time"], input[type="tel"], input[type="url"], input[type="password"], textarea { font-family: inherit; font-size: inherit; border: 1px solid var(--border-color); border-radius: 4px; padding: 8px 12px; vertical-align: middle; }
+        button { cursor: pointer; background-color: var(--primary-bg); }
+        button:disabled { cursor: not-allowed; opacity: 0.6; }
+        button.icon-button { background: none; border: none; padding: 5px 8px; color: var(--text-secondary); font-size: 1.2em; line-height: 1; }
+        button.icon-button:hover:not(:disabled) { color: var(--text-primary); }
+        button.icon-button.active { color: var(--accent-color); background-color: var(--hover-bg-light); border-radius: var(--border-radius); }
+        button.icon-button.active:hover { background-color: var(--accent-color); color: var(--accent-text-color);}
+        select { background-color: var(--primary-bg); }
+        input[type="text"], input[type="number"], input[type="email"], input[type="date"], input[type="time"], input[type="tel"], input[type="url"], input[type="password"], textarea { width: 100%; display: block; }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* Layout */
+        .dashboard-container { display: flex; min-height: 100vh; position: relative; }
+
+        /* Sidebar */
+        .sidebar { background-color: var(--sidebar-bg); display: flex; flex-direction: column; padding: var(--base-padding) 0; flex-shrink: 0; overflow-y: auto; overflow-x: hidden; transition: transform var(--transition-speed) ease, width var(--transition-speed) ease; z-index: 1100; border-right: 1px solid var(--border-color); }
+        @media (min-width: 769px) { .sidebar { border-right: 1px solid var(--border-color); } }
+        @media (max-width: 768px) { .sidebar { position: fixed; left: 0; top: 0; height: 100%; width: var(--sidebar-mobile-width, 260px); transform: translateX(-100%); box-shadow: 2px 0 10px rgba(0,0,0,0.1); border-right: 1px solid var(--border-color); } }
+        .sidebar-header { padding: var(--base-padding) var(--base-padding); margin-bottom: 15px; text-align: center; }
+        .logo { font-size: 1.8em; font-weight: 600; color: var(--accent-color); white-space: nowrap; overflow: hidden; }
+        .logo i { margin-right: 8px; }
+        .nav-group { margin-bottom: 20px; }
+        .nav-group-title { font-size: 0.8em; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 10px; padding: 0 var(--widget-padding); font-weight: 500; white-space: nowrap; overflow: hidden; }
+        .sidebar-nav ul li a { display: flex; align-items: center; padding: 12px var(--widget-padding); margin: 0 10px 5px 10px; border-radius: var(--border-radius); transition: background-color 0.2s ease, color 0.2s ease; white-space: nowrap; overflow: hidden; cursor: pointer; }
+        .sidebar-nav ul li a:hover { background-color: var(--hover-bg-light); color: var(--accent-color); }
+        .sidebar-nav ul li a.active { background-color: var(--accent-color); color: var(--accent-text-color); }
+        .sidebar-nav ul li a.active:hover { background-color: var(--accent-color); color: var(--accent-text-color);}
+        .sidebar-nav ul li a i:not(.arrow) { margin-right: 12px; width: 24px; text-align: center; flex-shrink: 0; transition: margin var(--transition-speed) ease; }
+        .sidebar-nav ul li a span:not(.badge), .sidebar-nav ul li a .arrow, .badge { opacity: 1; transition: opacity 0.1s ease, width 0.1s ease; }
+        .sidebar-nav ul li a .arrow { margin-left: auto; font-size: 0.8em; }
+        .badge { background-color: var(--accent-color); color: var(--accent-text-color); border-radius: 50%; min-width: 20px; height: 20px; display: inline-flex; justify-content: center; align-items: center; font-size: 0.75em; margin-left: auto; margin-right: 10px; flex-shrink: 0; }
+        .sidebar-nav ul li a:not(.active) .badge { background-color: #e0e0e0; color: var(--text-secondary); }
+        .sidebar-footer { margin-top: auto; padding-top: var(--base-padding); border-top: 1px solid var(--border-color); overflow: hidden; white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+        .logout-link { display: block; padding: 12px var(--base-padding); border-radius: var(--border-radius); transition: background-color 0.2s ease; cursor: pointer; display: flex; align-items: center;}
+        .logout-link i { margin-right: 12px; width: 24px; text-align: center; flex-shrink: 0; }
+        .logout-link:hover { background-color: var(--hover-bg-light); color: var(--accent-color); }
+        .logout-link span { opacity: 1; transition: opacity 0.1s ease; }
+        @media (max-width: 768px) {
+            :root { --sidebar-mobile-width: 260px; }
+            body.sidebar-mobile-open .sidebar { transform: translateX(0); }
+            body.sidebar-collapsed .sidebar { width: var(--sidebar-mobile-width); transform: translateX(-100%); }
+            body.sidebar-mobile-open.sidebar-collapsed .sidebar { transform: translateX(0); }
+            .sidebar .logo, .sidebar .nav-group-title, .sidebar .sidebar-nav ul li a span:not(.badge), .sidebar .sidebar-nav ul li a .arrow, .sidebar .badge, .sidebar .logout-link span { opacity: 1; width: auto; margin-left: 0; pointer-events: auto;}
+            .sidebar .sidebar-nav ul li a i:not(.arrow) { margin-right: 12px;}
+            .sidebar .sidebar-nav ul li a, .sidebar .logout-link { justify-content: flex-start; padding-left: var(--widget-padding); padding-right: var(--widget-padding);}
+            .sidebar-header { text-align: left; }
+        }
+        @media (min-width: 769px) {
+            .sidebar { position: sticky; top: 0; height: 100vh; width: var(--sidebar-width); transform: translateX(0); }
+            body.sidebar-collapsed .sidebar { width: var(--sidebar-width-collapsed); }
+            body.sidebar-collapsed .sidebar .logo, body.sidebar-collapsed .sidebar .nav-group-title, body.sidebar-collapsed .sidebar .sidebar-nav ul li a span:not(.badge), body.sidebar-collapsed .sidebar .sidebar-nav ul li a .arrow, body.sidebar-collapsed .sidebar .badge, body.sidebar-collapsed .sidebar .logout-link span { opacity: 0; width: 0; overflow: hidden; pointer-events: none; margin-left: -10px; }
+            body.sidebar-collapsed .sidebar .sidebar-nav ul li a i:not(.arrow) { margin-right: 0; }
+            body.sidebar-collapsed .sidebar .sidebar-nav ul li a, body.sidebar-collapsed .sidebar .logout-link { justify-content: center; margin-left: 5px; margin-right: 5px; padding-left: 0; padding-right: 0; }
+            body.sidebar-collapsed .sidebar-header { padding: var(--base-padding) 5px; }
+            body.sidebar-collapsed .sidebar-footer { padding-left: 5px; padding-right: 5px; }
+             body.sidebar-collapsed .sidebar .sidebar-nav ul li a:not(.active):hover, body.sidebar-collapsed .sidebar .logout-link:hover { background-color: var(--hover-bg-light); color: var(--accent-color); }
+        }
+
+        /* Overlay */
+        .mobile-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1050; opacity: 0; pointer-events: none; transition: opacity var(--transition-speed) ease; }
+        body.sidebar-mobile-open .mobile-overlay { opacity: 1; pointer-events: auto; }
+        @media (min-width: 769px) { .mobile-overlay { display: none; } }
+
+        /* Conteúdo Principal */
+        .main-content { flex: 1; overflow-x: hidden; display: flex; flex-direction: column; }
+        .main-content-wrap { padding: var(--base-padding); width: 100%; flex-grow: 1; display: flex; flex-direction: column; }
+        @media (max-width: 768px) { .main-content-wrap { padding-top: calc(var(--toolbar-height, 60px) + var(--base-padding) + 10px); } }
+         .main-header { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; }
+        #sidebar-toggle { font-size: 1.5em; margin-right: 15px; color: var(--text-secondary); cursor: pointer; background: none; border: none; padding: 5px; }
+        #sidebar-toggle:hover { color: var(--text-primary); }
+        .header-greeting { flex-grow: 1; min-width: 200px; }
+        .header-greeting h2 { font-size: 1.5em; margin-bottom: 4px; font-weight: 600; }
+        .header-greeting p { color: var(--text-secondary); font-size: 0.9em; }
+
+        /* Toolbar */
+        .global-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 15px; padding: 10px var(--base-padding); background-color: var(--toolbar-bg); border-radius: var(--border-radius); border: 1px solid var(--border-color); box-shadow: 0 1px 3px var(--shadow-color); margin-bottom: 15px; min-height: var(--toolbar-height, 60px); }
+        .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .toolbar-left { flex-grow: 1; min-width: 250px; }
+        .toolbar-right { justify-content: flex-end; }
+        .global-search { display: flex; align-items: center; background-color: var(--secondary-bg); padding: 8px 12px; border-radius: var(--border-radius); border: 1px solid var(--border-color); flex-grow: 1; min-width: 200px; max-width: 450px; }
+        .global-search i { color: var(--text-secondary); margin-right: 8px; }
+        .global-search input { border: none; outline: none; flex-grow: 1; background: transparent; padding: 0; font-size: 0.95em; }
+        .view-toggle-buttons { display: flex; align-items: center; gap: 5px; }
+        .toolbar-user-profile { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 5px; border-radius: var(--border-radius); }
+        .toolbar-user-profile:hover { background-color: var(--hover-bg-light); }
+        .avatar-placeholder { width: 36px; height: 36px; border-radius: 50%; background-color: var(--accent-color); color: var(--accent-text-color); border: 1px solid var(--accent-color); display: flex; align-items: center; justify-content: center; font-size: 1em; flex-shrink: 0; }
+        .avatar-placeholder::after { content: "LC"; font-weight: bold; }
+        .user-info span, .user-info small { display: none; }
+        @media (min-width: 576px) { .user-info span { display: block; font-weight: 500; white-space: nowrap; font-size: 0.9em; } .user-info small { display: block; color: var(--text-secondary); white-space: nowrap; font-size: 0.8em; } }
+
+        /* Seções de Conteúdo */
+        .content-sections-container { flex-grow: 1; display: flex; flex-direction: column; }
+        .content-section { display: none; animation: fadeIn 0.4s ease; flex-grow: 1; }
+        .content-section.active-section { display: block; display: flex; flex-direction: column; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .content-section > h2:not(.no-style-h2) { margin-bottom: 25px; color: var(--text-primary); font-weight: 600; font-size: 1.7em; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .content-section > h2 i { margin-right: 10px; color: var(--accent-color); }
+
+        /* Widgets e Cards */
+        .widgets-area { display: grid; grid-template-columns: repeat(12, 1fr); gap: 15px; flex-grow: 1; }
+        .widget { background-color: var(--widget-bg); border-radius: var(--border-radius); padding: var(--widget-padding); box-shadow: 0 2px 5px var(--shadow-color); border: 1px solid var(--border-color); grid-column: span 12; display: flex; flex-direction: column; }
+        .widget-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; flex-shrink: 0; }
+        .widget-header h3 { font-size: 1.1em; font-weight: 600; margin-right: auto; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .widget-header h3 i { margin-right: 8px; color: var(--accent-color); }
+        .widget-header select, .widget-header .btn { padding: 6px 10px; font-size: 0.9em; flex-shrink: 0; }
+        .see-all { font-size: 0.9em; color: var(--accent-color); font-weight: 500; white-space: nowrap; }
+        .stats-cards-row { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; }
+        .stat-card { background-color: var(--widget-bg); border-radius: var(--border-radius); padding: var(--widget-padding); display: flex; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 2px 5px var(--shadow-color); border: 1px solid var(--border-color); overflow: hidden; }
+        .card-icon { font-size: 1.8em; color: var(--accent-color); background-color: var(--hover-bg-light); border-radius: 50%; width: 50px; height: 50px; display: inline-flex; justify-content: center; align-items: center; flex-shrink: 0; }
+        .card-content { flex-grow: 1; min-width: 120px; }
+        .card-title { display: block; color: var(--text-secondary); font-size: 0.9em; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-value { display: block; font-size: 1.8em; font-weight: 600; white-space: nowrap; }
+        .card-comparison { text-align: right; font-size: 0.85em; flex-shrink: 0; white-space: nowrap; margin-left: auto; }
+        .card-comparison .percentage { display: block; font-weight: 600; margin-bottom: 3px; }
+        .card-comparison .percentage.positive { color: var(--positive-color); }
+        .card-comparison .percentage.negative { color: var(--negative-color); }
+        .card-comparison .period { color: var(--text-secondary); }
+        .chart-placeholder, .widget-content.placeholder { min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: var(--secondary-bg); border: 1px dashed var(--border-color); border-radius: var(--border-radius); color: var(--text-secondary); position: relative; text-align: center; margin-top: auto; flex-grow: 1; }
+        .widget-content:not(.placeholder) { background-color: transparent; border: none; min-height: auto; align-items: stretch; flex-grow: 1; }
+
+        /* Botões */
+        .btn.btn-add, .btn.btn-primary { background-color: var(--accent-color); color: var(--accent-text-color); border: none; white-space: nowrap; padding: 10px 15px; border-radius: var(--border-radius); cursor: pointer; font-size: 1em; transition: opacity 0.2s ease; }
+        .btn.btn-add i, .btn.btn-primary i { margin-right: 8px; }
+        .btn.btn-add:hover, .btn.btn-primary:hover { opacity: 0.85; }
+
+        /* Tabelas */
+        .table-responsive { overflow-x: auto; margin-top: 15px; }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th, .data-table td { padding: 10px 12px; border: 1px solid var(--border-color); text-align: left; vertical-align: middle; }
+        .data-table thead th { background-color: var(--secondary-bg); font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+        .data-table tbody tr:hover { background-color: var(--hover-bg-light); }
+        .data-table .actions-cell { white-space: nowrap; text-align: center; }
+        .data-table .actions-cell .icon-button { margin: 0 3px; }
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 500; color: #fff; white-space: nowrap; }
+        .status-badge.confirmed, .status-badge.active, .status-badge.recebido, .status-badge.pago, .status-badge.ativo { background-color: var(--positive-color); }
+        .status-badge.pending, .status-badge.agendado, .status-badge.pendente, .status-badge.a_pagar { background-color: var(--warning-color); color: var(--text-primary); }
+        .status-badge.cancelled, .status-badge.inactive, .status-badge.inativo, .status-badge.cancelado_paciente, .status-badge.cancelado_clinica { background-color: var(--negative-color); }
+        .status-badge.realizado { background-color: var(--info-color); }
+        .status-badge.nao_compareceu, .status-badge.desconhecido { background-color: var(--text-secondary); }
+
+        /* Formulários */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px 20px; }
+        .form-group.form-group-full { grid-column: 1 / -1; margin-top: 15px; }
+        .form-group.form-group-full button { width: auto; min-width: 200px; padding: 12px 25px; }
+        .input-group { display: flex; align-items: center; width: 100%; }
+        .input-group select, .input-group input { flex-grow: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; }
+        .btn-add-item { background-color: var(--accent-color); color: var(--accent-text-color); border: 1px solid var(--accent-color); padding: 8px 12px; border-top-left-radius: 0; border-bottom-left-radius: 0; border-top-right-radius: var(--border-radius); border-bottom-right-radius: var(--border-radius); cursor: pointer; font-size: 0.9em; line-height: 1.5; flex-shrink: 0; transition: opacity 0.2s ease; }
+        .btn-add-item:hover { opacity: 0.85; }
+
+        /* Configurações (Tabs) */
+        .settings-tabs-container { background-color: var(--widget-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: var(--widget-padding); box-shadow: 0 1px 3px var(--shadow-color); margin-top: 0; flex-grow: 1; display: flex; flex-direction: column; }
+        .settings-nav-tabs { display: flex; list-style: none; padding: 0; margin: 0 0 20px 0; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .settings-nav-tabs li { margin-right: 5px; }
+        .settings-nav-tabs li a { display: block; padding: 12px 18px; text-decoration: none; color: var(--text-secondary); border: 1px solid transparent; border-bottom: none; border-radius: var(--border-radius) var(--border-radius) 0 0; position: relative; top: 1px; font-weight: 500; font-size: 0.95em; transition: color 0.2s ease, background-color 0.2s ease; cursor:pointer;}
+        .settings-nav-tabs li a i { margin-right: 6px; }
+        .settings-nav-tabs li a:hover { color: var(--accent-color); background-color: var(--hover-bg-light); }
+        .settings-nav-tabs li.active a { color: var(--accent-color); background-color: var(--widget-bg); border-color: var(--border-color) var(--border-color) var(--widget-bg); font-weight: 600; }
+        .settings-tab-content { padding-top: 15px; flex-grow: 1; overflow-y: auto; }
+        .settings-tab-pane { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .settings-tab-pane.active { display: block; }
+        .settings-tab-pane h3 { font-size: 1.3em; margin-bottom: 20px; color: var(--text-primary); font-weight: 600; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .settings-tab-pane h3 i { margin-right: 8px; color: var(--accent-color); }
+        .settings-tab-pane p { margin-bottom: 15px; line-height: 1.6; color: var(--text-secondary); }
+        .settings-tab-pane .form-group { margin-bottom: 20px; }
+        .settings-form label { display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-primary); }
+        .settings-form input[type="text"], .settings-form input[type="email"], .settings-form input[type="tel"], .settings-form input[type="url"], .settings-form select, .settings-form textarea { width: 100%; max-width: 450px; }
+        .settings-form input[type="file"] { max-width: 450px; }
+        .settings-form .btn.btn-primary { margin-top: 15px; }
+
+        /* Checkbox group */
+        .checkbox-group { display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 12px; }
+        .checkbox-group .checkbox-item { display: flex; align-items: center; margin-bottom: 8px; }
+        .checkbox-group .checkbox-item input[type="checkbox"] { width: auto; margin-right: 10px; height: 1.1em; width: 1.1em; }
+        .checkbox-group .checkbox-item label { margin-bottom: 0; font-weight: normal; color: var(--text-primary); cursor: pointer; }
+        .form-info-text { font-size: 0.85em; color: var(--text-secondary); margin-top: 5px; }
+
     </style>
 </head>
 <body>
-    <!-- SVG Icons -->
-    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
-        <!-- Include symbols: icon-list, icon-grid, icon-filter, icon-upload, icon-print, icon-print-all, icon-download, icon-file-csv, icon-file-json, icon-file-pdf, icon-file-txt -->
-         <symbol id="icon-list" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M2.5 11.5A.5.5 0 0 1 3 11h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 3 7h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4A.5.5 0 0 1 3 3h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/></symbol>
-        <symbol id="icon-grid" viewBox="0 0 16 16"> <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3a1.5 1.5 0 0 1 1.5 1.5v3a1.5 1.5 0 0 1-1.5 1.5h-3A1.5 1.5 0 0 1 9 13.5v-3z"/></symbol>
-        <symbol id="icon-filter" viewBox="0 0 16 16"> <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></symbol>
-        <symbol id="icon-upload" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M7.646 5.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 6.707V10.5a.5.5 0 0 1-1 0V6.707L6.354 7.854a.5.5 0 1 1-.708-.708l2-2z"/><path d="M4.406 3.342A5.53 5.53 0 0 1 8 2c2.69 0 4.923 2 5.166 4.579C14.758 6.804 16 8.137 16 9.773 16 11.569 14.502 13 12.687 13H3.781C1.708 13 0 11.366 0 9.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383zm.653.757c-.757.653-1.153 1.44-1.153 2.056v.448l-.445.049C2.064 6.805 1 7.952 1 9.318 1 10.785 2.23 12 3.781 12h8.906C13.98 12 15 11.088 15 9.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 4.825 10.328 3 8 3a4.53 4.53 0 0 0-2.941 1.1z"/></symbol>
-        <symbol id="icon-print" viewBox="0 0 16 16"> <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/></symbol>
-        <symbol id="icon-print-all" viewBox="0 0 16 16"> <path d="M6.5 0a.5.5 0 0 0-.5.5v1.113H1.5a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5H10v-1.113a.5.5 0 0 0-.5-.5h-3zm0 1h3v1.613a.5.5 0 0 0 .5.5h1.5v.5H1.5a.5.5 0 0 0-.5.5v11a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-11a.5.5 0 0 0-.5-.5H10v-.5h1.5a.5.5 0 0 0 .5-.5V1z"/><path d="M8 5.5a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 1 .5-.5zm-2 2a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5zm4 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0v-1a.5.5 0 0 1 .5-.5z"/> </symbol>
-        <symbol id="icon-download" viewBox="0 0 16 16"> <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L6.354 8.146a.5.5 0 1 0-.708.708l2 2z"/> </symbol>
-        <symbol id="icon-file-csv" viewBox="0 0 16 16"> <path fill-rule="evenodd" d="M14 4.5V14a2 2 0 0 1-2 2h-1v-1h1a1 1 0 0 0 1-1V4.5h-2A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v9H2V2a2 2 0 0 1 2-2h5.5L14 4.5ZM3.517 14.841a1.13 1.13 0 0 0 .401.823c.13.108.289.192.478.252.19.061.411.091.665.091.338 0 .624-.053.859-.158.236-.105.416-.252.539-.44.125-.189.187-.408.187-.656 0-.224-.045-.41-.134-.56a1.001 1.001 0 0 0-.375-.357 2.027 2.027 0 0 0-.566-.21l-.621-.144a.97.97 0 0 1-.404-.176.37.37 0 0 1-.144-.296c0-.175.062-.322.185-.44.124-.119.291-.179.502-.179.19 0 .353.046.488.138.134.092.226.204.273.336.047.132.07.28.07.441h1.13V14c0-.248-.036-.47-.108-.666a1.178 1.178 0 0 0-.332-.577c-.13-.148-.304-.27-.52-.368a2.068 2.068 0 0 0-.687-.144c-.34-.001-.63.046-.87.138-.24.093-.427.228-.563.407-.135.178-.202.39-.202.636 0 .213.05.393.148.543.099.15.248.27.448.361.2.09.45.16.75.21l.622.144c.217.05.385.12.504.211.12.09.179.207.179.351 0 .18-.064.327-.192.438a.56.56 0 0 1-.415.166c-.202 0-.38-.049-.533-.148a.87.87 0 0 1-.278-.355c-.05-.118-.075-.254-.075-.408H3.517Zm4.166-.247c.047.132.07.28.07.441h1.13V14c0-.248-.036-.47-.108-.666a1.178 1.178 0 0 0-.332-.577c-.13-.148-.304-.27-.52-.368a2.068 2.068 0 0 0-.687-.144c-.34-.001-.63.046-.87.138-.24.093-.427.228-.563.407-.135.178-.202.39-.2
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="#home-section" class="logo" data-section="home-section"><i class="fas fa-heart-pulse"></i>LifeCare</a>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <span class="nav-group-title">Principal</span>
+                    <ul>
+                        <li><a href="#home-section" data-section="home-section" class="active"><i class="fas fa-home"></i><span>Início</span></a></li>
+                        <li><a href="#appointments-section" data-section="appointments-section"><i class="fas fa-calendar-check"></i><span>Agendamentos</span><span class="badge" id="appointments-badge">0</span></a></li>
+                        <li><a href="#patients-section" data-section="patients-section"><i class="fas fa-users"></i><span>Pacientes</span></a></li>
+                        <li><a href="#doctors-section" data-section="doctors-section"><i class="fas fa-user-md"></i><span>Médicos</span></a></li>
+                        <li><a href="#departments-section" data-section="departments-section"><i class="fas fa-sitemap"></i><span>Departamentos</span></a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Gestão</span>
+                    <ul>
+                        <li><a href="#finance-section" data-section="finance-section"><i class="fas fa-dollar-sign"></i><span>Financeiro</span></a></li>
+                        <li><a href="#analytics-section" data-section="analytics-section"><i class="fas fa-chart-pie"></i><span>Análises</span></a></li>
+                    </ul>
+                </div>
+                <div class="nav-group">
+                    <span class="nav-group-title">Sistema</span>
+                    <ul>
+                        <li><a href="#settings-section" data-section="settings-section"><i class="fas fa-cog"></i><span>Configurações</span></a></li>
+                    </ul>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#" class="logout-link" onclick="handleLogout(event)"><i class="fas fa-sign-out-alt"></i><span>Sair</span></a>
+            </div>
+        </aside>
+
+        <div class="mobile-overlay"></div>
+
+        <main class="main-content">
+            <div class="main-content-wrap">
+                <header class="main-header">
+                    <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+                    <div class="header-greeting">
+                        <h2 id="greeting-user-name">Olá, Dr. Usuário!</h2>
+                        <p>Bem-vindo(a) de volta ao painel LifeCare.</p>
+                    </div>
+                    <div class="toolbar-user-profile">
+                        <div class="avatar-placeholder"></div>
+                        <div class="user-info">
+                            <span id="toolbar-user-name">Dr. Usuário</span>
+                            <small id="toolbar-user-role">Administrador</small>
+                        </div>
+                    </div>
+                </header>
+
+                 <div class="global-toolbar">
+                    <div class="toolbar-left">
+                        <div class="global-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" placeholder="Buscar...">
+                        </div>
+                    </div>
+                    <div class="toolbar-right">
+                        <button class="btn btn-primary" onclick="showForm('newAppointmentForm', 'appointments-section')"><i class="fas fa-calendar-plus"></i> Novo Agendamento</button>
+                    </div>
+                </div>
+
+                <div class="content-sections-container">
+                    <!-- ==================== HOME SECTION ==================== -->
+                    <section id="home-section" class="content-section active-section">
+                        <div class="widgets-area">
+                            <div class="stats-cards-row">
+                                <div class="stat-card">
+                                    <div class="card-icon"><i class="fas fa-calendar-day"></i></div>
+                                    <div class="card-content">
+                                        <span class="card-title">Consultas Hoje</span>
+                                        <span class="card-value" id="consultas-hoje-valor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="card-icon"><i class="fas fa-user-plus"></i></div>
+                                    <div class="card-content">
+                                        <span class="card-title">Novos Pacientes (Mês)</span>
+                                        <span class="card-value" id="novos-pacientes-mes-valor">0</span>
+                                    </div>
+                                </div>
+                                <div class="stat-card">
+                                    <div class="card-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+                                    <div class="card-content">
+                                        <span class="card-title">Receita Pendente</span>
+                                        <span class="card-value" id="receita-pendente-valor">R$ 0,00</span>
+                                    </div>
+                                </div>
+                                 <div class="stat-card">
+                                    <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+                                    <div class="card-content">
+                                        <span class="card-title">Consultas Realizadas (Mês)</span>
+                                        <span class="card-value" id="consultas-realizadas-mes-valor">0</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="widget" style="grid-column: span 12;">
+                                <div class="widget-header"><h3><i class="fas fa-pencil-alt"></i> Acesso Rápido</h3></div>
+                                <div class="widget-content">
+                                    <form id="quickAccessForm" class="form-grid">
+                                         <div class="form-group">
+                                            <label for="qa-paciente">Buscar Paciente:</label>
+                                            <div class="input-group">
+                                                <select id="qa-paciente" name="paciente"><option value="">Selecione</option></select>
+                                                <button type="button" class="btn-add-item" onclick="showForm('newPatientForm', 'patients-section')" title="Novo Paciente"><i class="fas fa-plus"></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="qa-medico">Buscar Médico:</label>
+                                            <div class="input-group">
+                                                <select id="qa-medico" name="medico"><option value="">Selecione</option></select>
+                                                <button type="button" class="btn-add-item" onclick="showForm('newDoctorForm', 'doctors-section')" title="Novo Médico"><i class="fas fa-plus"></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="form-group form-group-full">
+                                            <button type="button" class="btn btn-primary" onclick="showForm('newAppointmentForm', 'appointments-section')"><i class="fas fa-calendar-plus"></i> Agendar Nova Consulta</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                             <div class="widget" style="grid-column: span 12; md:grid-column: span 6;">
+                                <div class="widget-header"><h3><i class="fas fa-tasks"></i> Próximas Tarefas / Lembretes</h3></div>
+                                <div class="widget-content placeholder"><p>Lista de tarefas pendentes.</p></div>
+                            </div>
+                            <div class="widget" style="grid-column: span 12; md:grid-column: span 6;">
+                                <div class="widget-header"><h3><i class="fas fa-bullhorn"></i> Avisos Importantes</h3></div>
+                                <div class="widget-content placeholder"><p>Avisos e comunicados.</p></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== APPOINTMENTS SECTION ==================== -->
+                    <section id="appointments-section" class="content-section">
+                        <h2><i class="fas fa-calendar-check"></i> Agendamentos</h2>
+                        <div class="widget-header" style="margin-bottom: 20px;">
+                            <h3>Lista de Agendamentos</h3>
+                            <button class="btn btn-primary" onclick="showForm('newAppointmentForm')"><i class="fas fa-plus"></i> Novo Agendamento</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data/Hora</th><th>Paciente</th><th>Médico</th><th>Tipo</th><th>Status</th><th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="appointmentsTableBody">
+                                    <tr><td colspan="6" style="text-align:center;">Carregando agendamentos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="newAppointmentForm" class="form-container hidden-form" style="margin-top:20px;">
+                            <h4><i class="fas fa-calendar-plus"></i> Detalhes do Agendamento</h4>
+                            <form id="appointmentForm">
+                                <input type="hidden" id="appointmentId" name="appointmentId">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="app-paciente">Paciente:*</label>
+                                        <select id="app-paciente" name="pacienteId" required><option value="">Carregando...</option></select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="app-medico">Médico:*</label>
+                                        <select id="app-medico" name="medicoId" required><option value="">Carregando...</option></select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="app-data">Data:*</label>
+                                        <input type="date" id="app-data" name="data" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="app-hora">Hora Início:*</label>
+                                        <input type="time" id="app-hora" name="horaInicio" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="app-duracao">Duração (minutos):</label>
+                                        <input type="number" id="app-duracao" name="duracao" value="30" step="5">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Tipo de Consulta:*</label>
+                                        <div class="radio-group">
+                                            <label><input type="radio" name="tipoConsulta" value="primeira_consulta" checked> Primeira Consulta</label>
+                                            <label><input type="radio" name="tipoConsulta" value="retorno"> Retorno</label>
+                                            <label><input type="radio" name="tipoConsulta" value="exame"> Exame</label>
+                                            <label><input type="radio" name="tipoConsulta" value="encaixe"> Encaixe</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="app-status">Status:*</label>
+                                        <select id="app-status" name="status" required>
+                                            <option value="agendado">Agendado</option>
+                                            <option value="confirmado">Confirmado</option>
+                                            <option value="realizado">Realizado</option>
+                                            <option value="cancelado_paciente">Cancelado (Paciente)</option>
+                                            <option value="cancelado_clinica">Cancelado (Clínica)</option>
+                                            <option value="nao_compareceu">Não Compareceu</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="app-observacoes">Observações:</label>
+                                    <textarea id="app-observacoes" name="observacoes"></textarea>
+                                </div>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="app-lembrete-email" name="lembreteEmail" checked>
+                                        <label for="app-lembrete-email">Enviar lembrete por E-mail</label>
+                                    </div>
+                                     <div class="checkbox-item">
+                                        <input type="checkbox" id="app-lembrete-sms" name="lembreteSms">
+                                        <label for="app-lembrete-sms">Enviar lembrete por SMS (se configurado)</label>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-cancel" onclick="hideForm('newAppointmentForm')">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Agendamento</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- ==================== PATIENTS SECTION ==================== -->
+                    <section id="patients-section" class="content-section">
+                        <h2><i class="fas fa-users"></i> Pacientes</h2>
+                        <div class="widget-header" style="margin-bottom: 20px;">
+                            <h3>Lista de Pacientes</h3>
+                            <button class="btn btn-primary" onclick="showForm('newPatientForm')"><i class="fas fa-user-plus"></i> Novo Paciente</button>
+                        </div>
+                         <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Data Nasc.</th><th>Ações</th></tr></thead>
+                                <tbody id="patientsTableBody">
+                                    <tr><td colspan="5" style="text-align:center;">Carregando pacientes...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="newPatientForm" class="form-container hidden-form" style="margin-top:20px;">
+                            <h4><i class="fas fa-user-plus"></i> Cadastro de Paciente</h4>
+                            <form id="patientForm">
+                                <input type="hidden" id="patientId" name="patientId">
+                                <div class="form-section-title">Dados Pessoais</div>
+                                <div class="form-row">
+                                    <div class="form-group"><label for="pat-nome">Nome Completo:*</label><input type="text" id="pat-nome" name="nomeCompleto" required></div>
+                                    <div class="form-group"><label for="pat-data-nasc">Data de Nascimento:</label><input type="date" id="pat-data-nasc" name="dataNascimento"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group"><label for="pat-cpf">CPF:</label><input type="text" id="pat-cpf" name="cpf" placeholder="000.000.000-00"></div>
+                                    <div class="form-group"><label for="pat-rg">RG:</label><input type="text" id="pat-rg" name="rg"></div>
+                                    <div class="form-group"><label for="pat-genero">Gênero:</label><select id="pat-genero" name="genero"><option value="">Selecione</option><option value="masculino">Masculino</option><option value="feminino">Feminino</option><option value="outro">Outro</option></select></div>
+                                </div>
+                                <div class="form-section-title">Contato</div>
+                                <div class="form-row">
+                                    <div class="form-group"><label for="pat-tel-celular">Telefone Celular:</label><input type="tel" id="pat-tel-celular" name="telCelular" placeholder="(00) 00000-0000"></div>
+                                    <div class="form-group"><label for="pat-tel-residencial">Telefone Residencial:</label><input type="tel" id="pat-tel-residencial" name="telResidencial" placeholder="(00) 0000-0000"></div>
+                                    <div class="form-group"><label for="pat-email">E-mail:</label><input type="email" id="pat-email" name="email"></div>
+                                </div>
+                                <div class="form-section-title">Endereço</div>
+                                <div class="form-row">
+                                    <div class="form-group"><label for="pat-cep">CEP:</label><input type="text" id="pat-cep" name="cep" placeholder="00000-000"></div>
+                                    <div class="form-group" style="grid-column: span 2;"><label for="pat-logradouro">Logradouro:</label><input type="text" id="pat-logradouro" name="logradouro"></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group"><label for="pat-numero">Número:</label><input type="text" id="pat-numero" name="numero"></div>
+                                    <div class="form-group"><label for="pat-complemento">Complemento:</label><input type="text" id="pat-complemento" name="complemento"></div>
+                                    <div class="form-group"><label for="pat-bairro">Bairro:</label><input type="text" id="pat-bairro" name="bairro"></div>
+                                </div>
+                                 <div class="form-row">
+                                    <div class="form-group"><label for="pat-cidade">Cidade:</label><input type="text" id="pat-cidade" name="cidade"></div>
+                                    <div class="form-group"><label for="pat-uf">UF:</label><input type="text" id="pat-uf" name="uf" maxlength="2"></div>
+                                </div>
+                                <div class="form-section-title">Informações Adicionais</div>
+                                 <div class="form-row">
+                                     <div class="form-group"><label for="pat-convenio-nome">Convênio:</label><input type="text" id="pat-convenio-nome" name="convenioNome"></div>
+                                     <div class="form-group"><label for="pat-convenio-num">Nº Carteirinha:</label><input type="text" id="pat-convenio-num" name="convenioNumero"></div>
+                                 </div>
+                                <div class="form-group"><label for="pat-alergias">Alergias:</label><textarea id="pat-alergias" name="alergias"></textarea></div>
+                                <div class="form-group"><label for="pat-obs">Observações Gerais:</label><textarea id="pat-obs" name="observacoesGerais"></textarea></div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-cancel" onclick="hideForm('newPatientForm')">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Paciente</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- ==================== DOCTORS SECTION ==================== -->
+                    <section id="doctors-section" class="content-section">
+                        <h2><i class="fas fa-user-md"></i> Médicos</h2>
+                        <div class="widget-header" style="margin-bottom: 20px;">
+                            <h3>Lista de Médicos</h3>
+                            <button class="btn btn-primary" onclick="showForm('newDoctorForm')"><i class="fas fa-user-plus"></i> Novo Médico</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>Nome</th><th>CRM</th><th>Especialidade Principal</th><th>Telefone</th><th>Status</th><th>Ações</th></tr></thead>
+                                <tbody id="doctorsTableBody">
+                                     <tr><td colspan="6" style="text-align:center;">Carregando médicos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="newDoctorForm" class="form-container hidden-form" style="margin-top:20px;">
+                            <h4><i class="fas fa-user-plus"></i> Cadastro de Médico</h4>
+                            <form id="doctorForm">
+                                <input type="hidden" id="doctorId" name="doctorId">
+                                <div class="form-row">
+                                    <div class="form-group"><label for="doc-nome">Nome Completo:*</label><input type="text" id="doc-nome" name="nomeCompleto" required></div>
+                                    <div class="form-group"><label for="doc-crm">CRM:*</label><input type="text" id="doc-crm" name="crm" placeholder="123456/SP" required></div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group"><label for="doc-especialidade-principal">Especialidade Principal:</label> <!-- Tornando opcional -->
+                                        <select id="doc-especialidade-principal" name="especialidadePrincipalId"><option value="">Carregando...</option></select>
+                                    </div>
+                                    <div class="form-group"><label for="doc-email">E-mail:*</label><input type="email" id="doc-email" name="email" required></div>
+                                    <div class="form-group"><label for="doc-telefone">Telefone Celular:</label><input type="tel" id="doc-telefone" name="telefone" placeholder="(00) 00000-0000"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Outras Especialidades (selecione se houver):</label>
+                                     <div id="doc-outras-especialidades-container" class="checkbox-group" style="max-height: 150px; overflow-y:auto; border:1px solid var(--border-color); padding:10px; border-radius:var(--border-radius);">
+                                        <p class="form-info-text">Carregando especialidades...</p>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="doc-status">Status:</label>
+                                    <select id="doc-status" name="status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-cancel" onclick="hideForm('newDoctorForm')">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Médico</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+
+                    <!-- ==================== DEPARTMENTS SECTION ==================== -->
+                    <section id="departments-section" class="content-section">
+                        <h2><i class="fas fa-sitemap"></i> Departamentos / Especialidades</h2>
+                         <div class="widget-header" style="margin-bottom: 20px;">
+                            <h3>Lista de Departamentos</h3>
+                            <button class="btn btn-primary" onclick="showForm('newDepartmentForm')"><i class="fas fa-plus"></i> Novo Departamento</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead><tr><th>Nome</th><th>Descrição</th><th>Ações</th></tr></thead>
+                                <tbody id="departmentsTableBody">
+                                    <tr><td colspan="3" style="text-align:center;">Carregando departamentos...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="newDepartmentForm" class="form-container hidden-form" style="margin-top:20px;">
+                             <h4><i class="fas fa-plus"></i> Cadastro de Departamento/Especialidade</h4>
+                             <form id="departmentForm">
+                                <input type="hidden" id="departmentId" name="departmentId">
+                                <div class="form-group">
+                                    <label for="dep-nome">Nome do Departamento/Especialidade:*</label>
+                                    <input type="text" id="dep-nome" name="nome" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="dep-descricao">Descrição:</label>
+                                    <textarea id="dep-descricao" name="descricao"></textarea>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-cancel" onclick="hideForm('newDepartmentForm')">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Departamento</button>
+                                </div>
+                             </form>
+                        </div>
+                    </section>
+
+                    <!-- ==================== FINANCE SECTION ==================== -->
+                    <section id="finance-section" class="content-section">
+                        <h2><i class="fas fa-dollar-sign"></i> Financeiro</h2>
+                        <ul class="nav nav-pills" id="finance-tabs">
+                            <li class="nav-item"><a class="nav-link active" href="#finance-overview" data-bs-toggle="tab"><i class="fas fa-tachometer-alt"></i> Visão Geral</a></li>
+                            <li class="nav-item"><a class="nav-link" href="#finance-revenues" data-bs-toggle="tab"><i class="fas fa-arrow-up"></i> Receitas</a></li>
+                            <li class="nav-item"><a class="nav-link" href="#finance-expenses" data-bs-toggle="tab"><i class="fas fa-arrow-down"></i> Despesas</a></li>
+                            <li class="nav-item"><a class="nav-link" href="#finance-categories" data-bs-toggle="tab"><i class="fas fa-tags"></i> Categorias</a></li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane active" id="finance-overview">
+                                <h4>Visão Geral Financeira</h4>
+                                <div class="stats-cards-row">
+                                     <div class="stat-card"><div class="card-icon"><i class="fas fa-wallet"></i></div><div class="card-content"><span class="card-title">Saldo Atual</span><span class="card-value" id="saldo-atual-valor">R$ 0,00</span></div></div>
+                                     <div class="stat-card"><div class="card-icon"><i class="fas fa-hand-holding-usd"></i></div><div class="card-content"><span class="card-title">Receitas (Mês)</span><span class="card-value" id="receitas-mes-valor">R$ 0,00</span></div></div>
+                                     <div class="stat-card"><div class="card-icon"><i class="fas fa-credit-card"></i></div><div class="card-content"><span class="card-title">Despesas (Mês)</span><span class="card-value" id="despesas-mes-valor">R$ 0,00</span></div></div>
+                                </div>
+                                <div class="chart-container" style="margin-top: 20px;">
+                                    <canvas id="financeOverviewChart"></canvas>
+                                    <p class="form-info-text">Gráfico de Receitas vs Despesas.</p>
+                                </div>
+                            </div>
+                            <div class="tab-pane" id="finance-revenues">
+                                <div class="widget-header" style="margin-bottom: 10px;">
+                                    <h4>Lançamento de Receitas</h4>
+                                    <button class="btn btn-primary" onclick="showForm('newRevenueForm')"><i class="fas fa-plus"></i> Nova Receita</button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="data-table">
+                                        <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Paciente</th><th>Status</th><th>Ações</th></tr></thead>
+                                        <tbody id="revenuesTableBody"><tr><td colspan="6" style="text-align:center;">Carregando receitas...</td></tr></tbody>
+                                    </table>
+                                </div>
+                                <div id="newRevenueForm" class="form-container hidden-form" style="margin-top:20px;">
+                                    <h5><i class="fas fa-plus-circle"></i> Nova Receita</h5>
+                                    <form id="revenueForm">
+                                        <input type="hidden" id="revenueId" name="revenueId">
+                                        <div class="form-row">
+                                            <div class="form-group"><label for="rev-data">Data:*</label><input type="date" id="rev-data" name="data" required></div>
+                                            <div class="form-group"><label for="rev-valor">Valor (R$):*</label><input type="number" step="0.01" id="rev-valor" name="valor" required></div>
+                                        </div>
+                                        <div class="form-group"><label for="rev-descricao">Descrição:*</label><input type="text" id="rev-descricao" name="descricao" required></div>
+                                        <div class="form-row">
+                                            <div class="form-group"><label for="rev-paciente">Paciente (Opcional):</label><select id="rev-paciente" name="pacienteId"><option value="">Nenhum</option></select></div>
+                                            <div class="form-group"><label for="rev-categoria">Categoria:</label><select id="rev-categoria" name="categoriaId"><option value="">Carregando...</option></select></div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group"><label for="rev-forma-pgto">Forma de Pagamento:</label><select id="rev-forma-pgto" name="formaPagamento"><option value="dinheiro">Dinheiro</option><option value="cartao_credito">Cartão de Crédito</option><option value="cartao_debito">Cartão de Débito</option><option value="pix">PIX</option><option value="transferencia">Transferência</option><option value="convenio">Convênio</option></select></div>
+                                            <div class="form-group"><label for="rev-status">Status:</label><select id="rev-status" name="status"><option value="recebido">Recebido</option><option value="pendente">Pendente</option></select></div>
+                                        </div>
+                                        <div class="form-actions">
+                                            <button type="button" class="btn btn-cancel" onclick="hideForm('newRevenueForm')">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary">Salvar Receita</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="tab-pane" id="finance-expenses">
+                                <div class="widget-header" style="margin-bottom: 10px;">
+                                    <h4>Lançamento de Despesas</h4>
+                                    <button class="btn btn-primary" onclick="showForm('newExpenseForm')"><i class="fas fa-minus"></i> Nova Despesa</button>
+                                </div>
+                                 <div class="table-responsive">
+                                    <table class="data-table">
+                                        <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Fornecedor</th><th>Status</th><th>Ações</th></tr></thead>
+                                        <tbody id="expensesTableBody"><tr><td colspan="6" style="text-align:center;">Carregando despesas...</td></tr></tbody>
+                                    </table>
+                                </div>
+                                <div id="newExpenseForm" class="form-container hidden-form" style="margin-top:20px;">
+                                    <h5><i class="fas fa-minus-circle"></i> Nova Despesa</h5>
+                                    <form id="expenseForm">
+                                        <input type="hidden" id="expenseId" name="expenseId">
+                                        <div class="form-row">
+                                            <div class="form-group"><label for="exp-data">Data:*</label><input type="date" id="exp-data" name="data" required></div>
+                                            <div class="form-group"><label for="exp-valor">Valor (R$):*</label><input type="number" step="0.01" id="exp-valor" name="valor" required></div>
+                                        </div>
+                                        <div class="form-group"><label for="exp-descricao">Descrição:*</label><input type="text" id="exp-descricao" name="descricao" required></div>
+                                        <div class="form-row">
+                                            <div class="form-group"><label for="exp-fornecedor">Fornecedor:</label><input type="text" id="exp-fornecedor" name="fornecedor"></div>
+                                            <div class="form-group"><label for="exp-categoria">Categoria:</label><select id="exp-categoria" name="categoriaId"><option value="">Carregando...</option></select></div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group"><label for="exp-forma-pgto">Forma de Pagamento:</label><select id="exp-forma-pgto" name="formaPagamento"><option value="dinheiro">Dinheiro</option><option value="cartao_credito">Cartão de Crédito</option><option value="boleto">Boleto</option><option value="pix">PIX</option><option value="transferencia">Transferência</option></select></div>
+                                            <div class="form-group"><label for="exp-status">Status:</label><select id="exp-status" name="status"><option value="pago">Pago</option><option value="a_pagar">A Pagar</option></select></div>
+                                        </div>
+                                        <div class="form-actions">
+                                            <button type="button" class="btn btn-cancel" onclick="hideForm('newExpenseForm')">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary">Salvar Despesa</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                             <div class="tab-pane" id="finance-categories">
+                                <div class="widget-header" style="margin-bottom: 10px;">
+                                    <h4>Categorias Financeiras</h4>
+                                    <button class="btn btn-primary" onclick="showForm('newCategoryForm')"><i class="fas fa-tag"></i> Nova Categoria</button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="data-table">
+                                        <thead><tr><th>Nome da Categoria</th><th>Tipo (Receita/Despesa)</th><th>Ações</th></tr></thead>
+                                        <tbody id="categoriesTableBody"><tr><td colspan="3" style="text-align:center;">Carregando categorias...</td></tr></tbody>
+                                    </table>
+                                </div>
+                                <div id="newCategoryForm" class="form-container hidden-form" style="margin-top:20px;">
+                                    <h5><i class="fas fa-tag"></i> Nova Categoria Financeira</h5>
+                                    <form id="categoryForm">
+                                        <input type="hidden" id="categoryId" name="categoryId">
+                                        <div class="form-group"><label for="cat-nome">Nome da Categoria:*</label><input type="text" id="cat-nome" name="nome" required></div>
+                                        <div class="form-group"><label for="cat-tipo">Tipo:*</label><select id="cat-tipo" name="tipo" required><option value="receita">Receita</option><option value="despesa">Despesa</option></select></div>
+                                        <div class="form-actions">
+                                            <button type="button" class="btn btn-cancel" onclick="hideForm('newCategoryForm')">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary">Salvar Categoria</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== ANALYTICS SECTION ==================== -->
+                    <section id="analytics-section" class="content-section">
+                        <h2><i class="fas fa-chart-pie"></i> Análises e Relatórios</h2>
+                        <p>Visualização de dados e insights para otimizar a gestão da clínica.</p>
+                        <div class="form-row" style="margin-bottom: 20px;">
+                            <div class="form-group">
+                                <label for="analytics-period">Período:</label>
+                                <select id="analytics-period" name="period">
+                                    <option value="last7days">Últimos 7 dias</option>
+                                    <option value="last30days" selected>Últimos 30 dias</option>
+                                    <option value="current_month">Mês Atual</option>
+                                    <option value="last_month">Mês Anterior</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="analytics-report-type">Tipo de Relatório/Análise:</label>
+                                <select id="analytics-report-type" name="reportType">
+                                    <option value="appointments_overview">Visão Geral de Agendamentos</option>
+                                    <option value="financial_summary">Resumo Financeiro</option>
+                                    <option value="patient_demographics">Demografia de Pacientes</option>
+                                </select>
+                            </div>
+                             <div class="form-group" style="align-self: flex-end;">
+                                <button class="btn btn-primary" onclick="generateReport()"><i class="fas fa-sync-alt"></i> Gerar/Atualizar</button>
+                            </div>
+                        </div>
+                        <div class="widgets-area">
+                            <div class="widget" style="grid-column: span 12; md:grid-column: span 6;">
+                                <div class="widget-header"><h3><i class="fas fa-users"></i> Pacientes Atendidos</h3></div>
+                                <div class="chart-container"><canvas id="patientsAttendedChart"></canvas><p class="form-info-text">Gráfico de consultas realizadas por período.</p></div>
+                            </div>
+                            <div class="widget" style="grid-column: span 12; md:grid-column: span 6;">
+                                <div class="widget-header"><h3><i class="fas fa-calendar-alt"></i> Consultas por Especialidade</h3></div>
+                                <div class="chart-container"><canvas id="consultationsBySpecialtyChart"></canvas><p class="form-info-text">Gráfico de consultas por especialidade.</p></div>
+                            </div>
+                            <div class="widget" style="grid-column: span 12;">
+                                <div class="widget-header"><h3><i class="fas fa-file-invoice-dollar"></i> Relatório Financeiro Detalhado</h3></div>
+                                <div class="widget-content placeholder"><p>Tabela com resumo financeiro, fluxo de caixa, etc. (placeholder).</p></div>
+                            </div>
+                             <div class="widget" style="grid-column: span 12;">
+                                <div class="widget-header"><h3><i class="fas fa-lightbulb"></i> Insights Chave</h3></div>
+                                <div class="widget-content placeholder"><p>Sugestões e observações baseadas nos dados (ex: "A especialidade X teve um aumento de Y% na procura.").</p></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ==================== SETTINGS SECTION ==================== -->
+                    <section id="settings-section" class="content-section">
+                        <h2 class="no-style-h2"><i class="fas fa-cogs"></i> Configurações Gerais</h2>
+                        <div class="settings-tabs-container">
+                            <ul class="settings-nav-tabs">
+                                <li class="active"><a href="#tab-general" data-bs-toggle="tab"><i class="fas fa-sliders-h"></i> Geral</a></li>
+                                <li><a href="#tab-profile" data-bs-toggle="tab"><i class="fas fa-hospital"></i> Perfil da Clínica</a></li>
+                                <li><a href="#tab-notifications" data-bs-toggle="tab"><i class="fas fa-bell"></i> Notificações</a></li>
+                                <li><a href="#tab-users" data-bs-toggle="tab"><i class="fas fa-users-cog"></i> Usuários</a></li>
+                                <li><a href="#tab-integrations" data-bs-toggle="tab"><i class="fas fa-plug"></i> Integrações</a></li>
+                                <li><a href="#tab-appearance" data-bs-toggle="tab"><i class="fas fa-paint-brush"></i> Aparência</a></li>
+                                <li><a href="#tab-data" data-bs-toggle="tab"><i class="fas fa-database"></i> Dados</a></li>
+                            </ul>
+                            <div class="settings-tab-content">
+                                <div id="tab-general" class="settings-tab-pane active">
+                                    <h3><i class="fas fa-sliders-h"></i> Configurações do Sistema</h3>
+                                    <form class="settings-form" id="generalSettingsForm">
+                                        <div class="form-group">
+                                            <label for="setting-app-name">Nome da Clínica/Aplicação:</label>
+                                            <input type="text" id="setting-app-name" name="appName" value="LifeCare Painel">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-language">Idioma Padrão:</label>
+                                            <select id="setting-language" name="language">
+                                                <option value="pt-br">Português (Brasil)</option>
+                                                <option value="en-us">Inglês (US)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-timezone">Fuso Horário:</label>
+                                            <select id="setting-timezone" name="timezone">
+                                                <option value="America/Sao_Paulo">(UTC-03:00) Brasília</option>
+                                                <option value="America/Noronha">(UTC-02:00) F. de Noronha</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-date-format">Formato de Data:</label>
+                                            <select id="setting-date-format" name="dateFormat">
+                                                <option value="dd/MM/yyyy">DD/MM/YYYY</option>
+                                                <option value="MM/dd/yyyy">MM/DD/YYYY</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-currency">Moeda Padrão:</label>
+                                            <select id="setting-currency" name="currency">
+                                                <option value="BRL">Real Brasileiro (R$)</option>
+                                                <option value="USD">Dólar Americano ($)</option>
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Configurações Gerais</button>
+                                    </form>
+                                </div>
+                                <div id="tab-profile" class="settings-tab-pane">
+                                    <h3><i class="fas fa-hospital"></i> Perfil da Clínica</h3>
+                                     <form class="settings-form" id="clinicProfileForm">
+                                        <div class="form-group"><label for="clinic-name">Nome da Clínica:*</label><input type="text" id="clinic-name" name="clinicName" required></div>
+                                        <div class="form-group"><label for="clinic-cnpj">CNPJ:</label><input type="text" id="clinic-cnpj" name="clinicCnpj"></div>
+                                        <div class="form-group"><label for="clinic-address">Endereço Completo:</label><input type="text" id="clinic-address" name="clinicAddress"></div>
+                                        <div class="form-group"><label for="clinic-phone">Telefone Principal:</label><input type="tel" id="clinic-phone" name="clinicPhone"></div>
+                                        <div class="form-group"><label for="clinic-email">E-mail de Contato:</label><input type="email" id="clinic-email" name="clinicEmail"></div>
+                                        <div class="form-group"><label for="clinic-website">Website:</label><input type="url" id="clinic-website" name="clinicWebsite"></div>
+                                        <div class="form-group">
+                                            <label for="clinic-logo">Logo da Clínica:</label>
+                                            <input type="file" id="clinic-logo" name="clinicLogo" accept="image/*">
+                                            <img id="clinic-logo-preview" src="#" alt="Preview do Logo" style="max-width: 150px; max-height: 100px; margin-top: 10px; display:none;">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Perfil da Clínica</button>
+                                    </form>
+                                </div>
+                                <div id="tab-notifications" class="settings-tab-pane">
+                                    <h3><i class="fas fa-bell"></i> Notificações</h3>
+                                    <form class="settings-form" id="notificationsSettingsForm">
+                                        <p>Configurar como as notificações são enviadas.</p>
+                                        <div class="checkbox-group">
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="notify-email-active" name="emailActive" checked>
+                                                <label for="notify-email-active">Ativar notificações por E-mail</label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="notify-email-from">E-mail Remetente (para notificações):</label>
+                                            <input type="email" id="notify-email-from" name="emailFrom" placeholder="notificacoes@suaclinica.com">
+                                        </div>
+                                        <div class="checkbox-group">
+                                            <div class="checkbox-item">
+                                            <input type="checkbox" id="notify-sms-active" name="smsActive">
+                                            <label for="notify-sms-active">Ativar notificações por SMS (requer integração)</label>
+                                            </div>
+                                        </div>
+                                        <hr style="margin: 20px 0;">
+                                        <p>Notificar Pacientes Sobre:</p>
+                                        <div class="checkbox-group">
+                                            <div class="checkbox-item"><input type="checkbox" id="notify-patient-confirm" name="patientConfirm" checked><label for="notify-patient-confirm">Confirmação de Agendamento</label></div>
+                                            <div class="checkbox-item"><input type="checkbox" id="notify-patient-reminder" name="patientReminder" checked><label for="notify-patient-reminder">Lembrete de Agendamento (24h antes)</label></div>
+                                            <div class="checkbox-item"><input type="checkbox" id="notify-patient-reschedule" name="patientReschedule" checked><label for="notify-patient-reschedule">Reagendamento</label></div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Config. de Notificações</button>
+                                    </form>
+                                </div>
+                                <div id="tab-users" class="settings-tab-pane">
+                                    <h3><i class="fas fa-users-cog"></i> Usuários e Permissões</h3>
+                                    <button class="btn btn-primary" onclick="showForm('newUserForm', 'settings-section', '#tab-users')" style="margin-bottom:15px;"><i class="fas fa-user-plus"></i> Novo Usuário</button>
+                                    <div class="table-responsive">
+                                        <table class="data-table">
+                                            <thead><tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+                                            <tbody id="usersTableBody"><tr><td colspan="5" style="text-align:center;">Carregando usuários...</td></tr></tbody>
+                                        </table>
+                                    </div>
+                                    <div id="newUserForm" class="form-container hidden-form" style="margin-top:20px;">
+                                        <h5><i class="fas fa-user-plus"></i> Novo Usuário do Sistema</h5>
+                                        <form id="userForm">
+                                            <input type="hidden" id="userId" name="userId">
+                                            <div class="form-row">
+                                                <div class="form-group"><label for="user-nome">Nome Completo:*</label><input type="text" id="user-nome" name="nomeCompleto" required></div>
+                                                <div class="form-group"><label for="user-email">E-mail (Login):*</label><input type="email" id="user-email" name="email" required></div>
+                                            </div>
+                                            <div class="form-row">
+                                                <div class="form-group"><label for="user-senha">Senha:* <small>(Mín. 6 caracteres. Deixe em branco para não alterar ao editar)</small></label><input type="password" id="user-senha" name="senha" minlength="6"></div>
+                                                <div class="form-group"><label for="user-perfil">Perfil de Acesso:*</label><select id="user-perfil" name="perfil" required><option value="admin">Administrador</option><option value="medico">Médico</option><option value="secretaria">Secretária</option></select></div>
+                                            </div>
+                                            <div class="form-group"><label for="user-status">Status:</label><select id="user-status" name="status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></div>
+                                            <div class="form-actions">
+                                                <button type="button" class="btn btn-cancel" onclick="hideForm('newUserForm')">Cancelar</button>
+                                                <button type="submit" class="btn btn-primary">Salvar Usuário</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div id="tab-integrations" class="settings-tab-pane">
+                                    <h3><i class="fas fa-plug"></i> Integrações</h3>
+                                     <form id="integrationsSettingsForm"  class="settings-form">
+                                        <p>Conecte com serviços externos.</p>
+                                        <div class="widget" style="padding: 15px; margin-bottom:15px; border-left: 3px solid var(--accent-color);">
+                                            <h4><i class="fab fa-google"></i> Google Calendar</h4>
+                                            <div class="checkbox-group">
+                                                <div class="checkbox-item"><input type="checkbox" id="google-calendar-active" name="googleCalendarActive"><label for="google-calendar-active">Ativar Sincronização com Google Calendar</label></div>
+                                            </div>
+                                            <button type="button" class="btn btn-primary" onclick="console.log('Configurar Google Calendar')" disabled><i class="fas fa-cog"></i> Configurar (Em Breve)</button>
+                                        </div>
+                                        <div class="widget" style="padding: 15px; margin-bottom:15px; border-left: 3px solid var(--positive-color);">
+                                            <h4><i class="fab fa-whatsapp"></i> WhatsApp API</h4>
+                                            <div class="checkbox-group">
+                                                <div class="checkbox-item"><input type="checkbox" id="whatsapp-active" name="whatsappActive"><label for="whatsapp-active">Ativar Notificações por WhatsApp</label></div>
+                                            </div>
+                                            <button type="button" class="btn btn-primary" onclick="console.log('Configurar WhatsApp API')" disabled><i class="fas fa-cog"></i> Configurar (Em Breve)</button>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Config. de Integrações</button>
+                                     </form>
+                                </div>
+                                <div id="tab-appearance" class="settings-tab-pane">
+                                    <h3><i class="fas fa-paint-brush"></i> Aparência</h3>
+                                    <form class="settings-form" id="appearanceSettingsForm">
+                                        <div class="form-group">
+                                            <label for="theme-select">Tema Visual:</label>
+                                            <select id="theme-select" name="themeSelect">
+                                                <option value="default">Padrão LifeCare (Azul)</option>
+                                                <option value="light">Claro Minimalista</option>
+                                                <option value="dark">Escuro (Em breve)</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="accent-color-picker">Cor de Destaque Principal:</label>
+                                            <input type="color" id="accent-color-picker" name="accentColor" value="#2C57A8">
+                                        </div>
+                                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Salvar Aparência</button>
+                                    </form>
+                                </div>
+                                 <div id="tab-data" class="settings-tab-pane">
+                                    <h3><i class="fas fa-database"></i> Gerenciamento de Dados</h3>
+                                    <p>Opções para backup e importação/exportação de dados.</p>
+                                    <div class="form-group">
+                                        <button type="button" class="btn btn-primary" onclick="handleBackupData()"><i class="fas fa-download"></i> Fazer Backup dos Dados</button>
+                                        <p class="form-info-text">Isso irá gerar um arquivo com todos os dados da clínica (simulado).</p>
+                                    </div>
+                                     <div class="form-group">
+                                        <label for="import-data-file">Importar Dados (arquivo .json):</label>
+                                        <input type="file" id="import-data-file" name="importDataFile" accept=".json">
+                                        <button type="button" class="btn btn-primary" onclick="handleImportData()" style="margin-top:10px;"><i class="fas fa-upload"></i> Importar</button>
+                                        <p class="form-info-text">Cuidado: A importação pode sobrescrever dados existentes (simulado).</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                </div> <!-- .content-sections-container -->
+            </div> <!-- .main-content-wrap -->
+        </main>
+    </div>
+
+    <script>
+        // ========================================================
+        // SUPABASE CLIENT INITIALIZATION (com espera ativa)
+        // ========================================================
+        const SUPABASE_URL = 'https://hqgcjyujpicmsbtfsbwv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhxZ2NqeXVqcGljbXNidGZzYnd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5NDYxNTksImV4cCI6MjA1NzUyMjE1OX0.sWuvGLebMDsSo23iuzdci5utbfbqWEO_uPFl7ztQWFk';
+
+        let supabase = null; // Definido globalmente
+        console.log("Script principal iniciado (inline).");
+
+        function initializeSupabaseClient() {
+            console.log("Tentando inicializar o cliente Supabase...");
+            if (typeof supabaseJs === 'undefined') {
+                console.error("!!! supabaseJs ainda não está definido no momento da chamada de initializeSupabaseClient !!!");
+                supabase = null; return;
+            }
+            if (SUPABASE_URL && SUPABASE_ANON_KEY &&
+                SUPABASE_URL !== 'COLOQUE_A_URL_DO_SEU_PROJETO_SUPABASE_AQUI' &&
+                SUPABASE_ANON_KEY !== 'COLOQUE_SUA_CHAVE_ANON_PUBLICA_SUPABASE_AQUI')
+            {
+                try {
+                    supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log("Cliente Supabase inicializado com sucesso DENTRO da função:", supabase);
+                } catch (error) { console.error("ERRO CRÍTICO ao inicializar cliente Supabase:", error); supabase = null; }
+            } else { console.warn("Credenciais do Supabase ausentes ou são placeholders. Usando simulação local."); supabase = null; }
+        }
+
+        // Variáveis globais de estado
+        let appConfig = {
+            appName: 'LifeCare Painel', language: 'pt-br', timezone: 'America/Sao_Paulo', dateFormat: 'dd/MM/yyyy', currency: 'BRL', theme: 'default', accentColor: '#2C57A8',
+            notifications_config: { emailActive: true, emailFrom: 'notificacoes@lifecare.com', smsActive: false, patientConfirm: true, patientReminder: true, patientReschedule: true, },
+            integrations_config: { googleCalendarActive: false, whatsappActive: false, },
+            clinicName: 'LifeCare Clínica Exemplo', clinicCnpj: '', clinicAddress: '', clinicPhone: '', clinicEmail: '', clinicWebsite: '', clinicLogoUrl: null,
+        };
+        let db = { patients: [], doctors: [], departments: [], appointments: [], revenues: [], expenses: [], categories: [], users: [] };
+
+        // Função para verificar se o SDK carregou e então iniciar a aplicação
+        async function checkSdkAndStartApp() {
+            let attempts = 0; const maxAttempts = 15; const checkInterval = 500;
+            while (typeof supabaseJs === 'undefined' && attempts < maxAttempts) {
+                console.log(`Aguardando supabaseJs... Tentativa ${attempts + 1}/${maxAttempts}`);
+                await new Promise(resolve => setTimeout(resolve, checkInterval));
+                attempts++;
+            }
+            if (typeof supabaseJs === 'undefined') {
+                 console.error("TIMEOUT: SDK do Supabase (supabaseJs) não carregou após esperar. Verifique a tag <script> e a aba Rede (Network) do navegador.");
+                 alert("Falha ao carregar componentes essenciais (Supabase SDK). A aplicação pode não funcionar corretamente.");
+            } else {
+                console.log("supabaseJs encontrado! Inicializando cliente...");
+                initializeSupabaseClient(); // Chama a inicialização AGORA
+            }
+
+            console.log("Prosseguindo com o resto da inicialização da aplicação...");
+            // --- Continua com o resto da inicialização da aplicação ---
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const mobileOverlay = document.querySelector('.mobile-overlay');
+            const body = document.body;
+            const navLinks = document.querySelectorAll('.sidebar-nav a[data-section], .widget a[data-section]');
+            const sections = document.querySelectorAll('.content-section');
+            const isMobile = () => window.innerWidth <= 768;
+
+            function toggleSidebar() { if (isMobile()) body.classList.toggle('sidebar-mobile-open'); else body.classList.toggle('sidebar-collapsed'); }
+            if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+            if (mobileOverlay) mobileOverlay.addEventListener('click', () => body.classList.remove('sidebar-mobile-open'));
+
+            window.showSection = function(targetId, isInitialLoad = false, subTarget = null) {
+                sections.forEach(s => s.classList.remove('active-section'));
+                const targetSection = document.getElementById(targetId);
+                const firstSection = sections[0]; // Pega a primeira seção disponível
+                if (targetSection) targetSection.classList.add('active-section');
+                else if (firstSection) firstSection.classList.add('active-section'); // Usa a primeira se a alvo não for encontrada
+
+                document.querySelectorAll('.sidebar-nav a[data-section]').forEach(l => l.classList.toggle('active', l.dataset.section === targetId));
+                try { localStorage.setItem('activeSectionId_LifeCare', targetId); } catch (e) { console.warn("Não foi possível salvar a seção ativa no localStorage:", e.message); }
+
+                if (targetId === 'settings-section' && !isInitialLoad) {
+                    const targetTabLink = subTarget ? document.querySelector(`.settings-nav-tabs a[href="${subTarget}"]`) : document.querySelector('.settings-nav-tabs li:first-child a');
+                    if (targetTabLink) activateSettingsTab(targetTabLink);
+                }
+                if (targetId === 'finance-section' && !isInitialLoad) {
+                     const targetTabLink = subTarget ? document.querySelector(`#finance-tabs a[href="${subTarget}"]`) : document.querySelector('#finance-tabs li:first-child a');
+                    if (targetTabLink) activatePillTab(targetTabLink, 'finance-tabs');
+                }
+            }
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    const targetId = this.dataset.section || this.getAttribute('href')?.substring(1);
+                    if (targetId && document.getElementById(targetId)) {
+                        e.preventDefault();
+                        showSection(targetId);
+                        if (isMobile() && body.classList.contains('sidebar-mobile-open')) { body.classList.remove('sidebar-mobile-open'); }
+                    }
+                });
+            });
+
+            const settingsTabs = document.querySelectorAll('.settings-nav-tabs li a');
+            function activateSettingsTab(tabLink) {
+                if (!tabLink) return;
+                document.querySelectorAll('.settings-nav-tabs li').forEach(li => li.classList.remove('active'));
+                document.querySelectorAll('.settings-tab-pane').forEach(p => p.classList.remove('active'));
+                if (tabLink.parentElement) tabLink.parentElement.classList.add('active'); // Check parentElement exists
+                const targetPaneId = tabLink.getAttribute('href');
+                if (targetPaneId) { const targetPane = document.querySelector(targetPaneId); if (targetPane) targetPane.classList.add('active'); }
+            }
+            settingsTabs.forEach(tab => tab.addEventListener('click', e => { e.preventDefault(); activateSettingsTab(e.target.closest('a')); }));
+
+            function activatePillTab(tabLink, tabGroupId) {
+                if (!tabLink) return;
+                const tabGroup = document.getElementById(tabGroupId); if (!tabGroup) return;
+                tabGroup.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+                tabLink.classList.add('active');
+                const contentContainer = tabGroup.nextElementSibling;
+                if (contentContainer && contentContainer.classList.contains('tab-content')) {
+                    contentContainer.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+                    const targetPaneId = tabLink.getAttribute('href');
+                     if (targetPaneId) { const targetPane = contentContainer.querySelector(targetPaneId); if (targetPane) targetPane.classList.add('active'); }
+                }
+            }
+            document.querySelectorAll('.nav-pills .nav-link').forEach(tab => {
+                tab.addEventListener('click', e => {
+                    e.preventDefault();
+                    const tabGroupId = e.target.closest('.nav-pills')?.id; // Check closest exists
+                    if (tabGroupId) activatePillTab(e.target.closest('a'), tabGroupId);
+                });
+            });
+
+            await loadInitialData();
+
+            let lastActiveSectionId = null;
+            try { lastActiveSectionId = localStorage.getItem('activeSectionId_LifeCare'); } catch(e) { console.warn("Não foi possível ler a seção ativa do localStorage:", e.message); }
+            showSection(lastActiveSectionId && document.getElementById(lastActiveSectionId) ? lastActiveSectionId : (sections[0]?.id || 'home-section'), true);
+
+            setupFormEventListeners();
+            renderSampleCharts();
+            console.log("Inicialização da aplicação concluída.");
+        }
+
+        // Inicia o processo de verificação e inicialização quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', checkSdkAndStartApp);
+
+        // ========================================================
+        // DEFINIÇÕES DAS FUNÇÕES
+        // ========================================================
+
+        async function loadAppSettingsFromSupabase() {
+            if (!supabase) { console.warn("Supabase não inicializado em loadAppSettingsFromSupabase. Usando default appConfig."); applyAppSettingsToUI(appConfig); return; }
+            try {
+                const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).single();
+                if (error && error.code !== 'PGRST116') { throw error; }
+                if (data) {
+                    Object.keys(appConfig).forEach(key => {
+                         if (data.hasOwnProperty(key) && data[key] !== undefined && data[key] !== null) { // Check null/undefined
+                            // Merge deep for config objects, shallow for others
+                            if (typeof appConfig[key] === 'object' && appConfig[key] !== null && !Array.isArray(appConfig[key]) && typeof data[key] === 'object' && data[key] !== null) {
+                                appConfig[key] = { ...appConfig[key], ...data[key] };
+                            } else {
+                                appConfig[key] = data[key];
+                            }
+                        }
+                    });
+                    console.log("App settings loaded from Supabase:", appConfig);
+                } else {
+                    console.warn("No app settings found in Supabase for id=1. Using defaults and attempting to save them.");
+                    await saveAppSettingsToSupabase(appConfig, true);
+                }
+            } catch (error) {
+                console.error("Error loading app settings from Supabase:", error.message);
+                console.warn("Using default appConfig due to error.");
+            }
+            applyAppSettingsToUI(appConfig);
+        }
+
+        function applyAppSettingsToUI(config) {
+            if (!config) return;
+            document.documentElement.style.setProperty('--accent-color', config.accentColor || '#2C57A8');
+            const generalForm = document.getElementById('generalSettingsForm');
+            if (generalForm && generalForm.elements) {
+                generalForm.elements.appName.value = config.appName || '';
+                generalForm.elements.language.value = config.language || 'pt-br';
+                generalForm.elements.timezone.value = config.timezone || 'America/Sao_Paulo';
+                generalForm.elements.dateFormat.value = config.dateFormat || 'dd/MM/yyyy';
+                generalForm.elements.currency.value = config.currency || 'BRL';
+            }
+            const profileForm = document.getElementById('clinicProfileForm');
+            if (profileForm && profileForm.elements) {
+                profileForm.elements.clinicName.value = config.clinicName || '';
+                profileForm.elements.clinicCnpj.value = config.clinicCnpj || '';
+                profileForm.elements.clinicAddress.value = config.clinicAddress || '';
+                profileForm.elements.clinicPhone.value = config.clinicPhone || '';
+                profileForm.elements.clinicEmail.value = config.clinicEmail || '';
+                profileForm.elements.clinicWebsite.value = config.clinicWebsite || '';
+                const logoPreview = document.getElementById('clinic-logo-preview');
+                if (logoPreview) {
+                    if (config.clinicLogoUrl) { logoPreview.src = config.clinicLogoUrl; logoPreview.style.display = 'block'; }
+                    else { logoPreview.style.display = 'none'; logoPreview.src = '#'; }
+                }
+            }
+            const appearanceForm = document.getElementById('appearanceSettingsForm');
+            if(appearanceForm && appearanceForm.elements) {
+                appearanceForm.elements.themeSelect.value = config.theme || 'default';
+                appearanceForm.elements.accentColor.value = config.accentColor || '#2C57A8';
+            }
+            const notificationsForm = document.getElementById('notificationsSettingsForm');
+            if (notificationsForm && config.notifications_config && notificationsForm.elements) {
+                notificationsForm.elements.emailActive.checked = !!config.notifications_config.emailActive;
+                notificationsForm.elements.emailFrom.value = config.notifications_config.emailFrom || '';
+                notificationsForm.elements.smsActive.checked = !!config.notifications_config.smsActive;
+                notificationsForm.elements.patientConfirm.checked = !!config.notifications_config.patientConfirm;
+                notificationsForm.elements.patientReminder.checked = !!config.notifications_config.patientReminder;
+                notificationsForm.elements.patientReschedule.checked = !!config.notifications_config.patientReschedule;
+            }
+            const integrationsForm = document.getElementById('integrationsSettingsForm');
+            if (integrationsForm && config.integrations_config && integrationsForm.elements) {
+               integrationsForm.elements.googleCalendarActive.checked = !!config.integrations_config.googleCalendarActive;
+               integrationsForm.elements.whatsappActive.checked = !!config.integrations_config.whatsappActive;
+            }
+            updateGreeting();
+            setupSettingsInteractions(); // Chama aqui para garantir que os listeners sejam aplicados após preencher
+        }
+
+        async function loadInitialData() {
+            console.log("loadInitialData chamado. Supabase client:", supabase);
+            await loadAppSettingsFromSupabase(); // Garante que appConfig esteja atualizado
+
+            if (!supabase) {
+                console.warn("Supabase not initialized in loadInitialData. Using local example data for tables.");
+                 db.categories = [{id:1, nome:'Consulta', tipo:'receita'}, {id:2, nome:'Aluguel', tipo:'despesa'}];
+                 db.users = [{id:1, nomeCompleto:'Dr. Usuário Admin', email:'admin@lifecare.com', perfil:'admin', status:'ativo'}];
+                 Object.keys(db).filter(k => !['categories', 'users'].includes(k)).forEach(key => db[key] = []); // Limpa outros dados
+            } else {
+                try {
+                    const tableNames = ['patients', 'doctors', 'departments', 'appointments', 'revenues', 'expenses', 'categories', 'users'];
+                    const promises = tableNames.map(tableName => {
+                        let query = supabase.from(tableName).select(tableName === 'users' ? 'id, nomeCompleto, email, perfil, status, created_at' : '*');
+                        // Adiciona ordenações padrão onde aplicável
+                        if (tableName === 'appointments') query = query.order('data', { ascending: false }).order('horaInicio', { ascending: false });
+                        else if (['patients', 'doctors', 'users'].includes(tableName)) query = query.order('nomeCompleto');
+                        else if (['departments', 'categories'].includes(tableName)) query = query.order('nome');
+                        else if (tableName === 'revenues' || tableName === 'expenses') query = query.order('data', { ascending: false });
+                        else if (tableName !== 'app_settings') query = query.order('created_at', { ascending: false });
+                        return query;
+                    });
+                    const results = await Promise.all(promises);
+                    results.forEach((result, index) => {
+                        const tableName = tableNames[index];
+                        if (result.error) console.error(`Erro ao carregar ${tableName}:`, result.error);
+                        db[tableName] = result.data || [];
+                    });
+                    console.log("Data loaded from Supabase successfully.");
+                } catch (error) {
+                    console.error("Error loading data from Supabase (Promise.all):", error.message);
+                    alert("Erro ao carregar dados do servidor. Verifique sua conexão e tente novamente.");
+                    Object.keys(db).forEach(key => db[key] = []); // Limpa db em caso de erro crítico
+                }
+            }
+            // Popula selects e renderiza tabelas
+            populateSelect('qa-paciente', db.patients, 'nomeCompleto', true);
+            populateSelect('qa-medico', db.doctors, 'nomeCompleto', true);
+            populateSelect('app-paciente', db.patients, 'nomeCompleto', true);
+            populateSelect('app-medico', db.doctors, 'nomeCompleto', true);
+            populateSelect('doc-especialidade-principal', db.departments, 'nome', true);
+            populateCheckboxes('doc-outras-especialidades-container', db.departments, 'outrasEspecialidadesIds');
+            populateSelect('rev-paciente', db.patients, 'nomeCompleto', true);
+            populateSelect('rev-categoria', db.categories.filter(c => c.tipo === 'receita'), 'nome', true);
+            populateSelect('exp-categoria', db.categories.filter(c => c.tipo === 'despesa'), 'nome', true);
+
+            renderTable('appointmentsTableBody', db.appointments, ['data', 'pacienteId', 'medicoId', 'tipoConsulta', 'status'], formatAppointmentRow);
+            renderTable('patientsTableBody', db.patients, ['nomeCompleto', 'cpf', 'telCelular', 'dataNascimento'], formatPatientRow);
+            renderTable('doctorsTableBody', db.doctors, ['nomeCompleto', 'crm', 'especialidadePrincipalId', 'telefone', 'status'], formatDoctorRow);
+            renderTable('departmentsTableBody', db.departments, ['nome', 'descricao'], formatDepartmentRow);
+            renderTable('usersTableBody', db.users, ['nomeCompleto', 'email', 'perfil', 'status'], formatUserRow);
+            renderFinancialTables(); // Já chama updateDashboardStats e renderSampleCharts
+        }
+
+        function setupFormEventListeners() {
+            document.getElementById('appointmentForm')?.addEventListener('submit', handleSaveAppointment);
+            document.getElementById('patientForm')?.addEventListener('submit', handleSavePatient);
+            document.getElementById('doctorForm')?.addEventListener('submit', handleSaveDoctor);
+            document.getElementById('departmentForm')?.addEventListener('submit', handleSaveDepartment);
+            document.getElementById('userForm')?.addEventListener('submit', handleSaveUser);
+            document.getElementById('revenueForm')?.addEventListener('submit', handleSaveRevenue);
+            document.getElementById('expenseForm')?.addEventListener('submit', handleSaveExpense);
+            document.getElementById('categoryForm')?.addEventListener('submit', handleSaveCategory);
+            document.getElementById('generalSettingsForm')?.addEventListener('submit', handleSaveGeneralSettings);
+            document.getElementById('clinicProfileForm')?.addEventListener('submit', handleSaveClinicProfile);
+            document.getElementById('notificationsSettingsForm')?.addEventListener('submit', handleSaveNotificationSettings);
+            document.getElementById('integrationsSettingsForm')?.addEventListener('submit', handleSaveIntegrationSettings);
+            document.getElementById('appearanceSettingsForm')?.addEventListener('submit', handleSaveAppearanceSettings);
+            const clinicLogoInput = document.getElementById('clinic-logo');
+            const clinicLogoPreview = document.getElementById('clinic-logo-preview');
+            if (clinicLogoInput && clinicLogoPreview) {
+                clinicLogoInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) { if(clinicLogoPreview) { clinicLogoPreview.src = e.target.result; clinicLogoPreview.style.display = 'block';}}
+                        reader.readAsDataURL(this.files[0]);
+                    } else if(clinicLogoPreview){ clinicLogoPreview.style.display = 'none'; clinicLogoPreview.src = '#'; }
+                });
+            }
+        }
+
+        function setupSettingsInteractions() {
+            const accentColorPicker = document.getElementById('accent-color-picker');
+            if (accentColorPicker) {
+                accentColorPicker.addEventListener('input', (e) => {
+                    document.documentElement.style.setProperty('--accent-color', e.target.value);
+                });
+            }
+        }
+
+        window.showForm = function(formId, sectionToShow = null, subTarget = null) {
+            if (sectionToShow) window.showSection(sectionToShow, false, subTarget);
+            setTimeout(() => {
+                const formElement = document.getElementById(formId);
+                if (formElement) {
+                    formElement.classList.remove('hidden-form');
+                    formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    const form = formElement.querySelector('form');
+                    if (form) {
+                        form.reset();
+                        const idField = form.querySelector('input[type="hidden"][name$="Id"]');
+                        if (idField) idField.value = '';
+                        const imgPreview = form.querySelector('img[id$="-preview"]');
+                        if (imgPreview) { imgPreview.style.display = 'none'; imgPreview.src = '#'; }
+                        const fileInput = form.querySelector('input[type="file"]');
+                        if (fileInput) fileInput.value = '';
+                        if (formId === 'clinicProfileForm' && appConfig.clinicLogoUrl) {
+                            const logoPreview = document.getElementById('clinic-logo-preview');
+                            if(logoPreview) { logoPreview.src = appConfig.clinicLogoUrl; logoPreview.style.display = 'block'; }
+                        }
+                    }
+                } else { console.error("Formulário não encontrado:", formId); }
+            }, 50);
+        }
+        window.hideForm = function(formId) {
+            const formElement = document.getElementById(formId);
+            if (formElement) formElement.classList.add('hidden-form');
+        }
+
+        function populateSelect(selectId, data, textField, includeEmptyOption = false, valueField = 'id') {
+            const select = document.getElementById(selectId); if (!select) { return; }
+            select.innerHTML = includeEmptyOption ? '<option value="">Selecione</option>' : '';
+            if (!data) { return; }
+            data.forEach(item => { if (item) { const option = document.createElement('option'); option.value = item[valueField]; option.textContent = item[textField]; select.appendChild(option); }});
+        }
+        function populateCheckboxes(containerId, data, nameAttribute, valueField = 'id', textField = 'nome') {
+            const container = document.getElementById(containerId); if (!container) return;
+            container.innerHTML = ''; if (!data || data.length === 0) { container.innerHTML = '<p class="form-info-text">Nenhuma opção disponível.</p>'; return; }
+            data.forEach(item => { if (item) { const div = document.createElement('div'); div.className = 'checkbox-item'; const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.id = `${nameAttribute}-${item[valueField]}`; checkbox.name = nameAttribute; checkbox.value = item[valueField]; const label = document.createElement('label'); label.htmlFor = checkbox.id; label.textContent = item[textField]; div.appendChild(checkbox); div.appendChild(label); container.appendChild(div); }});
+        }
+
+        function renderTable(tbodyId, data, columns, rowFormatter) {
+            const tbody = document.getElementById(tbodyId); if (!tbody) return;
+            tbody.innerHTML = ''; if (!data || data.length === 0) { const thCount = tbody.closest('table')?.querySelector('thead tr')?.childElementCount || columns.length +1; tbody.innerHTML = `<tr><td colspan="${thCount}" style="text-align:center;">Nenhum dado encontrado.</td></tr>`; return; }
+            data.forEach(item => { if (item) tbody.appendChild(rowFormatter(item)); });
+        }
+
+        function getSelectedCheckboxValues(form, name) {
+            const values = []; if (!form) return values;
+            form.querySelectorAll(`input[name="${name}"]:checked`).forEach(cb => values.push(cb.value));
+            return values.map(v => isNaN(parseInt(v)) ? v : parseInt(v));
+        }
+
+        function formatAppointmentRow(item) { /* ...Definição completa... */
+            const tr = document.createElement('tr');
+            const patient = (db.patients || []).find(p=> p && p.id == item.pacienteId);
+            const doctor = (db.doctors || []).find(d=> d && d.id == item.medicoId);
+            const patientName = patient?.nomeCompleto || 'N/A';
+            const doctorName = doctor?.nomeCompleto || 'N/A';
+            let displayDate = 'Data inválida';
+            if (item.data) {
+                try { const appointmentDate = new Date(item.data + 'T' + (item.horaInicio || '00:00:00')); displayDate = `${appointmentDate.toLocaleDateString('pt-BR')} ${item.horaInicio || ''}`.trim(); }
+                catch(e){ console.error("Erro ao formatar data do agendamento:", e); }
+            }
+            tr.innerHTML = `<td>${displayDate}</td><td>${patientName}</td><td>${doctorName}</td><td>${(item.tipoConsulta || 'N/A').replace(/_/g,' ')}</td><td><span class="status-badge ${item.status || 'desconhecido'}">${(item.status || 'N/A').replace(/_/g,' ')}</span></td><td class="actions-cell"><button class="icon-button" title="Editar" onclick="editAppointment(${item.id})"><i class="fas fa-edit"></i></button><button class="icon-button" title="Excluir" onclick="deleteAppointment(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+        }
+         function formatPatientRow(item) { /* ...Definição completa... */
+            const tr = document.createElement('tr');
+            let displayDate = 'N/A';
+            if(item.dataNascimento) { try { displayDate = new Date(item.dataNascimento + 'T00:00:00').toLocaleDateString('pt-BR'); } catch(e){} }
+            tr.innerHTML = `<td>${item.nomeCompleto || 'N/A'}</td><td>${item.cpf || 'N/A'}</td><td>${item.telCelular || 'N/A'}</td><td>${displayDate}</td><td class="actions-cell"><button class="icon-button" title="Editar" onclick="editPatient(${item.id})"><i class="fas fa-edit"></i></button><button class="icon-button" title="Excluir" onclick="deletePatient(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+         }
+         function formatDoctorRow(item) { /* ...Definição completa... */
+            const tr = document.createElement('tr');
+            const department = (db.departments || []).find(d=> d && d.id == item.especialidadePrincipalId);
+            const specialtyName = department?.nome || 'N/A';
+            tr.innerHTML = `<td>${item.nomeCompleto || 'N/A'}</td><td>${item.crm || 'N/A'}</td><td>${specialtyName}</td><td>${item.telefone || 'N/A'}</td><td><span class="status-badge ${item.status || 'desconhecido'}">${item.status || 'N/A'}</span></td><td class="actions-cell"><button class="icon-button" title="Editar" onclick="editDoctor(${item.id})"><i class="fas fa-edit"></i></button><button class="icon-button" title="Excluir" onclick="deleteDoctor(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+         }
+        function formatDepartmentRow(item) { /* ...Definição completa... */
+             const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${item.nome || 'N/A'}</td><td>${item.descricao || '-'}</td><td class="actions-cell"><button class="icon-button" title="Editar" onclick="editDepartment(${item.id})"><i class="fas fa-edit"></i></button><button class="icon-button" title="Excluir" onclick="deleteDepartment(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+        }
+        function formatUserRow(item) { /* ...Definição completa... */
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${item.nomeCompleto || 'N/A'}</td><td>${item.email || 'N/A'}</td><td>${item.perfil || 'N/A'}</td><td><span class="status-badge ${item.status || 'desconhecido'}">${item.status || 'N/A'}</span></td><td class="actions-cell"><button class="icon-button" title="Editar" onclick="editUser(${item.id})"><i class="fas fa-edit"></i></button><button class="icon-button" title="Excluir" onclick="deleteUser(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+        }
+
+        async function handleSaveEntity(e, entityName, tableName, formId, idFieldNameInForm, afterSaveCallback = null) { /* ...Definição completa... */
+            e.preventDefault();
+            if (!supabase) { alert("Supabase não inicializado. Não é possível salvar os dados."); return; }
+            const form = document.getElementById(formId); if (!form) return;
+            const formData = new FormData(form);
+            let dataObject = Object.fromEntries(formData.entries());
+            const entityIdValue = dataObject[idFieldNameInForm];
+
+            for (const key in dataObject) { if (dataObject[key] === '' && key !== 'id' && key !== idFieldNameInForm) { dataObject[key] = null; }}
+
+            if (tableName === 'doctors') { dataObject.outrasEspecialidadesIds = getSelectedCheckboxValues(form, 'outrasEspecialidadesIds'); dataObject.especialidadePrincipalId = dataObject.especialidadePrincipalId ? parseInt(dataObject.especialidadePrincipalId) : null;}
+            else if (tableName === 'appointments') { dataObject.pacienteId = dataObject.pacienteId ? parseInt(dataObject.pacienteId) : null; dataObject.medicoId = dataObject.medicoId ? parseInt(dataObject.medicoId) : null; dataObject.lembreteEmail = formData.has('lembreteEmail'); dataObject.lembreteSms = formData.has('lembreteSms'); dataObject.duracao = dataObject.duracao ? parseInt(dataObject.duracao) : null;}
+            else if (tableName === 'revenues' || tableName === 'expenses') { dataObject.pacienteId = dataObject.pacienteId ? parseInt(dataObject.pacienteId) : null; dataObject.categoriaId = dataObject.categoriaId ? parseInt(dataObject.categoriaId) : null; dataObject.valor = dataObject.valor ? parseFloat(dataObject.valor) : 0;}
+
+            if (idFieldNameInForm !== 'id' && dataObject.hasOwnProperty(idFieldNameInForm)) { delete dataObject[idFieldNameInForm]; }
+
+            try {
+                let responseData, error;
+                if (entityIdValue && entityIdValue !== '') { const updatePayload = { ...dataObject }; delete updatePayload.id; ({ data: responseData, error } = await supabase.from(tableName).update(updatePayload).eq('id', parseInt(entityIdValue)).select().single()); }
+                else { delete dataObject.id; ({ data: responseData, error } = await supabase.from(tableName).insert([dataObject]).select().single()); }
+                if (error) throw error;
+                console.log(`${entityName} salvo(a) no Supabase:`, responseData); alert(`${entityName} salvo(a) com sucesso!`);
+                await loadInitialData(); hideForm(formId); if (form) form.reset(); if (afterSaveCallback) afterSaveCallback();
+            } catch (error) { console.error(`Erro ao salvar ${entityName}:`, error.message, error); alert(`Erro ao salvar ${entityName}: ${error.message}. Detalhes no console.`); }
+        }
+
+        function handleSaveAppointment(e) { handleSaveEntity(e, 'Agendamento', 'appointments', 'appointmentForm', 'appointmentId', null); }
+        function handleSavePatient(e) { handleSaveEntity(e, 'Paciente', 'patients', 'patientForm', 'patientId', null); }
+        function handleSaveDoctor(e) { handleSaveEntity(e, 'Médico', 'doctors', 'doctorForm', 'doctorId', null); }
+        function handleSaveDepartment(e) { handleSaveEntity(e, 'Departamento', 'departments', 'departmentForm', 'departmentId', null); }
+        async function handleSaveUser(e) { /* ...Definição completa com aviso de segurança... */
+            e.preventDefault();
+            if (!supabase) { alert("Supabase não inicializado."); return; }
+            const form = document.getElementById('userForm'); if(!form) return;
+            const userIdValue = form.elements.userId.value;
+            const nomeCompleto = form.elements.nomeCompleto.value;
+            const email = form.elements.email.value;
+            const perfil = form.elements.perfil.value;
+            const status = form.elements.status.value;
+            const senha = form.elements.senha.value;
+            let userData = { nomeCompleto, email, perfil, status };
+
+            alert("AVISO: A gestão de senhas neste formulário é apenas uma SIMULAÇÃO e NÃO É SEGURA para produção. Use o sistema de autenticação do Supabase (Supabase Auth) para gerenciar usuários e senhas de forma segura.");
+
+            if (userIdValue) { // Editando
+                if (senha && senha.trim() !== "") { console.warn("Tentativa de atualização de senha simulada."); }
+                const { data, error } = await supabase.from('users').update(userData).eq('id', parseInt(userIdValue)).select().single();
+                if (error) { console.error("Erro ao atualizar usuário:", error); alert("Erro: " + error.message); return; }
+                alert('Usuário atualizado (simulado)!');
+            } else { // Novo
+                if (!senha || senha.trim().length < 6) { alert("Senha é obrigatória e deve ter no mínimo 6 caracteres (simulado)."); return; }
+                console.warn("Criação de usuário simulada.");
+                userData.password_hash = "SIMULATED_HASH_" + Date.now(); // Placeholder
+                const { data, error } = await supabase.from('users').insert([userData]).select().single();
+                if (error) { console.error("Erro ao inserir usuário (simulado):", error); alert("Erro: " + error.message); return; }
+                alert('Novo usuário salvo (simulado)!');
+            }
+            await loadInitialData(); hideForm('newUserForm'); form.reset();
+        }
+        function handleSaveRevenue(e) { handleSaveEntity(e, 'Receita', 'revenues', 'revenueForm', 'revenueId', renderFinancialTables); }
+        function handleSaveExpense(e) { handleSaveEntity(e, 'Despesa', 'expenses', 'expenseForm', 'expenseId', renderFinancialTables); }
+        function handleSaveCategory(e) { /* ...Definição completa... */
+             handleSaveEntity(e, 'Categoria', 'categories', 'categoryForm', 'categoryId', async () => {
+                if (supabase) {
+                    const { data, error } = await supabase.from('categories').select('*');
+                    if (!error) db.categories = data || [];
+                }
+                populateSelect('rev-categoria', (db.categories || []).filter(c => c && c.tipo === 'receita'), 'nome', true);
+                populateSelect('exp-categoria', (db.categories || []).filter(c => c && c.tipo === 'despesa'), 'nome', true);
+                renderFinancialTables();
+            });
+        }
+
+        function editEntity(id, entityNameSingular, formElementId, dataArray) { /* ...Definição completa... */
+            const item = (dataArray || []).find(i => i && i.id == id);
+            if (!item) { console.error(`${entityNameSingular} com ID ${id} não encontrado.`); alert(`${entityNameSingular} não encontrado.`); return; }
+            const form = document.getElementById(formElementId); if (!form) { console.error(`Formulário ${formElementId} não encontrado.`); return; }
+            const formContainer = form.closest('.form-container'); if (!formContainer) { console.error(`Container do formulário para ${formElementId} não encontrado.`); return; }
+            showForm(formContainer.id);
+
+            for (const key in item) {
+                 if (form.elements[key]) {
+                    const element = form.elements[key];
+                    if (element.type === 'checkbox') {
+                         if (key === 'outrasEspecialidadesIds' && Array.isArray(item[key])) { /* Tratamento especial já feito */ }
+                         else { element.checked = !!item[key]; }
+                    } else if (element.nodeName === 'SELECT' && element.multiple) {
+                         // Para selects múltiplos (se houver no futuro)
+                         if (Array.isArray(item[key])) {
+                            Array.from(element.options).forEach(option => { option.selected = item[key].includes(option.value); });
+                         }
+                    } else if (element.type === 'radio') {
+                        const radioToCheck = form.querySelector(`input[name="${key}"][value="${item[key]}"]`);
+                        if (radioToCheck) radioToCheck.checked = true;
+                    } else if (element.type === 'date' && item[key]) {
+                        element.value = item[key]; // Formato YYYY-MM-DD
+                    } else {
+                        element.value = item[key] === null ? '' : item[key];
+                    }
+                }
+            }
+             // Tratamento específico para checkboxes de outras especialidades
+             if (formElementId === 'doctorForm' && item.hasOwnProperty('outrasEspecialidadesIds')) {
+                const checkboxesContainer = document.getElementById('doc-outras-especialidades-container');
+                if (checkboxesContainer) {
+                    checkboxesContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    if (Array.isArray(item.outrasEspecialidadesIds)) {
+                        item.outrasEspecialidadesIds.forEach(val => {
+                            const cb = checkboxesContainer.querySelector(`input[value="${val}"]`);
+                            if (cb) cb.checked = true;
+                        });
+                    }
+                }
+             }
+
+            const idFieldInForm = form.querySelector(`input[type="hidden"][name="${entityNameSingular.toLowerCase()}Id"]`);
+            if (idFieldInForm) idFieldInForm.value = id;
+            else { const genericIdField = form.querySelector(`input[type="hidden"][name="id"]`); if (genericIdField) genericIdField.value = id; }
+
+            if (formElementId === 'clinicProfileForm' && item.clinicLogoUrl) {
+                 const logoPreview = document.getElementById('clinic-logo-preview');
+                 if(logoPreview) { logoPreview.src = item.clinicLogoUrl; logoPreview.style.display = 'block'; }
+            }
+            if (formElementId === 'userForm' && form.elements.senha) form.elements.senha.value = '';
+        }
+        async function deleteEntity(id, entityNameSingular, tableName, afterDeleteCallback = null) { /* ...Definição completa... */
+            if (!supabase) { alert("Supabase não inicializado. Não é possível excluir."); return; }
+            if (confirm(`Tem certeza que deseja excluir este(a) ${entityNameSingular}? Esta ação não pode ser desfeita.`)) {
+                try {
+                    const { error } = await supabase.from(tableName).delete().eq('id', id);
+                    if (error) throw error;
+                    console.log(`${entityNameSingular} com ID ${id} excluído do Supabase.`); alert(`${entityNameSingular} excluído(a) com sucesso!`);
+                    await loadInitialData(); if (afterDeleteCallback) afterDeleteCallback();
+                } catch (error) { console.error(`Erro ao excluir ${entityNameSingular}:`, error.message); alert(`Erro ao excluir ${entityNameSingular}: ${error.message}`); }
+            }
+        }
+
+        window.editAppointment = (id) => editEntity(id, 'appointment', 'appointmentForm', db.appointments);
+        window.deleteAppointment = (id) => deleteEntity(id, 'agendamento', 'appointments', loadInitialData);
+        window.editPatient = (id) => editEntity(id, 'patient', 'patientForm', db.patients);
+        window.deletePatient = (id) => deleteEntity(id, 'paciente', 'patients', loadInitialData);
+        window.editDoctor = (id) => editEntity(id, 'doctor', 'doctorForm', db.doctors);
+        window.deleteDoctor = (id) => deleteEntity(id, 'médico', 'doctors', loadInitialData);
+        window.editDepartment = (id) => editEntity(id, 'department', 'departmentForm', db.departments);
+        window.deleteDepartment = (id) => deleteEntity(id, 'departamento', 'departments', loadInitialData);
+        window.editUser = (id) => editEntity(id, 'user', 'userForm', db.users);
+        window.deleteUser = (id) => deleteEntity(id, 'usuário', 'users', loadInitialData);
+        window.editRevenue = (id) => editEntity(id, 'revenue', 'revenueForm', db.revenues);
+        window.deleteRevenue = (id) => deleteEntity(id, 'receita', 'revenues', renderFinancialTables);
+        window.editExpense = (id) => editEntity(id, 'expense', 'expenseForm', db.expenses);
+        window.deleteExpense = (id) => deleteEntity(id, 'despesa', 'expenses', renderFinancialTables);
+        window.editCategory = (id) => editEntity(id, 'category', 'categoryForm', db.categories);
+        window.deleteCategory = (id) => deleteEntity(id, 'categoria', 'categories', loadInitialData);
+
+        function renderFinancialTables() { /* ...Definição completa... */
+            renderTable('revenuesTableBody', db.revenues, [], formatRevenueRow);
+            renderTable('expensesTableBody', db.expenses, [], formatExpenseRow);
+            renderTable('categoriesTableBody', db.categories, [], formatCategoryRow);
+            updateDashboardStats();
+            // renderSampleCharts(); // Chamado apenas uma vez no final do DOMContentLoaded
+        }
+        function formatRevenueRow(item) { /* ...Definição completa... */
+             const tr = document.createElement('tr');
+            const patient = (db.patients || []).find(p=> p && p.id == item.pacienteId);
+            const patientName = patient?.nomeCompleto || '-';
+            let displayDate = 'N/A'; if(item.data) { try { displayDate = new Date(item.data+"T00:00:00").toLocaleDateString('pt-BR'); } catch(e){} }
+            tr.innerHTML = `<td>${displayDate}</td><td>${item.descricao || 'N/A'}</td><td>R$ ${parseFloat(item.valor || 0).toFixed(2)}</td><td>${patientName}</td><td><span class="status-badge ${item.status || 'desconhecido'}">${item.status || 'N/A'}</span></td><td class="actions-cell"><button class="icon-button" onclick="editRevenue(${item.id})"><i class="fas fa-edit"></i></button> <button class="icon-button" onclick="deleteRevenue(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+        }
+        function formatExpenseRow(item) { /* ...Definição completa... */
+            const tr = document.createElement('tr');
+             let displayDate = 'N/A'; if(item.data) { try { displayDate = new Date(item.data+"T00:00:00").toLocaleDateString('pt-BR'); } catch(e){} }
+            tr.innerHTML = `<td>${displayDate}</td><td>${item.descricao || 'N/A'}</td><td>R$ ${parseFloat(item.valor || 0).toFixed(2)}</td><td>${item.fornecedor || '-'}</td><td><span class="status-badge ${item.status || 'desconhecido'}">${(item.status || 'N/A').replace('_',' ')}</span></td><td class="actions-cell"><button class="icon-button" onclick="editExpense(${item.id})"><i class="fas fa-edit"></i></button> <button class="icon-button" onclick="deleteExpense(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+        }
+        function formatCategoryRow(item) { /* ...Definição completa... */
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${item.nome || 'N/A'}</td><td>${(item.tipo || 'N/A').charAt(0).toUpperCase() + (item.tipo || 'N/A').slice(1)}</td><td class="actions-cell"><button class="icon-button" onclick="editCategory(${item.id})"><i class="fas fa-edit"></i></button> <button class="icon-button" onclick="deleteCategory(${item.id})"><i class="fas fa-trash"></i></button></td>`;
+            return tr;
+        }
+
+        async function saveAppSettingsToSupabase(settingsObject, isInitialInsert = false) { /* ...Definição completa... */
+             if (!supabase) { alert("Supabase não inicializado."); return false; }
+            try {
+                const dataToSave = { ...settingsObject, id: 1 }; delete dataToSave.created_at; delete dataToSave.updated_at;
+                const { data: response, error } = await supabase.from('app_settings').upsert(dataToSave, { onConflict: 'id' }).select().single();
+                if (error) throw error;
+                console.log("Configurações da aplicação salvas:", response);
+                if (response) { appConfig = { ...appConfig, ...response }; applyAppSettingsToUI(appConfig); }
+                return true;
+            } catch (error) { console.error("Erro ao salvar configurações:", error.message, error); alert("Erro ao salvar configurações: " + error.message); return false; }
+        }
+        async function handleSaveGeneralSettings(e) { /* ...Definição completa... */
+             e.preventDefault(); const form = e.target; if (!form) return; const formData = new FormData(form);
+            const newSettings = { appName: formData.get('appName'), language: formData.get('language'), timezone: formData.get('timezone'), dateFormat: formData.get('dateFormat'), currency: formData.get('currency') };
+            if (await saveAppSettingsToSupabase({ ...appConfig, ...newSettings })) alert("Configurações gerais salvas!");
+        }
+        async function handleSaveClinicProfile(e) { /* ...Definição completa... */
+             e.preventDefault(); const form = e.target; if (!form) return; const formData = new FormData(form);
+            let clinicProfileData = { clinicName: formData.get('clinicName'), clinicCnpj: formData.get('clinicCnpj') || null, clinicAddress: formData.get('clinicAddress') || null, clinicPhone: formData.get('clinicPhone') || null, clinicEmail: formData.get('clinicEmail') || null, clinicWebsite: formData.get('clinicWebsite') || null, clinicLogoUrl: appConfig.clinicLogoUrl };
+            const logoFile = formData.get('clinicLogo'); const logoInput = document.getElementById('clinic-logo');
+            if (logoFile && logoFile.size > 0) { // Novo logo enviado
+                if (!supabase) { alert("Supabase não inicializado para upload."); return; }
+                try {
+                    const fileName = `public/clinic_logo_${Date.now()}.${logoFile.name.split('.').pop()}`;
+                    if (appConfig.clinicLogoUrl) { // Remover antigo se existir
+                        try { const oldPath = appConfig.clinicLogoUrl.substring(appConfig.clinicLogoUrl.indexOf('/public/')); await supabase.storage.from('clinic-assets').remove([oldPath.substring(1)]); console.log("Logo antigo removido"); }
+                        catch (rmError) { console.warn("Falha ao remover logo antigo:", rmError); }
+                    }
+                    const { error: uploadError } = await supabase.storage.from('clinic-assets').upload(fileName, logoFile, { cacheControl: '3600', upsert: true });
+                    if (uploadError) throw uploadError;
+                    const { data: urlData } = supabase.storage.from('clinic-assets').getPublicUrl(fileName);
+                    clinicProfileData.clinicLogoUrl = urlData.publicUrl; console.log("Novo logo salvo:", clinicProfileData.clinicLogoUrl);
+                } catch (storageError) { console.error("Erro upload logo:", storageError); alert("Erro upload logo: " + storageError.message); clinicProfileData.clinicLogoUrl = appConfig.clinicLogoUrl; /* Reverte para o antigo em caso de erro */ }
+            } else if (logoInput && logoInput.value === '' && appConfig.clinicLogoUrl) { // Input limpo, remover logo existente
+                 try {
+                    const oldPath = appConfig.clinicLogoUrl.substring(appConfig.clinicLogoUrl.indexOf('/public/'));
+                    await supabase.storage.from('clinic-assets').remove([oldPath.substring(1)]);
+                    clinicProfileData.clinicLogoUrl = null; console.log("Logo removido a pedido do usuário.");
+                 } catch (rmError) { console.warn("Falha ao remover logo antigo (limpeza):", rmError); clinicProfileData.clinicLogoUrl = appConfig.clinicLogoUrl; /* Mantém se falhar */ }
+            } // Se nenhum arquivo novo e input não foi limpo, mantém a URL atual (já está em clinicProfileData)
+            if (await saveAppSettingsToSupabase({ ...appConfig, ...clinicProfileData })) alert("Perfil da clínica salvo!");
+        }
+        async function handleSaveNotificationSettings(e) { /* ...Definição completa... */
+            e.preventDefault(); const form = e.target; if (!form) return; const formData = new FormData(form);
+            const newConf = { emailActive: formData.has('emailActive'), emailFrom: formData.get('emailFrom') || null, smsActive: formData.has('smsActive'), patientConfirm: formData.has('patientConfirm'), patientReminder: formData.has('patientReminder'), patientReschedule: formData.has('patientReschedule') };
+            if (await saveAppSettingsToSupabase({ ...appConfig, notifications_config: newConf })) alert("Config. de notificação salvas!");
+        }
+         async function handleSaveIntegrationSettings(e) { /* ...Definição completa... */
+            e.preventDefault(); const form = e.target; if (!form) return; const formData = new FormData(form);
+            const newConf = { googleCalendarActive: formData.has('googleCalendarActive'), whatsappActive: formData.has('whatsappActive') };
+            if (await saveAppSettingsToSupabase({ ...appConfig, integrations_config: newConf })) alert("Config. de integração salvas!");
+         }
+         async function handleSaveAppearanceSettings(e) { /* ...Definição completa... */
+             e.preventDefault(); const form = e.target; if (!form) return; const formData = new FormData(form);
+            const newSet = { theme: formData.get('themeSelect'), accentColor: formData.get('accentColor') };
+            if (await saveAppSettingsToSupabase({ ...appConfig, ...newSet })) alert("Config. de aparência salvas!");
+         }
+
+        window.handleLogout = async (event) => { /* ...Definição completa... */
+             event.preventDefault(); console.log("Logout solicitado.");
+            if (supabase && supabase.auth && (await supabase.auth.getUser()).data.user) {
+                const { error } = await supabase.auth.signOut();
+                if (error) { console.error("Error logging out:", error); alert("Erro ao fazer logout: " + error.message); }
+                else { console.log("Logged out from Supabase Auth."); alert("Logout realizado com sucesso!"); db = { patients: [], doctors: [], departments: [], appointments: [], revenues: [], expenses: [], categories: [], users: [] }; updateGreeting(); /* Aqui você redirecionaria ou mostraria tela de login */ }
+            } else { alert("Logout (simulado - nenhum usuário Supabase Auth logado)..."); }
+        };
+        window.generateReport = () => { /* ...Definição completa... */
+             const periodSelect = document.getElementById('analytics-period'); const typeSelect = document.getElementById('analytics-report-type');
+             if (!periodSelect || !typeSelect) return;
+             const period = periodSelect.value; const type = typeSelect.value;
+             console.log(`Gerando relatório: Tipo=${type}, Período=${period}`); alert(`Relatório "${type}" para o período "${period}" seria gerado aqui (simulado).`);
+        };
+        window.handleBackupData = () => { /* ...Definição completa... */
+            try {
+                const dataToBackup = { appConfig, db }; const dataStr = JSON.stringify(dataToBackup, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                const exportFileDefaultName = `lifecare_backup_local_${new Date().toISOString().split('T')[0]}.json`;
+                const linkElement = document.createElement('a'); linkElement.setAttribute('href', dataUri); linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click(); console.log("Backup dos dados LOCAIS (db e appConfig) solicitado.");
+                alert("Um backup dos dados atualmente carregados na interface será baixado. Para backups completos do banco de dados, use as ferramentas do Supabase.");
+            } catch(e) { console.error("Erro ao gerar backup local:", e); alert("Erro ao gerar backup local."); }
+        };
+        window.handleImportData = () => { /* ...Definição completa... */
+             alert("A importação de dados deve ser feita preferencialmente através do painel do Supabase ou ferramentas de migração. Esta funcionalidade é simulada.");
+            const fileInput = document.getElementById('import-data-file');
+            if (!fileInput || fileInput.files.length === 0) { alert("Por favor, selecione um arquivo para importar."); return; }
+            console.log("Simulando importação do arquivo:", fileInput.files[0].name);
+        };
+
+        function updateGreeting() { /* ...Definição completa... */
+            const adminUser = (db.users || []).find(u=> u && u.perfil==='admin');
+            const userName = adminUser ? (adminUser.nomeCompleto || 'Usuário').split(' ')[0] : 'Usuário';
+            const clinicName = appConfig.appName || 'LifeCare Painel';
+            const greetingH2 = document.getElementById('greeting-user-name'); if (greetingH2) greetingH2.textContent = `Olá, ${userName}!`;
+            const logoTextElement = document.querySelector('.sidebar-header .logo'); if (logoTextElement) logoTextElement.innerHTML = `<i class="fas fa-heart-pulse"></i>${clinicName}`;
+            const toolbarUserName = document.getElementById('toolbar-user-name'); if(toolbarUserName) toolbarUserName.textContent = adminUser ? (adminUser.nomeCompleto || 'Dr. Usuário') : 'Dr. Usuário';
+            const toolbarUserRole = document.getElementById('toolbar-user-role'); if(toolbarUserRole) toolbarUserRole.textContent = adminUser ? (adminUser.perfil?.toUpperCase() || 'Administrador') : 'Administrador';
+        }
+        function updateDashboardStats() { /* ...Definição completa... */
+             if (!db.appointments || !db.patients || !db.revenues) { return; }
+            const today = new Date().toISOString().split('T')[0];
+            const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            const safeAppointments = db.appointments || []; const safePatients = db.patients || []; const safeRevenues = db.revenues || []; const safeExpenses = db.expenses || [];
+
+            document.getElementById('consultas-hoje-valor').textContent = safeAppointments.filter(a => a && a.data === today).length;
+            document.getElementById('novos-pacientes-mes-valor').textContent = safePatients.filter(p => p && p.created_at && new Date(p.created_at) >= oneMonthAgo).length;
+            document.getElementById('consultas-realizadas-mes-valor').textContent = safeAppointments.filter(a => a && a.status === 'realizado' && a.data && new Date(a.data) >= oneMonthAgo).length;
+            const receitaPendente = safeRevenues.filter(r => r && r.status === 'pendente').reduce((sum, r) => sum + parseFloat(r.valor || 0), 0);
+            document.getElementById('receita-pendente-valor').textContent = `R$ ${receitaPendente.toFixed(2)}`;
+            document.getElementById('appointments-badge').textContent = safeAppointments.filter(a => a && ['agendado', 'confirmado'].includes(a.status)).length;
+            const receitasMes = safeRevenues.filter(r => r && r.status === 'recebido' && r.data && new Date(r.data) >= oneMonthAgo).reduce((sum, r) => sum + parseFloat(r.valor || 0), 0);
+            const despesasMes = safeExpenses.filter(e => e && e.status === 'pago' && e.data && new Date(e.data) >= oneMonthAgo).reduce((sum, e) => sum + parseFloat(e.valor || 0), 0);
+            document.getElementById('receitas-mes-valor').textContent = `R$ ${receitasMes.toFixed(2)}`;
+            document.getElementById('despesas-mes-valor').textContent = `R$ ${despesasMes.toFixed(2)}`;
+            const saldoTotalReceitas = safeRevenues.filter(r => r && r.status === 'recebido').reduce((sum, r) => sum + parseFloat(r.valor || 0), 0);
+            const saldoTotalDespesas = safeExpenses.filter(e => e && e.status === 'pago').reduce((sum, e) => sum + parseFloat(e.valor || 0), 0);
+            document.getElementById('saldo-atual-valor').textContent = `R$ ${(saldoTotalReceitas - saldoTotalDespesas).toFixed(2)}`;
+        }
+
+        let financeChartInstance, patientsChartInstance, specialtyChartInstance;
+        function renderSampleCharts() { /* ...Definição completa... */
+             if (typeof Chart === 'undefined') { console.warn("Chart.js não carregado."); return; }
+            const safeAppointments = db.appointments || []; const safeRevenues = db.revenues || []; const safeExpenses = db.expenses || [];
+            const safeDoctors = db.doctors || []; const safeDepartments = db.departments || [];
+
+            // Gráfico Financeiro
+            const financeCtx = document.getElementById('financeOverviewChart')?.getContext('2d');
+            if (financeCtx) {
+                if(financeChartInstance) financeChartInstance.destroy();
+                const monthlyData = {}; const today = new Date();
+                for (let i = 5; i >= 0; i--) { const d = new Date(today.getFullYear(), today.getMonth() - i, 1); const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; monthlyData[monthKey] = { receitas: 0, despesas: 0, label: d.toLocaleString('pt-BR', { month: 'short' }) }; }
+                safeRevenues.forEach(r => { if (r && r.status === 'recebido' && r.data) { const d = new Date(r.data + "T00:00:00"); const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; if (monthlyData[monthKey]) monthlyData[monthKey].receitas += parseFloat(r.valor || 0); }});
+                safeExpenses.forEach(e => { if (e && e.status === 'pago' && e.data) { const d = new Date(e.data + "T00:00:00"); const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; if (monthlyData[monthKey]) monthlyData[monthKey].despesas += parseFloat(e.valor || 0); }});
+                const labels = Object.values(monthlyData).map(m => m.label); const receitasData = Object.values(monthlyData).map(m => m.receitas); const despesasData = Object.values(monthlyData).map(m => m.despesas);
+                financeChartInstance = new Chart(financeCtx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'Receitas', data: receitasData, backgroundColor: 'rgba(40, 167, 69, 0.7)', borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1 }, { label: 'Despesas', data: despesasData, backgroundColor: 'rgba(220, 53, 69, 0.7)', borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+            }
+            // Gráfico Pacientes Atendidos
+            const patientsCtx = document.getElementById('patientsAttendedChart')?.getContext('2d');
+             if (patientsCtx) {
+                if(patientsChartInstance) patientsChartInstance.destroy();
+                const attendedPatients = {}; const reportPeriodDays = 30; const endDate = new Date(); const startDate = new Date(); startDate.setDate(endDate.getDate() - reportPeriodDays);
+                safeAppointments.forEach(app => { if (app && app.status === 'realizado' && app.data) { const appDate = new Date(app.data + "T00:00:00"); if (appDate >= startDate && appDate <= endDate) { const dateKey = app.data; attendedPatients[dateKey] = (attendedPatients[dateKey] || 0) + 1; }}});
+                const attendedLabels = Object.keys(attendedPatients).sort(); const attendedData = attendedLabels.map(key => attendedPatients[key]);
+                patientsChartInstance = new Chart(patientsCtx, { type: 'line', data: { labels: attendedLabels.map(d => new Date(d+"T00:00:00").toLocaleDateString('pt-BR', {day:'2-digit', month:'short'})), datasets: [{ label: 'Consultas Realizadas', data: attendedData, borderColor: appConfig.accentColor || 'var(--accent-color)', tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false } });
+            }
+            // Gráfico Consultas por Especialidade
+            const specialtyCtx = document.getElementById('consultationsBySpecialtyChart')?.getContext('2d');
+            if (specialtyCtx) {
+                if(specialtyChartInstance) specialtyChartInstance.destroy();
+                const specialtyCounts = {};
+                safeAppointments.forEach(app => { if (app) { const doctor = safeDoctors.find(d => d && d.id == app.medicoId); if (doctor && doctor.especialidadePrincipalId) { const specialty = safeDepartments.find(dep => dep && dep.id == doctor.especialidadePrincipalId)?.nome || 'Outra'; specialtyCounts[specialty] = (specialtyCounts[specialty] || 0) + 1; } else if (doctor) { specialtyCounts['Sem Especialidade Definida'] = (specialtyCounts['Sem Especialidade Definida'] || 0) + 1; }}});
+                const chartColors = [ 'rgba(44, 87, 168, 0.8)', 'rgba(0, 123, 255, 0.8)', 'rgba(23, 162, 184, 0.8)', 'rgba(255, 193, 7, 0.8)', 'rgba(108, 117, 125, 0.8)', 'rgba(220, 53, 69, 0.8)', 'rgba(40, 167, 69, 0.8)' ];
+                specialtyChartInstance = new Chart(specialtyCtx, { type: 'doughnut', data: { labels: Object.keys(specialtyCounts).length > 0 ? Object.keys(specialtyCounts) : ['Nenhuma Consulta'], datasets: [{ label: 'Consultas', data: Object.keys(specialtyCounts).length > 0 ? Object.values(specialtyCounts) : [0], backgroundColor: chartColors }] }, options: { responsive: true, maintainAspectRatio: false } });
+            }
+        }
+
+    </script>
+</body>
+</html>
